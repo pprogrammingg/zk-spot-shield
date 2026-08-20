@@ -1,0 +1,25 @@
+---
+description: SP1 guest/host constraints for the zk-circuit crates
+globs: zk-circuit/**/*
+alwaysApply: false
+---
+
+# SP1 circuit conventions
+
+## Guest (`zk-circuit/guest`)
+
+- Stack-only hot path: fixed arrays (`[u8; 32]`, path depth fixed e.g. 20) — no `Vec` / heap in constraints
+- Private inputs stay in guest; public journal = amounts, mint/asset id, nullifier, merkle root
+- Commit journal via `sp1_zkvm::io::commit` only after constraints pass
+- Guest profile: aggressive opts (`opt-level = 3`, LTO) when wired
+
+## Host (`zk-circuit/host`)
+
+- Drive `sp1_sdk::ProverClient`; fixtures must match guest path/hash scheme
+- Serialize Groth16 proof + public values for Anchor ix data; keep packing helpers tested
+- Negative tests: non-member leaf must fail closed
+
+## Do not
+
+- Do not change journal field order/layout without updating on-chain parse + vkey
+- Do not log secrets (spending keys, full Merkle paths with private leaf) in host output committed to git

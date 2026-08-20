@@ -1,0 +1,81 @@
+# ==============================================================================
+# Rust & Cargo Artifacts
+# ==============================================================================
+/target/
+/**/target/
+**/*.rs.bk
+Cargo.lock
+
+# Exception: Retain lockfile if you prefer deterministic workspace dependency locking
+# !Cargo.lock
+
+# ==============================================================================
+# Solana Toolchain & Local Ledger Data
+# ==============================================================================
+.anchor/
+/test-ledger/
+/**/test-ledger/
+/dist/
+.env
+.env.*
+!.env.example
+
+# Keypairs & Cryptographic Secrets (CRITICAL FOR SAFETY)
+*.json
+!package.json
+!tsconfig.json
+!Anchor.toml
+!**/package.json
+!**/tsconfig.json
+
+# Exclude specific wallet keypair filenames if JSON rule is relaxed later
+id.json
+keypair.json
+deploy-keypair.json
+*-keypair.json
+
+# ==============================================================================
+# SP1 / RISC Zero / zkVM Build & Prover Artifacts
+# ==============================================================================
+# SP1 elf binary builds and host proving artifacts
+/zk-circuit/guest/target/
+/zk-circuit/host/target/
+*.elf
+*.bin
+*.proof
+*.vkey
+sp1-artifacts/
+.sp1/
+
+# ==============================================================================
+# Node.js, TypeScript & Anchor Client Dependencies
+# ==============================================================================
+node_modules/
+/**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# Typechain / Anchor generated types
+/target/types/
+/target/idl/
+
+# ==============================================================================
+# IDE, OS, & System Artifacts
+# ==============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

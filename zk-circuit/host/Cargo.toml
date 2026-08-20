@@ -1,0 +1,10 @@
+[package]
+name = "zk-circuit-host"
+version = "0.1.0"
+description = "SP1 host prover driver (placeholder until Phase 4)"
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "zk-circuit-host"
+path = "src/main.rs"

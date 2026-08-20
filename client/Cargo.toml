@@ -1,0 +1,9 @@
+[package]
+name = "client"
+version = "0.1.0"
+description = "Client helpers (placeholder until Phase 7)"
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"

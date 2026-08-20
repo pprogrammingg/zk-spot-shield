@@ -1,0 +1,12 @@
+---
+description: Follow roadmap sessions; one Day per 1.5h block
+alwaysApply: true
+---
+
+# Session discipline
+
+- Source of truth for what to build next: `roadmap.md`
+- One **Day** per session (3×25). Do not pull the next Day mid-session unless the user asks
+- Mark checklist items `[x]` only when that item’s work is done; mark Day Exit only when Exit criteria pass
+- Prefer small commits at session end with a message that names the Day
+- If scaffolding conflicts with later Days (e.g. sample counter vs vault), keep the sample until the Day that replaces it — don’t rewrite Month 2 early

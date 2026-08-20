@@ -1,0 +1,28 @@
+---
+description: ZK Spot Shield monorepo layout, stack, and hard do-nots
+alwaysApply: true
+---
+
+# Project context
+
+Solana + Anchor program that settles spot swaps after SP1 Groth16 verification. Off-chain circuit proves Merkle inclusion + solvency and binds a nullifier; on-chain code verifies proof, registered root, unused nullifier, then mutates zero-copy vault + SPL transfers.
+
+## Layout
+
+- `program/` — Anchor on-chain crate (`zk_spot_shield`), flat (not `programs/...`)
+- `zk-circuit/guest` — SP1 guest (when present); `zk-circuit/host` — prover driver
+- `client/` — client helpers / later SDK
+- `Anchor.toml` + root `Cargo.toml` — workspace source of truth
+- `roadmap.md` — session checklist; mark `[x]` only when Exit passes
+
+## Stack pins
+
+- Anchor `1.1.x`, Solana/Agave CLI on PATH, SP1 via `cargo prove` / `sp1up`
+- Localnet: `solana config get` → localhost; wallet `~/.config/solana/id.json`
+
+## Do not
+
+- Do not invent nested `program/programs/...` layouts
+- Do not commit keypairs, ledgers, `.so` proofs, or SP1 device caches (see `.gitignore`)
+- Do not expand scope past the current `roadmap.md` Day unless asked
+- Prefer `AccountLoader` / `zero_copy` for large hot accounts; no heap-heavy account deserialize on settle path

@@ -1,0 +1,39 @@
+---
+description: Anchor zero-copy account layout and AccountLoader conventions
+globs: program/**/*.rs
+alwaysApply: false
+---
+
+# Anchor zero-copy
+
+Hot accounts (`VaultState`, nullifiers, large configs) use zero-copy — not `Account<'info, T>` heap deserialize.
+
+## Required pattern
+
+```rust
+#[account(zero_copy)]
+#[repr(C)]
+pub struct VaultState {
+    pub authority: Pubkey,
+    // ... fixed fields ...
+    pub bump: u8,
+    pub _padding: [u8; 7], // explicit; keep 8-byte alignment
+}
+```
+
+- Always `#[repr(C)]` + explicit padding; never rely on Rust field reordering
+- Prefer `AccountLoader<'info, T>` in contexts; use `.load()` / `.load_mut()`
+- Assert size/alignment in tests or `const` checks when adding fields
+- Checked math on reserves (`checked_add` / `checked_sub`); keep `overflow-checks` on in release
+
+## Avoid
+
+```rust
+// ❌ BAD for large hot state
+pub vault: Account<'info, VaultState>,
+
+// ✅ GOOD
+pub vault: AccountLoader<'info, VaultState>,
+```
+
+Counter scaffold (`Account` + `InitSpace`) is temporary Day-1 sample — replace with zero-copy for production state.
