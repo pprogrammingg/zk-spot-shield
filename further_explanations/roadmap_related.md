@@ -1,4 +1,4 @@
-# day 2 
+# Day 2 
   - [ ] Implement `GlobalConfig` PDA (authority, vkey hash, pause flag)
   - [ ] Register it in the program module tree
 
@@ -37,3 +37,17 @@ Without **GlobalConfig**, the on-chain engine has no operational boundary or ver
 ### 📍 Single Source of Truth
 
 * Deriving this account as a canonical PDA ensures that all settlement instructions across the entire program read from one immutable, tamper-proof configuration account.
+
+# Day 3
+
+ChatGPT said:
+## Key Differences: `#[account]` vs `#[account(zero_copy)]`
+
+| Feature | Standard `#[account]` | `#[account(zero_copy)]` |
+|---|---|---|
+| **On-Chain Account?** | Yes | Yes |
+| **8-Byte Discriminator** | Placed automatically at the start of account data | Placed automatically at the start of account data |
+| **Deserialization** | Copies account bytes into a new Rust struct instance on every instruction call | Zero-copy: maps the account data buffer directly into the struct |
+| **Account Context Type** | `Account<'info, VaultState>` | `AccountLoader<'info, VaultState>` |
+| **Max Account Size** | Subject to stack/heap allocation limits (~10 KB) | Supports large accounts, up to ~10 MB |
+| **Typical Use Case** | Normal-sized account state | Large account

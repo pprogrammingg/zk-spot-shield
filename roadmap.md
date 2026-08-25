@@ -47,11 +47,11 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
 
 ### Phase 2: Anchor On-Chain State & Zero-Copy Architecture (4 sessions)
 
-- [ ] **Day 2 — Program deps + `GlobalConfig`**
-  - [ ] Wire `program/Cargo.toml` (`anchor-lang`, `anchor-spl`, `bytemuck`, `sp1-solana`)
-  - [ ] Implement `GlobalConfig` PDA (authority, vkey hash, pause flag)
-  - [ ] Register it in the program module tree
-  - [ ] *Exit:* Account compiles; init path stubs without panicking on layout size
+- [x] **Day 2 — Program deps + `GlobalConfig`**
+  - [x] Wire `program/Cargo.toml` (`anchor-lang`, `anchor-spl`, `bytemuck`, `sp1-solana`)
+  - [x] Implement `GlobalConfig` PDA (authority, vkey hash, pause flag)
+  - [x] Register it in the program module tree
+  - [x] *Exit:* Account compiles; init path stubs without panicking on layout size
 
 - [ ] **Day 3 — Zero-copy `VaultState`**
   - [ ] Add `vault.rs` with `#[account(zero_copy)]` + `#[repr(C)]`
