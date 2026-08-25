@@ -19,6 +19,10 @@ pub mod zk_spot_shield {
         crate::instructions::initialize::handle_initialize(ctx)
     }
 
+    pub fn initialize_global_config(ctx: Context<InitializeGlobalConfig>) -> Result<()> {
+        crate::instructions::initialize_global_config::handle_initialize_global_config(ctx, VKEY_HASH)
+    }
+
     pub fn increment(ctx: Context<Increment>) -> Result<()> {
         crate::instructions::increment::handle_increment(ctx)
     }
