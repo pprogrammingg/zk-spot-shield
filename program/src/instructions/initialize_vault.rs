@@ -1,4 +1,4 @@
-use crate::state::VaultState;
+use crate::{state::VaultState, SPOT_VAULT_SEED};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
@@ -7,8 +7,11 @@ pub struct InitializeVault<'info> {
     pub payer: Signer<'info>,
 
     #[account(
-        zero, // Allocates account space & sets owner to program without copy overhead
-        signer,
+        init,
+        payer = payer,
+        space = 8 + std::mem::size_of::<VaultState>(),
+        seeds = [SPOT_VAULT_SEED],
+        bump,
     )]
     pub vault: AccountLoader<'info, VaultState>,
 
@@ -17,7 +20,6 @@ pub struct InitializeVault<'info> {
 
 pub fn handle_initialize_vault(
     ctx: Context<InitializeVault>,
-    bump: u8,
 ) -> Result<()> {
     // Use load_init() when setting up a zero account for the first time
     let mut vault = ctx.accounts.vault.load_init()?;
@@ -27,7 +29,7 @@ pub fn handle_initialize_vault(
     vault.mint_b = Pubkey::default();
     vault.reserve_a = 0;
     vault.reserve_b = 0;
-    vault.bump = bump;
+    vault.bump = ctx.bumps.vault;
     vault._padding = [0u8; 7];
 
     Ok(())

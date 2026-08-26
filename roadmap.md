@@ -53,23 +53,23 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
   - [x] Register it in the program module tree
   - [x] *Exit:* Account compiles; init path stubs without panicking on layout size
 
-- [ ] **Day 3 — Zero-copy `VaultState`**
-  - [ ] Add `vault.rs` with `#[account(zero_copy)]` + `#[repr(C)]`
-  - [ ] Fields (authority, mints, reserves, bump) + explicit padding
-  - [ ] Size asserts / `INIT_SPACE`-equivalent checks
-  - [ ] *Exit:* `VaultState` size and alignment verified; load via `AccountLoader` pattern sketched
+- [x] **Day 3 — Zero-copy `VaultState`**
+  - [x] Add `vault.rs` with `#[account(zero_copy)]` + `#[repr(C)]`
+  - [x] Fields (authority, mints, reserves, bump) + explicit padding
+  - [x] Size asserts / `INIT_SPACE`-equivalent checks
+  - [x] *Exit:* `VaultState` size and alignment verified; load via `AccountLoader` pattern sketched
 
-- [ ] **Day 4 — Nullifier + clean-funds root accounts**
-  - [ ] Implement zero-copy `NullifierAccount` (32-byte nullifier)
-  - [ ] Implement `CleanFundsRoot` (historical Merkle roots)
-  - [ ] Seeds and PDA helpers for both
-  - [ ] *Exit:* Both accounts compile; PDA seeds documented in code
+- [x] **Day 4 — Nullifier + clean-funds root accounts**
+  - [x] Implement zero-copy `NullifierAccount` (32-byte nullifier)
+  - [x] Implement `CleanFundsRoot` (historical Merkle roots)
+  - [x] Seeds and PDA helpers for both
+  - [x] *Exit:* Both accounts compile; PDA seeds documented in code
 
-- [ ] **Day 5 — Constants, errors, module surface**
-  - [ ] `constants.rs` seeds (`global_config`, `spot_vault`, `nullifier`, …) + derivation helpers
-  - [ ] `errors.rs` (`InvalidProof`, `NullifierAlreadyUsed`, `ZeroCopyDeserializationError`, `MerkleRootNotFound`, …)
-  - [ ] Export state + errors cleanly from `lib.rs` / `mod` tree
-  - [ ] *Exit:* Program builds with all state types reachable; error codes usable from instructions (even if stubs)
+- [x] **Day 5 — Constants, errors, module surface**
+  - [x] `constants.rs` seeds (`global_config`, `spot_vault`, `nullifier`, …) + derivation helpers
+  - [x] `errors.rs` (`InvalidProof`, `NullifierAlreadyUsed`, `ZeroCopyDeserializationError`, `MerkleRootNotFound`, …)
+  - [x] Export state + errors cleanly from `lib.rs` / `mod` tree
+  - [x] *Exit:* Program builds with all state types reachable; error codes usable from instructions (even if stubs)
 
 ### Phase 3: Off-Chain ZK Circuit (SP1 Guest) (5 sessions)
 

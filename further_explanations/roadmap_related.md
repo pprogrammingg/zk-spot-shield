@@ -51,3 +51,25 @@ ChatGPT said:
 | **Account Context Type** | `Account<'info, VaultState>` | `AccountLoader<'info, VaultState>` |
 | **Max Account Size** | Subject to stack/heap allocation limits (~10 KB) | Supports large accounts, up to ~10 MB |
 | **Typical Use Case** | Normal-sized account state | Large account
+
+
+# Day 4
+1. **Core Zero-Knowledge Constraint Integrity:** Modifying a single bit, leaf order, or Merkle path invalidates the ZK circuit’s off-chain proof generation via the avalanche effect, preventing broken data from ever forming a valid state transition.
+
+2. **On-Chain Dual Account Architecture:** Day 4 uses two primary accounts—a fixed-size Merkle Tree account for sequential commitment insertion, and a zero-copy `CleanFundsRoot` account for storing historical Merkle roots.
+
+3. **Circular Root History Buffer (`CleanFundsRoot`):** The program uses a 32-slot ring buffer managed by `current_root_index` (wrapping via modulo logic) to maintain valid historical roots, allowing concurrent ZK proof generation without immediate invalidation when new deposits land.
+
+4. **Deposit State Execution (No ZK Proof):** Deposits require zero ZK proofs; the user simply sends 10 SOL and a 32-byte Commitment hash ($C = \text{Hash}(S \mathbin{\Vert} N)$), which the contract appends to the next available leaf index.
+
+5. **Withdrawal Inputs and Anonymity:** Withdrawals require zero private secrets on-chain. The caller submits only public parameters: the ZK Proof, selected historical Merkle Root, Nullifier Hash, and Recipient Address.
+
+6. **On-Chain Root Whitelisting:** Anyone can read public roots from `CleanFundsRoot.roots`, but an attacker cannot generate a valid ZK proof against a chosen root unless they hold a valid secret matching a commitment in that specific tree state.
+
+7. **PDA Double-Spend Prevention via `NullifierAccount`:** Double-spending is permanently blocked by initializing empty 0-byte PDAs derived strictly from `[b"nullifier", nullifier_hash]`. The derivation deliberately excludes user public keys or transaction hashes to preserve mixer privacy and prevent replay attacks.
+
+8. **Public Values Binding & Anti-Frontrunning:** The SP1 ZK verifier binds parameters like `Recipient Address` directly into the public journal during off-chain proof generation, ensuring malicious validators cannot modify the receiving wallet without breaking the proof.
+
+9. **Role of Private `leaf_index`:** `leaf_index` is assigned publicly by the contract at deposit time, but during withdrawal, it acts solely as a private witness inside the ZK circuit to specify the Merkle path and derive unique nullifier hashes.
+
+10. **Multi-Deposit Uniqueness:** Hashing `leaf_index` into the nullifier formula ($\text{Nullifier Hash} = \text{Hash}(S \mathbin{\Vert} N \mathbin{\Vert} \text{leaf\_index})$) guarantees that even if a user generates multiple deposits from identical static master keys, every deposit creates a unique, unspendable PDA on-chain.
