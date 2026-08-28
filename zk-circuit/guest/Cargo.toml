@@ -1,0 +1,17 @@
+[package]
+name = "guest"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+sp1-zkvm = "3.0.0"
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+light-poseidon = { version = "0.2", default-features = false }
+ark-bn254 = { version = "0.4", default-features = false }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
