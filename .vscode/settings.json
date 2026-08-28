@@ -1,0 +1,35 @@
+{
+  "files.exclude": {
+    "**/.git": false,
+    "**/.git/objects": true,
+    "**/.git/refs": true,
+    "**/.git/logs": true,
+    "**/target": true,
+    "**/.anchor": true,
+    "**/test-ledger": true,
+    "**/node_modules": true,
+    "**/.sp1": true,
+    "**/sp1-artifacts": true,
+    "**/dist": true
+  },
+  "files.watcherExclude": {
+    "**/target/**": true,
+    "**/.anchor/**": true,
+    "**/test-ledger/**": true,
+    "**/node_modules/**": true,
+    "**/.sp1/**": true,
+    "**/sp1-artifacts/**": true
+  },
+  "search.exclude": {
+    "**/target": true,
+    "**/.anchor": true,
+    "**/test-ledger": true,
+    "**/node_modules": true,
+    "**/.sp1": true,
+    "**/sp1-artifacts": true,
+    "**/dist": true,
+    "**/*.so": true,
+    "**/*.elf": true,
+    "**/*.proof": true
+  }
+}

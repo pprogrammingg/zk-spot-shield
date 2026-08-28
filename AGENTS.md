@@ -16,16 +16,21 @@ Guidance for AI agents working in **zk-spot-shield**.
 | `01-anchor-zero-copy.mdc` | `program/**/*.rs` — zero-copy / `AccountLoader` |
 | `02-sp1-circuit.mdc` | `zk-circuit/**` — guest/host SP1 constraints |
 | `03-session-roadmap.mdc` | Always — one Day per session, checklist hygiene |
+| `04-context-hygiene.mdc` | Always — skip `target/` and other generated trees |
 
 ## Repo shape
 
 ```text
-program/           # Anchor crate zk_spot_shield
-zk-circuit/host/   # SP1 host (guest added in later Days)
-client/            # client placeholder → SDK later
-Anchor.toml        # localnet + program id
-Cargo.toml         # workspace
+program/              # Anchor crate zk_spot_shield
+zk-circuit/guest/     # SP1 guest circuit
+zk-circuit/host/      # SP1 host prover driver
+client/               # client placeholder → SDK later
+Anchor.toml           # localnet + program id
+Cargo.toml            # workspace
+further_explanations/ # glossary + session notes
 ```
+
+Ignore for search/context: `target/`, `.anchor/`, `test-ledger/` (see `.cursorignore`).
 
 ## Verify toolchain
 

@@ -73,3 +73,61 @@ ChatGPT said:
 9. **Role of Private `leaf_index`:** `leaf_index` is assigned publicly by the contract at deposit time, but during withdrawal, it acts solely as a private witness inside the ZK circuit to specify the Merkle path and derive unique nullifier hashes.
 
 10. **Multi-Deposit Uniqueness:** Hashing `leaf_index` into the nullifier formula ($\text{Nullifier Hash} = \text{Hash}(S \mathbin{\Vert} N \mathbin{\Vert} \text{leaf\_index})$) guarantees that even if a user generates multiple deposits from identical static master keys, every deposit creates a unique, unspendable PDA on-chain.
+
+# Day 7 — Private + Public I/O Shapes
+
+**Goal:** Define deterministic, stack-allocated, zero-heap I/O structs for the guest circuit.
+
+#### Data Flow
+
+```text
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ HOST PROGRAM                                                                  │
+│                                                                               │
+│   PrivateInputs { secret, merkle_path, ... }                                 │
+└────────────────────────────────┬──────────────────────────────────────────────┘
+                                 │
+                                 │ sp1_zkvm::io::read()
+                                 ▼
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ SP1 GUEST CIRCUIT                                                             │
+│                                                                               │
+│   1. Verify inclusion & solvency                                              │
+│   2. Generate nullifier                                                       │
+│   3. Construct PublicOutputs { requested_swap_amount, nullifier, ... }        │
+└────────────────────────────────┬──────────────────────────────────────────────┘
+                                 │
+                                 │ sp1_zkvm::io::commit()
+                                 ▼
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ ON-CHAIN JOURNAL                                                              │
+│                                                                               │
+│   PublicOutputs verified by Solana program                                   │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+```
+
+#### I/O Boundary
+
+| Direction | Struct | Contains | Visibility |
+|---|---|---|---|
+| Host → Guest | `PrivateInputs` | `secret`, `merkle_path`, … | **Private** |
+| Guest → Journal | `PublicOutputs` | `requested_swap_amount`, `nullifier`, … | **Public** |
+
+
+**Objective:** Map out data structures so they map 1:1 with your Solana program types without triggering heap allocations inside the zkVM.
+
+#### Step 1.1 — Map Boundary Inputs & Outputs
+Define what must stay private on the client side versus what gets publicly verified on-chain:
+
+* **Private Inputs (Witness):** Parameters known only to the prover.
+  * `secret`: 32-byte private key controlling the shielded note.
+  * `user_address`: 32-byte public key of the account holder.
+  * `merkle_path`: Array of 20 sibling pairs `([u8; 32], bool)` where the boolean represents whether the sibling is on the right.
+  * `balance`: Total balance stored inside the private commitment.
+
+* **Public Outputs (Journal Commitment):** Data published on-chain after proof generation.
+  * `requested_swap_amount`: The amount the user wants to withdraw/trade.
+  * `asset_id_mint`: The SPL token mint being spent.
+  * `nullifier`: Unique 32-byte hash preventing double spends.
+  * `merkle_root`: The 32-byte state root this note belonged to.

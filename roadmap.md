@@ -73,31 +73,31 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
 
 ### Phase 3: Off-Chain ZK Circuit (SP1 Guest) (5 sessions)
 
-- [ ] **Day 6 — SP1 guest crate**
-  - [ ] `cargo new --bin zk-circuit/guest` + workspace membership
-  - [ ] `sp1-zkvm` deps + guest profile (`opt-level = 3`, `lto = true`)
-  - [ ] *Exit:* Guest crate builds under SP1 toolchain
+- [x] **Day 6 — SP1 guest crate**
+  - [x] `cargo new --bin zk-circuit/guest` + workspace membership
+  - [x] `sp1-zkvm` deps + guest profile (`opt-level = 3`, `lto = true`)
+  - [x] *Exit:* The guest crate compiles successfully under the SP1 toolchain target (riscv32im-succinct-zkvm-elf).
 
-- [ ] **Day 7 — Private + public I/O shapes**
-  - [ ] Stack-allocated `PrivateInputs` (fixed arrays: address, Merkle path depth 20)
-  - [ ] `PublicOutputs` journal (`requested_swap_amount`, `asset_id_mint`, `nullifier`, `merkle_root`)
-  - [ ] *Exit:* Types compile in guest; sizes fixed (no heap in guest hot path)
+- [x] **Day 7 — Private + public I/O shapes**
+  - [x] Stack-allocated `PrivateInputs` (fixed arrays: address, Merkle path depth 20)
+  - [x] `PublicOutputs` journal (`requested_swap_amount`, `asset_id_mint`, `nullifier`, `merkle_root`)
+  - [x] *Exit:* Types compile in guest; sizes fixed (no heap in guest hot path)
 
-- [ ] **Day 8 — Merkle inclusion (Poseidon)**
-  - [ ] Guest logic: binary Poseidon recursion over the path
-  - [ ] Assert leaf ∈ tree under `merkle_root`
-  - [ ] *Exit:* Guest executes a known-good inclusion vector without panic
+- [x] **Day 8 — Merkle inclusion (Poseidon)**
+  - [x] Guest logic: binary Poseidon recursion over the path
+  - [x] Assert leaf ∈ tree under `merkle_root`
+  - [x] *Exit:* Guest executes a known-good inclusion vector without panic
 
-- [ ] **Day 9 — Solvency + nullifier**
-  - [ ] Constraint `balance >= requested_swap_amount`
-  - [ ] Nullifier = hash(secret, timestamp) (or chosen binding scheme)
-  - [ ] Document unlinkability assumptions in a short comment/module doc
-  - [ ] *Exit:* Guest rejects underfunded input; produces stable nullifier for fixed secret
+- [x] **Day 9 — Solvency + nullifier**
+  - [x] Constraint `balance >= requested_swap_amount`
+  - [x] Nullifier = hash(secret, timestamp) (or chosen binding scheme)
+  - [x] Document unlinkability assumptions in a short comment/module doc
+  - [x] *Exit:* Guest rejects underfunded input; produces stable nullifier for fixed secret
 
-- [ ] **Day 10 — Journal commit**
-  - [ ] Commit `PublicOutputs` via `sp1_zkvm::io::commit`
-  - [ ] Tidy guest `main` so host can drive end-to-end
-  - [ ] *Exit:* Guest run produces expected public values for a fixture
+- [x] **Day 10 — Journal commit**
+  - [x] Commit `PublicOutputs` via `sp1_zkvm::io::commit`
+  - [x] Tidy guest `main` so host can drive end-to-end
+  - [x] *Exit:* Guest run produces expected public values for a fixture
 
 ### Phase 4: Prover Host & Local Proofs (5 sessions)
 

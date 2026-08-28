@@ -1,0 +1,12 @@
+---
+description: Do not pull generated build trees into context; prefer source + docs
+alwaysApply: true
+---
+
+# Context hygiene
+
+Do not read or search generated trees unless the user asks: `target/`, `.anchor/`, `test-ledger/`, `node_modules/`, `.sp1/`, `sp1-artifacts/`, `*.so` / `*.elf` / `*.proof`.
+
+Prefer: `program/src`, `zk-circuit/guest`, `zk-circuit/host`, `roadmap.md`, `further_explanations/`, `AGENTS.md`.
+
+`.cursorignore` lists the same folders — keep it in sync if you add new artifact dirs.

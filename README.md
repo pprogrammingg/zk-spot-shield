@@ -42,4 +42,4 @@ You are ready when every **Verify** command succeeds and `solana config get` sho
 
 ## Cursor / agents
 
-See `AGENTS.md` and `.cursor/rules/` for monorepo, zero-copy, SP1, and session rules. Follow `roadmap.md` one Day at a time.
+See `AGENTS.md` and `.cursor/rules/` for monorepo, zero-copy, SP1, and session rules. Follow `roadmap.md` one Day at a time. Generated trees (`target/`, `.anchor/`, ledgers, proofs) are listed in `.cursorignore` so they stay out of agent context.

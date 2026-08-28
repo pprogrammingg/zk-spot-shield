@@ -1,0 +1,36 @@
+# Cursor / agent ignore — keep index + context off generated trees.
+# Complements .gitignore; these paths should not be @-mentioned or searched by default.
+
+# Rust / Cargo
+target/
+**/target/
+Cargo.lock
+
+# Anchor / Solana local
+.anchor/
+test-ledger/
+**/test-ledger/
+dist/
+
+# Deploy binaries & proofs (large / generated)
+*.so
+*.elf
+*.bin
+*.proof
+*.vkey
+sp1-artifacts/
+.sp1/
+
+# Node
+node_modules/
+**/.pnpm-store/
+
+# OS / editor noise
+.DS_Store
+**/.DS_Store
+*.swp
+*.swo
+
+# Keypairs (never index)
+**/id.json
+**/*-keypair.json
