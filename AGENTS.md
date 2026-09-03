@@ -17,11 +17,13 @@ Guidance for AI agents working in **zk-spot-shield**.
 | `02-sp1-circuit.mdc` | `zk-circuit/**` — guest/host SP1 constraints |
 | `03-session-roadmap.mdc` | Always — one Day per session, checklist hygiene |
 | `04-context-hygiene.mdc` | Always — skip `target/` and other generated trees |
+| `05-tests-security.mdc` | Always — unit tests + `cargo audit` are required; host execute is not a substitute |
 
 ## Repo shape
 
 ```text
 program/              # Anchor crate zk_spot_shield
+zk-circuit/io/        # shared I/O + Poseidon Merkle (no sp1-zkvm)
 zk-circuit/guest/     # SP1 guest circuit
 zk-circuit/host/      # SP1 host prover driver
 client/               # client placeholder → SDK later
@@ -49,3 +51,16 @@ anchor build
 ```
 
 Deploy artifact: `target/deploy/zk_spot_shield.so` (required for program integration tests that `include_bytes!` it).
+
+## Tests (required)
+
+Unit + security are the default bar (GitHub Actions **Unit tests** and **Security**). Do not substitute host execute.
+
+```bash
+cargo test -p zk_spot_shield --lib --locked
+cargo test -p zk-circuit-io --lib --locked
+cargo clippy -p zk_spot_shield -p zk-circuit-io -p client --locked --all-targets -- -D warnings
+cargo audit
+```
+
+LiteSVM / `anchor build` is extra (`Program tests` workflow), not a replacement for `--lib`.

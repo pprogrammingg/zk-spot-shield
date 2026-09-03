@@ -2,11 +2,14 @@
 resolver = "2"
 members = [
     "program",
+    "zk-circuit/io",
     "zk-circuit/host",
-    "client", "zk-circuit/guest",
+    "zk-circuit/guest",
+    "client",
 ]
 default-members = [
     "program",
+    "zk-circuit/io",
     "zk-circuit/host",
     "client",
 ]

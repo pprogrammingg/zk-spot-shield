@@ -6,6 +6,13 @@ alwaysApply: false
 
 # SP1 circuit conventions
 
+## Shared I/O (`zk-circuit/io`)
+
+- `zk-circuit-io`: `PrivateInputs`, `PublicOutputs`, Poseidon Merkle helpers
+- No `sp1-zkvm` in this crate (guest and native host both depend on it)
+- Do not duplicate I/O structs in guest or host
+- Poseidon/Merkle/nullifier changes need `zk-circuit-io` `--lib` tests (see `05-tests-security.mdc`)
+
 ## Guest (`zk-circuit/guest`)
 
 - Stack-only hot path: fixed arrays (`[u8; 32]`, path depth fixed e.g. 20) — no `Vec` / heap in constraints

@@ -9,4 +9,5 @@ alwaysApply: true
 - One **Day** per session (3×25). Do not pull the next Day mid-session unless the user asks
 - Mark checklist items `[x]` only when that item’s work is done; mark Day Exit only when Exit criteria pass
 - Prefer small commits at session end with a message that names the Day
+- Prove the Day with **unit tests** (`--lib`) when you touch program or `zk-circuit/io`; do not skip security (`cargo audit` / clippy CI) to save time
 - If scaffolding conflicts with later Days (e.g. sample counter vs vault), keep the sample until the Day that replaces it — don’t rewrite Month 2 early

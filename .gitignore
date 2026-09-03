@@ -4,10 +4,8 @@
 /target/
 /**/target/
 **/*.rs.bk
-Cargo.lock
 
-# Exception: Retain lockfile if you prefer deterministic workspace dependency locking
-# !Cargo.lock
+# Workspace lockfile is committed (CI --locked + cargo audit).
 
 # ==============================================================================
 # Solana Toolchain & Local Ledger Data

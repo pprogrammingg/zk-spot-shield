@@ -1,0 +1,27 @@
+---
+description: Unit tests and security checks are required, not optional
+alwaysApply: true
+---
+
+# Tests and security
+
+Unit tests and security scans are **vital**. Host execute, Groth16, and “it compiled” are not substitutes.
+
+## Always
+
+- Keep `cargo test -p zk_spot_shield --lib` and `cargo test -p zk-circuit-io --lib` passing
+- Keep GitHub Actions **Unit tests** and **Security** workflows green; do not delete, skip (`continue-on-error`), or `--no-verify` them
+- New invariants (PDA seeds, zero-copy sizes, Poseidon/Merkle/nullifier, journal field layout) get **native unit tests** in the crate that owns them (`program` or `zk-circuit/io`)
+- `Cargo.lock` stays committed so `cargo audit` is reproducible
+
+## Security
+
+- Run / assume CI runs `cargo audit` (and clippy on program + io + client)
+- Do not commit keypairs, secrets, proofs, or ELF/SO artifacts
+- Do not ignore RustSec advisories in `audit.toml` without a one-line justification
+
+## Do not
+
+- Do not treat `zk-circuit/host` execute or `cargo prove` as the unit-test suite (slow, zkVM, not CI-default)
+- Do not skip `--lib` tests because LiteSVM / `anchor build` already ran
+- Do not expand a Day’s scope just to add CI, but **never land circuit or program logic with no unit coverage**

@@ -1,0 +1,45 @@
+name: Unit tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: unit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  unit:
+    name: cargo test --lib
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.90.0
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "."
+          cache-on-failure: true
+
+      # Native unit tests only. Do not compile guest (zkVM) or host (sp1-sdk).
+      - name: Program lib tests
+        run: cargo test -p zk_spot_shield --lib --locked
+
+      - name: Circuit I/O + Merkle tests
+        run: cargo test -p zk-circuit-io --lib --locked
+
+      - name: Client lib tests
+        run: cargo test -p client --lib --locked

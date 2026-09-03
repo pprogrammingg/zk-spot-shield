@@ -1,10 +1,15 @@
 [package]
 name = "zk-circuit-host"
 version = "0.1.0"
-description = "SP1 host prover driver (placeholder until Phase 4)"
+description = "SP1 host prover driver"
 edition.workspace = true
 rust-version.workspace = true
 
 [[bin]]
 name = "zk-circuit-host"
 path = "src/main.rs"
+
+[dependencies]
+sp1-sdk = "6.5.0"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+zk-circuit-io = { path = "../io" }

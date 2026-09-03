@@ -35,7 +35,7 @@ pub struct VaultState {
 const _: () = {
     // Total size: 32 + 32 + 32 + 8 + 8 + 1 + 7 = 120 bytes
     assert!(size_of::<VaultState>() == 120);
-    assert!(size_of::<VaultState>() % 8 == 0);
+    assert!(size_of::<VaultState>().is_multiple_of(8));
 };
 
 impl VaultState {

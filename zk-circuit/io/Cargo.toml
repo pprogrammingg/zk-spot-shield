@@ -1,0 +1,11 @@
+[package]
+name = "zk-circuit-io"
+version = "0.1.0"
+description = "Shared guest/host I/O types and Poseidon Merkle helpers (no sp1-zkvm)"
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+light-poseidon = { version = "0.2", default-features = false }
+ark-bn254 = { version = "0.4", default-features = false }
