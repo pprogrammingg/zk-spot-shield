@@ -35,7 +35,7 @@ jobs:
           cache-on-failure: true
 
       - name: Cache Solana CLI
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.local/share/solana
