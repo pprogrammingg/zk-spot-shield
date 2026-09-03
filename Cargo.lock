@@ -9037,7 +9037,7 @@ name = "zk-circuit-io"
 version = "0.1.0"
 dependencies = [
  "ark-bn254 0.4.0",
- "light-poseidon 0.2.0",
+ "light-poseidon 0.4.0",
  "serde",
 ]
 
