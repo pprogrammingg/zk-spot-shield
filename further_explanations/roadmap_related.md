@@ -248,40 +248,59 @@ Without this, you have no way to know the guest panics, and no pipeline toward a
 
 ---
 
-## Day 12 — Groth16 prove pipeline
+## Day 12 — Remote Groth16 prove
 
 ### What we are trying to achieve, and why
 
-Execute only shows “the guest ran.” Solana will not re-run RISC-V. It verifies a **Groth16** proof: small bytes, ~hundreds of thousands of CU.
+Execute only shows “the guest ran on this laptop.” Solana verifies **Groth16**. Local wrap (shrink → Docker gnark) **OOMs a 16 GB Mac** and needs an amd64 gnark image. Day 12 therefore uses a **remote prover** (Succinct network via `ProverClient::from_env()` when `SP1_PROVER=network`).
 
-Today you produce that proof locally and save it. Without a real proof file, Month 2 verifier CPI has nothing to test.
+Default host `cargo run` stays **execute-only** (`SP1_GROTH16` unset). Today you opt into prove **and** point it at the network.
+
+### Hobby cost — is it free?
+
+**No.** Succinct mainnet Groth16 is paid in **`$PROVE`** (base fee + prover-gas auction). It is **not** a free hobby quota. Check [explorer](https://explorer.succinct.xyz) / current docs for the live price; one fixture Groth16 is usually a **small one-shot**, not $0.
+
+| Path | Hobby cost |
+| --- | --- |
+| Day 11 / 13 **execute** | **Free** |
+| `SP1_PROVER=mock` | Free, **not** a real Groth16 for `sp1-solana` |
+| Local Docker Groth16 | “Free” compute, **does not fit this laptop** |
+| **`SP1_PROVER=network` + `.groth16()`** | **Not free** (`$PROVE` + network account) |
+
+Do **not** treat mock as Day 12 Exit. If you cannot spend `$PROVE` this session, **do not mark Day 12 `[x]`**; keep building Days 13–16 on execute. Come back when you can pay for **one** remote wrap.
 
 ### Steps
 
-1. Reuse Day 11 stdin + ELF.
-2. `setup` once: `(pk, vk) = client.setup(&ELF)` (slow first time; cache if the SDK supports it).
-3. Prove with Groth16, not the default (often PLONK/STARK-only) mode. Typical pattern:
+Same crate (`zk-circuit/host`), **`--release`**. Confirm current env names in [Succinct network quickstart](https://docs.succinct.xyz/docs/sp1/prover-network/quickstart) (they move). Typical pattern:
 
-   ```text
-   client.prove(&pk, &stdin).groth16().run()
+1. **Account.** Create a Succinct requester account; fund it with enough `$PROVE` for one Groth16. Set the private key env the SDK documents (often `NETWORK_PRIVATE_KEY`). Never commit the key.
+
+2. **Same ELF + fixture stdin as Day 11.** Rebuild ELF only if the guest changed:
+
+   ```bash
+   cargo prove build -p guest --elf-name guest --output-directory target/elf
    ```
 
-   Confirm the method name in **your** `sp1-sdk` docs.
+3. **Remote client + Groth16.** `ProverClient::from_env()` already switches on `SP1_PROVER`. Host opt-in:
 
-4. Write artifacts under a gitignored dir, e.g. `sp1-artifacts/` or `target/proofs/`:
+   ```bash
+   SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info cargo run -p zk-circuit-host --release
+   ```
 
-   - proof bytes
-   - public values / journal bytes
-   - optionally vk
+   Code path (SP1 6.5, async): `setup` → `prove(&pk, stdin).groth16().await`. Import `Prover` + `ProveRequest` + `ProvingKey`. Journal asserts unchanged. `client.verify` on the host is still only a local sanity check.
 
-5. Print proof length. Sanity: public values still match the fixture.
+4. **Write gitignored artifacts** (`sp1-artifacts/`): `proof.save`, `journal.bin`, `groth16.bin` (`proof.bytes()`), `vkey.bytes32.txt`. Do not commit stdin/secrets.
+
+5. **`notes/proving.md`:** date, `SP1_PROVER=network`, explorer request URL if any, approx `$PROVE` spent, `proof.bytes().len()`, execute cycle count from Day 11. Re-run command copied verbatim.
+
+**Do not** use `SP1_PROVER=cpu` / Docker gnark as the Day 12 default on this machine.
 
 ### Exit
 
-- One Groth16 proof on disk
-- Command is documented in a comment or `notes/` so you can re-run it
-
-First prove can take many minutes on CPU. Start it and do not “optimize the circuit” today.
+- Non-empty `sp1-artifacts/groth16.bin` (or `proof.bin`) produced with **`SP1_PROVER=network`** (not mock)
+- Journal matches fixture (`merkle_root`, amount, non-zero nullifier)
+- `notes/proving.md` has the re-run command **and** a one-line hobby-cost note (`$PROVE`, not free)
+- **Do not** wire `sp1-solana` CPI today (Month 2)
 
 ---
 
@@ -553,10 +572,136 @@ A **tag** is a restore point: “guest + host prove + program state types work.�
 ## Order reminder
 
 ```text
-11 execute  →  12 prove  →  13 negative execute
+11 execute  →  12 remote Groth16  →  13 negative execute
 14 pack bytes  →  15 vkey + timing
 16 settle stub  →  17 one fixture  →  18 budgets
 19 cleanup  →  20 README + tag
+…
+50 threat model  →  48 CU notes (and 18 / 29)
+20 checkpoint → **Write-1** (circuit article + LinkedIn)
+40 month-2 tag → **Write-2** (settle article + LinkedIn)
+54–60 Devnet program + SDK (no UI)
+61 public artifact: staff README — no UI
+**Write-3** (honest prove / README article + LinkedIn)
+62 basic swap UI (localnet, relayer OK)
+63 manual Devnet walkthrough (see the product)
+64 automated tests on live Devnet
+65–68 uncensorable UI (file://, multi-RPC, IPFS, seizure runbook)
 ```
 
 Month 2 Day 21+ starts filling `settle_shielded_spot` with `sp1-solana` verify. Do not pull that into Day 16.
+
+**After Day 60:** staff-quality shield README first (Day 61, **no UI**), then **Write-3**, then basic UI, then **see** the product on Devnet and **run tests that hit Devnet**, then uncensorable hardening. Do not start IPFS/mirrors before Day 62’s swap screen exists.
+
+Writing: **Write-1** after Day 20, **Write-2** after Day 40, **Write-3** after Day 61. Max 3 series, max 3 parts each. Drafts in `notes/articles/` → ChainTribe `blogs`. One hero mermaid per series; LinkedIn is an extract. No extra Days for animations.
+
+---
+
+## Writing checkpoints (budget)
+
+### Why not more Days
+
+Overdesign (new icon sets, AE, four architecture posters) burns the same 1.5h as a CU test. The roadmap already produces the raw material (execute, threat model, CU). Writing Days **assemble** that; they do not invent a visual brand.
+
+### Per session
+
+1. Outline parts 1–3 (stop at 3).
+2. Write Part 1 in `notes/articles/0N-…/part-1.md`.
+3. One mermaid: private vs public, or the four settle gates, or README reuse.
+4. `linkedin.md`: 120–200 words + “diagram is the same file.”
+5. Skip GIF unless it fits in 20 minutes.
+
+### ChainTribe
+
+Publish target is ChainTribe blogs (sibling folder). This repo does not host the CMS. Copy markdown + the one diagram when that folder is in play.
+
+---
+
+## Day 61 — Public artifact (staff README)
+
+### What we are trying to achieve, and why
+
+A first Solana+ZK repo is not a staff signal until a cold reader can **clone, run execute, understand prove (or why Groth16 is missing), read the threat model, and see CU numbers** from GitHub. This Day is that front door. **No UI.** Fake proofs are worse than an honest “blocked on RAM.”
+
+### Pull in (already built on earlier Days)
+
+| Piece | Source |
+| --- | --- |
+| Guest execute | Day 11 |
+| Remote Groth16 **or** honest block | Day 12 + `notes/proving.md` |
+| Vkey / timing | Day 15 |
+| Account size / CU targets | Days 18, 29, 48 |
+| Threat model | Day 50 |
+
+### Steps
+
+1. Rewrite root `README.md` for a staff reader: problem, trust boundaries, crates, commands.
+2. **Execute:** exact command; expected cycle-ish output.
+3. **Prove:** remote Groth16 command + where artifacts land — **or** a dated paragraph that wrap/prove did not run (RAM/Docker/cost) and that `sp1-artifacts/` is empty on purpose.
+4. Link threat model + CU notes; `--lib` test commands; Devnet program id if Days 54–60 exist.
+
+### Exit
+
+Clone-and-read works. README → execute → Groth16 **or** documented block → threat model → CU. No wallet UI.
+
+---
+
+## Day 62 — Basic swap UI
+
+### What we are trying to achieve, and why
+
+Days 54–60 put a program on Devnet and a swap through the **SDK**. Day 61 is docs only. There is still nothing to **look at**. This Day is a normal wallet-connected swap screen. Relayer and localhost are fine. Uncensorable hosting is Days 65–68.
+
+### Steps
+
+1. Static or small web app (wallet adapter, program id, RPC).
+2. Read `VaultState` / `CleanFundsRoot` / pause into the page.
+3. Form: amount, mint, paste or load Groth16 + journal; submit via SDK (relayer or wallet fee payer).
+4. After confirm, refresh on-chain balances **in the UI**.
+
+### Exit
+
+Click-through swap on **localnet**; balances change on screen. No CID, no multi-RPC list required.
+
+---
+
+## Day 63 — Manual Devnet walkthrough
+
+### What we are trying to achieve, and why
+
+Automated localnet is not “I used the product.” A human must open the Day 62 UI against **Devnet**, follow a checklist, and leave Explorer URLs.
+
+### Steps
+
+1. Point UI at Days 54–57 program id + Devnet RPC; airdrop/fund wallet.
+2. Write `notes/manual-devnet.md`: connect → see vault/root → submit or documented dry-run → Explorer.
+3. Record account URLs; if settle ran, record the tx signature.
+
+### Exit
+
+Checklist + Explorer links exist. Someone else could repeat it.
+
+---
+
+## Day 64 — Automated on-chain Devnet tests
+
+### What we are trying to achieve, and why
+
+`cargo test --lib` and LiteSVM do **not** prove the finished stack on the cluster. Tests must use **Devnet RPC**, fetch real accounts, and land at least one write.
+
+### Steps
+
+1. Test harness: `ANCHOR_PROVIDER_URL=https://api.devnet.solana.com` (or documented equivalent).
+2. Read `GlobalConfig` + `VaultState` (+ ATAs); assert vkey / sizes / mints.
+3. One on-chain write: pause→unpause **or** `settle_shielded_spot` if a Groth16 fixture is on disk.
+4. Document the command; default CI stays localnet (Devnet run is explicit / key-gated).
+
+### Exit
+
+Command passes on live Devnet; signatures or pubkeys in output or `notes/devnet-tests.md`. Validator/LiteSVM runs do not satisfy this Day.
+
+---
+
+## Days 65–68 — Uncensorable UI (after the product exists)
+
+Same intent as the original uncensorable phase: `file://` self-submit, multi-RPC, CID, relayer-optional, seizure runbook. The **first** swap UI is Day 62; these Days only remove single-origin dependence.

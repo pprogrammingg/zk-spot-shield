@@ -1,6 +1,6 @@
 # ZK-Shielded Spot Settlement Engine — Session Roadmap
 
-Calibrated for **~61 engineering sessions** (Days **0–60**) of **1.5 hours** each (3 × 25 min). That maps cleanly onto a ~90-day calendar with rest days. Each **Day** is one session with one shippable deliverable — not a checklist of 10-minute chores.
+Calibrated for **~72 sessions** (Days **0–68** engineering + **3 writing checkpoints**). Each engineering Day is 1.5 hours (3 × 25 min). Writing checkpoints are also full sessions, but they are **not** design sprints — see the visual budget below.
 
 Mark items `[x]` when done. A Day is **done** only when its *Exit* criteria pass — not when the code “mostly exists.”
 
@@ -14,7 +14,30 @@ Mark items `[x]` when done. A Day is **done** only when its *Exit* criteria pass
 [P3 25m] Prove: compile, run the smallest meaningful test, commit.
 ```
 
-Do not split a Day across sessions. If you finish early, deepen tests or docs for *that* deliverable — do not pull tomorrow's Day forward mid-session.
+Do not split a Day across sessions. If you finish early, deepen tests or docs for *that* deliverable — do not pull tomorrow's Day forward mid-session. If the leftover is writing, you may start that checkpoint’s **LinkedIn draft only** (not a new diagram set).
+
+---
+
+### Writing + diagrams (ChainTribe / LinkedIn) — budget, not a studio
+
+**Host:** in-depth articles go to **ChainTribe** `blogs` (sibling folder/repo; copy when publishing). Until then, drafts live in this repo under `notes/articles/`. LinkedIn is a **short extract** of the same piece, not a fourth article.
+
+**Subtract (do not spend sessions on):**
+- New illustration systems, icon sets, Figma component libraries
+- After Effects / Lottie / custom animation pipelines
+- Redrawing the same architecture for README, article, and LinkedIn
+- A series longer than **3 parts**
+- More than **3 series** for this whole project
+
+**Add (slick but cheap):**
+- One **hero diagram** per series (mermaid or a single SVG). Same file in README, article, and LinkedIn image.
+- At most **2 diagrams per part**. Labels a stranger can parse in 10 seconds (private vs public, on-chain vs off-chain).
+- Optional motion: **one** short loop per series, only if it explains a step (e.g. wrap → verify). Cap **20 minutes**. Prefer a mermaid screenshot or an 8–12s terminal/UI recording. Skip motion if it would slip the Day.
+- Tone: concrete (commands, CU, nullifier), not “ZK is magic.”
+
+**Series cap:** 3 articles for the project; each may be 1–3 parts. This session ships **Part 1 + outline of later parts**. Parts 2–3 are leftover time or the same checkpoint’s P3 — do not add extra Days for them.
+
+Schedule **Write-1 / Write-2 / Write-3** as the session **immediately after** Days 20, 40, and 61 (see the writing section at the bottom). Do not pull them into the engineering Day.
 
 ---
 
@@ -99,17 +122,18 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
   - [x] Tidy guest `main` so host can drive end-to-end
   - [x] *Exit:* Guest run produces expected public values for a fixture
 
-### Phase 4: Prover Host & Local Proofs (5 sessions)
+### Phase 4: Prover Host & Remote Groth16 (5 sessions)
 
-- [ ] **Day 11 — Host driver + fixtures**
-  - [ ] `zk-circuit/host` with `sp1_sdk::ProverClient`
-  - [ ] Mock balances; build test Merkle trees and valid paths matching guest
-  - [ ] *Exit:* Host loads ELF / guest and runs execute (proof optional today)
+- [x] **Day 11 — Host driver + fixtures**
+  - [x] `zk-circuit/host` with `sp1_sdk::ProverClient`
+  - [x] Mock balances; build test Merkle trees and valid paths matching guest
+  - [x] *Exit:* Host loads ELF / guest and runs execute (proof optional today)
 
-- [ ] **Day 12 — Groth16 prove pipeline**
-  - [ ] Compile RISC-V ELF, feed inputs
-  - [ ] Generate serialized Groth16 proof + public values
-  - [ ] *Exit:* One successful local proof artifact on disk
+- [ ] **Day 12 — Remote Groth16 prove**
+  - [ ] Point host at Succinct (or equivalent) remote prover: `SP1_PROVER=network` + network key
+  - [ ] Request Groth16 wrap (not mock/core-only); save proof + journal under `sp1-artifacts/`
+  - [ ] Document hobby cost: network Groth16 is **not free** (`$PROVE`); execute stays $0
+  - [ ] *Exit:* Non-empty Groth16 + journal on disk from a **remote** prove; re-run command + cost note in `notes/proving.md`. If wrap/prove is blocked (e.g. RAM/Docker), write that honestly in the same note — Day 61’s public artifact may cite it; do not fake a Groth16 file.
 
 - [ ] **Day 13 — Negative inclusion test**
   - [ ] Host test: address *not* in tree → guest/execution failure
@@ -121,7 +145,7 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
 
 - [ ] **Day 15 — Vkey extract + latency notes**
   - [ ] CLI/script to print SP1 vkey hash as bytes for `GlobalConfig`
-  - [ ] Record CPU (and GPU if available) prove latency + cycle count in `notes/proving.md`
+  - [ ] Record **remote** Groth16 wall time (and CPU/GPU if you ever prove locally) + execute cycle count in `notes/proving.md`
   - [ ] *Exit:* Vkey bytes committed or documented; one measured prove time logged
 
 ### Month 1 buffer / integration (5 sessions)
@@ -140,7 +164,8 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
 
 - [ ] **Day 20 — Checkpoint**
   - [ ] Tag `v0.1-month1`
-  - [ ] README section: how to build program + prove once locally
+  - [ ] README section: execute locally; Groth16 via remote prover (not this laptop’s Docker wrap)
+  - [ ] *Exit:* Tag + README commands exist. **Next session is Write-1** (circuit article + LinkedIn), not Day 21.
 
 ---
 
@@ -228,6 +253,7 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
   - [ ] PDA `seeds`/`bump`/`has_one` pass
   - [ ] Strip noisy `msg!`
   - [ ] Tag `v0.2-month2`
+  - [ ] *Exit:* Tag exists. **Next session is Write-2** (settle article + LinkedIn), not Day 41.
 
 ---
 
@@ -263,6 +289,7 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
 - [ ] **Day 48 — Prove hardware + on-chain CU breakdown**
   - [ ] CPU vs GPU prove times
   - [ ] CU split (verify / checks / SPL)
+  - [ ] *Exit:* Numbers live in `notes/` (or Day 29/18 docs); Day 61 README will link them
 
 - [ ] **Day 49 — Payload + throughput**
   - [ ] Minimize journal bytes
@@ -272,6 +299,7 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
 
 - [ ] **Day 50 — Threat model doc**
   - [ ] Circuit soundness, replay, pause, authority, root registry
+  - [ ] *Exit:* A named doc (e.g. `notes/threat-model.md`) a reviewer can open; Day 61 README links it
 
 - [ ] **Day 51 — Layout + signer audit**
   - [ ] `#[repr(C)]` / padding review
@@ -285,6 +313,8 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
   - [ ] Reproducible build notes; record program hash procedure
 
 ### Phase 12: Devnet Launch (7 sessions)
+
+Program + relayer + SDK go live. **No browser UI yet** (that is Day 62). Day 61 is the staff README (public artifact). Finished-product Devnet tests (manual + automated) are Days 63–64.
 
 - [ ] **Day 54 — Devnet keys + SOL**
   - [ ] Funding, deploy keypair, cluster config
@@ -301,10 +331,111 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
 - [ ] **Day 58 — Relayer on Devnet RPC**
   - [ ] Production-ish process config pointing at Devnet
 
-- [ ] **Day 59 — Live shielded swap**
-  - [ ] One successful swap via SDK
+- [ ] **Day 59 — Live shielded swap (SDK, not UI)**
+  - [ ] One successful swap via SDK / CLI against the Devnet program
   - [ ] Explorer verification of balances + zero-copy state
+  - [ ] *Exit:* A Devnet tx signature is recorded; this Day is **not** a browser product (UI is Day 62+)
 
 - [ ] **Day 60 — Docs + `v1.0.0-devnet`**
-  - [ ] README, architecture diagram, install scripts
+  - [ ] README, install scripts; **one** digestible diagram (reuse Write-2 hero if it exists — do not draw a new poster)
   - [ ] Tag release; archive build logs, circuit keys, program artifacts
+  - [ ] *Exit:* A stranger can deploy/init from docs. Staff-quality **shield artifact** is Day 61 (before UI). Browser product + Devnet UI tests are Days 62–64.
+
+---
+
+## Month 3+ buffer: Public artifact, then UI, then Devnet product tests, then uncensorable UI (Sessions 61–68)
+
+Days **54–60** put the **program + relayer + SDK** on Devnet. **Day 61** is the GitHub README a staff engineer respects (no UI required). Days **62–64** are the **product you can see and test on-chain**. Days **65–68** harden that UI so a seized website cannot stop settle. Do **not** start IPFS/mirrors before the basic swap UI exists.
+
+### Phase 13: Public shield artifact (1 session) — **before UI**
+
+Assemble what already exists (execute, Groth16 or honest block, threat model, CU) into **one** repo front door. A staff engineer should understand the system from README + linked notes without a browser app.
+
+- [ ] **Day 61 — Public artifact (staff README)**
+  - [ ] Root `README.md` a staff engineer respects: what the protocol does, trust model, crate map, how to **execute** the guest, how to **prove** (remote Groth16 command) **or** a dated honest “blocked on RAM / no Groth16 file” in `notes/proving.md` — never a fake proof
+  - [ ] Link Day 50 threat model (circuit, replay, pause, authority, root registry)
+  - [ ] Link CU notes (Days 18 / 29 / 48): verifier budget, measured settle CU if you have it
+  - [ ] How to build program + run `--lib` tests; program id / Devnet pointers if Days 54–60 ran
+  - [ ] *Exit:* A cold reader can follow README → execute → (Groth16 **or** documented block) → threat model → CU numbers. **No UI this Day.** Clone-and-read is the deliverable. **Next session is Write-3** (public-artifact article + LinkedIn), then Day 62 UI.
+
+### Phase 14: Basic swap UI (1 session)
+
+Ship a normal swap screen first. Relayer and a local HTTPS/static server are allowed. This is **not** the uncensorable phase.
+
+- [ ] **Day 62 — Basic swap UI**
+  - [ ] Minimal web UI: wallet connect, show vault reserves / clean root / pause, swap amount + asset, submit settle (via relayer **or** wallet as fee payer)
+  - [ ] Load or paste Groth16 + journal (in-browser prove is out of scope)
+  - [ ] Talks to the SDK from Day 45; works against **localnet** today
+  - [ ] *Exit:* You can click through a swap in the browser on localnet and see balances change in the UI (not only logs / explorer). No IPFS, no multi-RPC, no seizure runbook today.
+
+### Phase 15: Finished product on Devnet — see it and test it (2 sessions)
+
+The stack from Days 54–62 (program + vault + UI) must be **exercised on Devnet**, not only LiteSVM / local validator. Automated tests must send or confirm **real cluster RPCs**. A human must also open the UI and look at the product.
+
+- [ ] **Day 63 — Manual Devnet walkthrough (see the end product)**
+  - [ ] Point the Day 62 UI at Devnet (program id + RPC from Days 54–57); fund a wallet if needed
+  - [ ] Human checklist in `notes/manual-devnet.md`: connect wallet → read on-chain vault/root in the UI → submit (or dry-run + one live settle if a proof is available) → open Solana Explorer links for accounts + tx
+  - [ ] Record at least one Explorer URL for vault/config and, if settle ran, the tx signature
+  - [ ] *Exit:* A person who is not the session agent can follow the checklist and **see** the product (UI + live accounts). Screenshots optional; the written checklist + Explorer URLs are required.
+
+- [ ] **Day 64 — Automated on-chain Devnet tests**
+  - [ ] Integration tests (TS and/or Rust) with **cluster = Devnet** — `solana-test-validator` / LiteSVM do **not** count
+  - [ ] Tests must **interact on-chain**: fetch `GlobalConfig` + `VaultState` (and ATAs) from Devnet; assert layout / reserves / vkey
+  - [ ] At least one **write** that lands on Devnet (authority no-op such as pause→unpause, or a real `settle_shielded_spot` if a Groth16 fixture exists)
+  - [ ] One command documented (e.g. `ANCHOR_PROVIDER_URL=https://api.devnet.solana.com …`); skip-with-fail if key/SOL missing so CI-default stays localnet
+  - [ ] *Exit:* That command passes against live Devnet; tx signatures or account pubkeys from the run are in the test output or `notes/devnet-tests.md`
+
+### Phase 16: Decentralized / uncensorable swap UI (4 sessions)
+
+The program on Solana already survives a seized website. The **basic UI** does not, unless users can swap without one operator’s HTTPS origin. This phase is **mirrors + self-submit** of the Day 62 UI, not a new chain and not the first time a swap screen exists.
+
+- [ ] **Day 65 — Static self-submit (no required backend)**
+  - [ ] Same swap UI as Day 62: works from `file://` or a local static server **without** `relayer/` running
+  - [ ] Default path is **user wallet as fee payer**; relayer URL stays optional
+  - [ ] *Exit:* Localnet settle can be sent with relayer down. This is hardening, not the first UI.
+
+- [ ] **Day 66 — Multi-RPC + no single origin**
+  - [ ] Configurable RPC list (fallback if one endpoint censors or dies)
+  - [ ] Document IPFS/Arweave (or equivalent) publish of the **same** static bundle; pin CID in README
+  - [ ] *Exit:* UI works against a second RPC; a content-addressed build hash/CID is recorded
+
+- [ ] **Day 67 — Relayer-optional settle**
+  - [ ] SDK/UI: “submit myself” vs “ask relayer”; shutdown of relayer must not block the self-submit path
+  - [ ] Optional: two public relayer URLs, client tries in order
+  - [ ] *Exit:* Written threat note: seizing the marketing site ≠ seizing settle; users keep CID + program id
+
+- [ ] **Day 68 — Mirrors + seizure runbook**
+  - [ ] README: how to rebuild the UI, where CIDs live, how to verify the bundle hash
+  - [ ] At least two independent hosts (e.g. IPFS gateway + GitHub Pages / Pages-from-CID)
+  - [ ] *Exit:* Runbook a stranger can follow if the primary URL is gone; tag or note `uncensorable-ui`
+
+**Out of scope here:** fully trustless in-browser Groth16 on a phone. Prove can stay remote; uncensorable means **anyone can host the UI and submit the tx**, not that prove is free or local.
+
+---
+
+## Writing checkpoints (3 sessions) — ChainTribe blogs + LinkedIn
+
+Insert these as the **next** session after Days **20**, **40**, and **61**. They do not replace engineering Days. Drafts: `notes/articles/` in this repo → copy into **ChainTribe** `blogs` when that folder is ready. Visual budget is at the top of this file.
+
+Each checkpoint: outline the whole series (≤3 parts) → finish **Part 1** → one LinkedIn post. Parts 2–3 are optional leftovers, not new roadmap Days.
+
+- [ ] **Write-1 — after Day 20 — What the circuit proves**
+  - [ ] Series (≤3 parts): private vs public I/O, Merkle inclusion + solvency, nullifier / unlinkability. This session: outline all parts + **ship Part 1**
+  - [ ] Hero diagram (1): guest reads private path, commits journal only — digestible in 10s
+  - [ ] LinkedIn: 120–200 words, same diagram, no extra graphic
+  - [ ] *Exit:* `notes/articles/01-circuit/part-1.md` + `diagram.md` (or mermaid in the article) + `linkedin.md`. ChainTribe copy is optional until the blogs folder exists.
+
+- [ ] **Write-2 — after Day 40 — Settle on Solana**
+  - [ ] Series (≤3 parts): verify Groth16, registered root, unused nullifier, vault + SPL. This session: outline + **Part 1**
+  - [ ] Hero diagram (1): those four gates in order (reuse on Day 60 README — do not redraw)
+  - [ ] Optional CU callout from Days 18/29 (numbers only; no new benchmark)
+  - [ ] LinkedIn from Part 1
+  - [ ] *Exit:* `notes/articles/02-settle/part-1.md` + one diagram + `linkedin.md`
+
+- [ ] **Write-3 — after Day 61 — Public artifact (honest prove)**
+  - [ ] Series (≤3 parts): membership ≠ mixer; execute vs remote Groth16 vs “blocked on RAM”; how to read the README. This session: outline + **Part 1**
+  - [ ] Hero diagram: **reuse** README / Write-1 / Write-2 — new picture only if something is still confusing
+  - [ ] LinkedIn from Part 1 (good “here is the repo” post)
+  - [ ] *Exit:* `notes/articles/03-artifact/part-1.md` + `linkedin.md`. Still **no UI required** (UI is Day 62).
+
+**Do not add** Write-4, a Devnet essay, or an uncensorable-UI miniseries unless you drop one of the three above. One LinkedIn per shipped part is enough; do not batch-write a week of posts in a writing session.

@@ -5,6 +5,10 @@ description = "SP1 host prover driver"
 edition.workspace = true
 rust-version.workspace = true
 
+[lib]
+name = "zk_circuit_host"
+path = "src/lib.rs"
+
 [[bin]]
 name = "zk-circuit-host"
 path = "src/main.rs"
