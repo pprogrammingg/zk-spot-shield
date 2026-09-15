@@ -21,6 +21,7 @@ Solana + Anchor program that settles spot swaps after SP1 Groth16 verification. 
 ## Stack pins
 
 - Anchor `1.1.x`, Solana/Agave CLI on PATH, SP1 via `cargo prove` / `sp1up`
+- Host/workspace rustc: `rust-toolchain.toml` (1.94.1 for `sp1-sdk`). Program crate MSRV is `1.87` (≤ Solana platform ~1.89); do not set `program` to 1.94+
 - Localnet: `solana config get` → localhost; wallet `~/.config/solana/id.json`
 
 ## Do not

@@ -3,7 +3,9 @@ name = "zk_spot_shield"
 version = "0.1.0"
 description = "ZK-shielded spot settlement engine (Anchor program)"
 edition.workspace = true
-rust-version.workspace = true
+# Do not inherit workspace rust-version (1.94.1). `anchor build` uses Solana's
+# platform rustc (~1.89.0-dev); keep this ≤ that, and ≥ APIs we use (1.87+).
+rust-version = "1.87.0"
 
 [lib]
 crate-type = ["cdylib", "lib"]

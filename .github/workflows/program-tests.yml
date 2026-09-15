@@ -65,7 +65,9 @@ jobs:
           export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           solana --version
           anchor --version
-          anchor build
+          # Deploy keypair is gitignored; declare_id! in source is the program id
+          # LiteSVM tests use. Skip keypair↔id check on fresh CI checkouts.
+          anchor build --ignore-keys
 
       - name: LiteSVM integration tests
         run: |

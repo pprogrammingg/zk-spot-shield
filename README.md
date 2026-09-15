@@ -46,7 +46,7 @@ For someone who needs to build and run this repo locally (localnet).
 
 | Topic | Task | Version / target | Verify |
 | --- | --- | --- | --- |
-| Rust | Install via [rustup](https://rustup.rs/) | **1.94.1** (`rust-toolchain.toml`; needed for `sp1-sdk` `network`) | `rustc --version` · `cargo --version` |
+| Rust | Install via [rustup](https://rustup.rs/) | **1.94.1** host (`rust-toolchain.toml` for `sp1-sdk`); **program BPF** uses Solana’s own rustc (~1.89) — `program` MSRV is `1.87`, not 1.94 | `rustc --version` · `cargo --version` |
 | Solana CLI | Install Anza release tools | `stable` channel ([install](https://docs.anza.xyz/cli/install)) | `solana --version` |
 | Anchor CLI | Install AVM, then Anchor | latest via `avm` | `anchor --version` |
 | SP1 CLI | Install + update via `sp1up` | current SP1 release | `cargo prove --version` |
