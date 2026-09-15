@@ -37,6 +37,8 @@ Empty-tree path used by the happy fixture: [`further_explanations/merkle_trees.m
 
 Rustc comes from `rust-toolchain.toml` (`rustup show` after checkout). Do not pin a second copy in workflows or VS Code.
 
+**LiteSVM:** program tests/clippy `--all-targets` use `litesvm = "=0.10.0"`. Do not merge lone bumps to 0.15+ (wincode 0.5 vs 0.6 vs Solana 3.x). Dependabot ignores those; upgrade only with a coordinated Agave stack change.
+
 ## Local commands (same as CI unit + security bar)
 
 ```bash

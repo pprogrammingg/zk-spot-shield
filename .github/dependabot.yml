@@ -9,3 +9,8 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # LiteSVM 0.14+ switched to wincode sysvars; needs an Agave-aligned stack,
+      # not a lone version bump (breaks clippy --all-targets / program tests).
+      - dependency-name: litesvm
+        versions: [">=0.11.0"]
