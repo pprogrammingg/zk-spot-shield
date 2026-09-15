@@ -18,29 +18,6 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
 
 ---
 
-### Writing + diagrams (ChainTribe / LinkedIn) — budget, not a studio
-
-**Host:** in-depth articles go to **ChainTribe** `blogs` (sibling folder/repo; copy when publishing). Until then, drafts live in this repo under `notes/articles/`. LinkedIn is a **short extract** of the same piece, not a fourth article.
-
-**Subtract (do not spend sessions on):**
-- New illustration systems, icon sets, Figma component libraries
-- After Effects / Lottie / custom animation pipelines
-- Redrawing the same architecture for README, article, and LinkedIn
-- A series longer than **3 parts**
-- More than **3 series** for this whole project
-
-**Add (slick but cheap):**
-- One **hero diagram** per series (mermaid or a single SVG). Same file in README, article, and LinkedIn image.
-- At most **2 diagrams per part**. Labels a stranger can parse in 10 seconds (private vs public, on-chain vs off-chain).
-- Optional motion: **one** short loop per series, only if it explains a step (e.g. wrap → verify). Cap **20 minutes**. Prefer a mermaid screenshot or an 8–12s terminal/UI recording. Skip motion if it would slip the Day.
-- Tone: concrete (commands, CU, nullifier), not “ZK is magic.”
-
-**Series cap:** 3 articles for the project; each may be 1–3 parts. This session ships **Part 1 + outline of later parts**. Parts 2–3 are leftover time or the same checkpoint’s P3 — do not add extra Days for them.
-
-Schedule **Write-1 / Write-2 / Write-3** as the session **immediately after** Days 20, 40, and 61 (see the writing section at the bottom). Do not pull them into the engineering Day.
-
----
-
 ## Month 1: Foundation, Zero-Copy State & Off-Chain SP1 (Sessions 0–20)
 
 ### Phase 0: Cursor / Agent Efficiency (1 session)
@@ -129,11 +106,11 @@ Schedule **Write-1 / Write-2 / Write-3** as the session **immediately after** Da
   - [x] Mock balances; build test Merkle trees and valid paths matching guest
   - [x] *Exit:* Host loads ELF / guest and runs execute (proof optional today)
 
-- [ ] **Day 12 — Remote Groth16 prove**
-  - [ ] Point host at Succinct (or equivalent) remote prover: `SP1_PROVER=network` + network key
-  - [ ] Request Groth16 wrap (not mock/core-only); save proof + journal under `sp1-artifacts/`
-  - [ ] Document hobby cost: network Groth16 is **not free** (`$PROVE`); execute stays $0
-  - [ ] *Exit:* Non-empty Groth16 + journal on disk from a **remote** prove; re-run command + cost note in `notes/proving.md`. If wrap/prove is blocked (e.g. RAM/Docker), write that honestly in the same note — Day 61’s public artifact may cite it; do not fake a Groth16 file.
+- [x] **Day 12 — Remote Groth16 prove**
+  - [x] Point host at Succinct (or equivalent) remote prover: `SP1_PROVER=network` + network key
+  - [x] Request Groth16 wrap (not mock); save `sp1-artifacts/` (gitignored) and copy public happy-path bytes to `zk-circuit/fixtures/happy/` for host `--lib`
+  - [x] Document hobby cost: network Groth16 is **not free** (`$PROVE`); execute stays $0
+  - [x] *Exit:* Non-empty Groth16 + journal on disk from a **remote** prove; re-run command + cost note in `notes/proving.md`. If wrap/prove is blocked (e.g. RAM/Docker), write that honestly in the same note — Day 61’s public artifact may cite it; do not fake a Groth16 file.
 
 - [ ] **Day 13 — Negative inclusion test**
   - [ ] Host test: address *not* in tree → guest/execution failure
@@ -413,11 +390,7 @@ The program on Solana already survives a seized website. The **basic UI** does n
 
 ---
 
-## Writing checkpoints (3 sessions) — ChainTribe blogs + LinkedIn
-
-Insert these as the **next** session after Days **20**, **40**, and **61**. They do not replace engineering Days. Drafts: `notes/articles/` in this repo → copy into **ChainTribe** `blogs` when that folder is ready. Visual budget is at the top of this file.
-
-Each checkpoint: outline the whole series (≤3 parts) → finish **Part 1** → one LinkedIn post. Parts 2–3 are optional leftovers, not new roadmap Days.
+## Writing checkpoints (3 sessions)
 
 - [ ] **Write-1 — after Day 20 — What the circuit proves**
   - [ ] Series (≤3 parts): private vs public I/O, Merkle inclusion + solvency, nullifier / unlinkability. This session: outline all parts + **ship Part 1**

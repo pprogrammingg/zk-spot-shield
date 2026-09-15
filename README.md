@@ -38,7 +38,7 @@ User/client → backend (path + root) → ZK host/guest (proof + journal) → So
 | **Leaf** preimage (`secret` ∥ address ∥ balance) | **Leaf** as an opaque 32-byte blob if inserted on-chain |
 | Proving key, guest stdin | **Groth16 proof**, `vkey_hash`, `NullifierAccount` PDA existence |
 
-Terms: `further_explanations/glossary.md`. ZK tool map: `further_explanations/zero-knowledge.md`.
+Terms: `further_explanations/glossary.md`. ZK tool map: `further_explanations/zero-knowledge.md`. Happy-path Merkle (empty tree): `further_explanations/merkle_trees.md`.
 
 ## Installation
 
@@ -46,7 +46,7 @@ For someone who needs to build and run this repo locally (localnet).
 
 | Topic | Task | Version / target | Verify |
 | --- | --- | --- | --- |
-| Rust | Install via [rustup](https://rustup.rs/) | `1.75+` (stable) | `rustc --version` · `cargo --version` |
+| Rust | Install via [rustup](https://rustup.rs/) | **1.94.1** (`rust-toolchain.toml`; needed for `sp1-sdk` `network`) | `rustc --version` · `cargo --version` |
 | Solana CLI | Install Anza release tools | `stable` channel ([install](https://docs.anza.xyz/cli/install)) | `solana --version` |
 | Anchor CLI | Install AVM, then Anchor | latest via `avm` | `anchor --version` |
 | SP1 CLI | Install + update via `sp1up` | current SP1 release | `cargo prove --version` |
@@ -78,25 +78,9 @@ nvm install --lts
 
 You are ready when every **Verify** command succeeds and `solana config get` shows `localhost`.
 
-## CI
+# Tests
 
-| Workflow | What it runs | Why it matters |
-| --- | --- | --- |
-| [Unit tests](.github/workflows/unit.yml) | `cargo test --lib` for `zk_spot_shield`, `zk-circuit-io`, `client` | Fast invariants (PDA seeds, vault layout, Poseidon/Merkle). No zkVM, no BPF. |
-| [Security](.github/workflows/security.yml) | `cargo audit` + `clippy -D warnings` on program / io / client | Advisories and obvious unsoundness. Weekly audit on Mondays. |
-| [Program tests](.github/workflows/program-tests.yml) | `anchor build` + LiteSVM `cargo test --tests` | On-chain instruction smoke tests. Needs Solana + Anchor CLIs. |
-
-Local equivalents (unit + security are the default bar):
-
-```bash
-cargo test -p zk_spot_shield --lib --locked
-cargo test -p zk-circuit-io --lib --locked
-cargo test -p client --lib --locked
-cargo clippy -p zk_spot_shield -p zk-circuit-io -p client --locked --all-targets -- -D warnings
-cargo audit
-```
-
-Do not use `zk-circuit/host` execute as a stand-in for `--lib` tests. Keep `Cargo.lock` committed so `--locked` and audit stay reproducible.
+See **[tests.md](./tests.md)** for the full map: ZK guest/host/io coverage, stubs vs live prove, CI workflows, and local commands.
 
 ## Cursor / agents
 

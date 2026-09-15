@@ -44,6 +44,10 @@ deploy-keypair.json
 *.vkey
 sp1-artifacts/
 .sp1/
+# Public happy-path bytes for host --lib (not keys). Live wraps stay in sp1-artifacts/.
+!zk-circuit/fixtures/happy/*.bin
+!zk-circuit/fixtures/happy/*.txt
+!zk-circuit/fixtures/happy/*.md
 
 # ==============================================================================
 # Node.js, TypeScript & Anchor Client Dependencies

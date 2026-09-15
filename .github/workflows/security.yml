@@ -14,7 +14,6 @@ concurrency:
 
 permissions:
   contents: read
-  issues: write
 
 env:
   CARGO_TERM_COLOR: always
@@ -27,13 +26,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: 1.90.0
+      # rustup reads rust-toolchain.toml. dtolnay/rust-toolchain does not.
+      - name: Install rust-toolchain.toml
+        run: rustup show
 
-      - uses: rustsec/audit-check@v2.0.0
+      # Prebuilt cargo-audit: compiling latest cargo-audit from crates.io can
+      # require a newer rustc than this job. Local `cargo audit` uses ~/.cargo/bin.
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          tool: cargo-audit
+
+      - name: cargo audit
+        run: cargo audit
 
   clippy:
     name: clippy (program, io, client)
@@ -42,10 +47,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: 1.90.0
-          components: clippy
+      # rustup reads rust-toolchain.toml. dtolnay/rust-toolchain does not.
+      - name: Install rust-toolchain.toml
+        run: rustup show
 
       - uses: Swatinem/rust-cache@v2
         with:

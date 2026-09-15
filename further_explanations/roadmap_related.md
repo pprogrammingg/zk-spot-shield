@@ -159,7 +159,7 @@ If host hashes differ from `zk-circuit/io` Merkle helpers, execute will panic. G
 
 **SP1 versions (this repo, 2026-09):** guest `sp1-zkvm = "6.5.0"`, host `sp1-sdk = "6.5.0"`, CLI `cargo prove` v6.4.x/v6.5 family (`cargo prove --version`). Keep **major.minor aligned**. Do not mix zkVM 3.x with SDK 6.x.
 
-**Rustc:** `rust-toolchain.toml` should be **1.90+** (SP1 6.5 pulls `ruint` that rejects 1.89).
+**Rustc:** `rust-toolchain.toml` is **1.94.1** (SP1 6.5 `network` pulls alloy/aws that reject 1.90; `ruint` already needed 1.90+).
 
 **protoc:** `sp1-sdk` builds `sp1-prover-types` via protobuf. Install once: `brew install protobuf`. If rust-analyzer still fails, set `PROTOC` to `which protoc` (often `/opt/homebrew/bin/protoc`) so the IDE sees Homebrew.
 
@@ -250,458 +250,182 @@ Without this, you have no way to know the guest panics, and no pipeline toward a
 
 ## Day 12 — Remote Groth16 prove
 
-### What we are trying to achieve, and why
+Signup, `$PROVE`, `.env`, one-shot fixture: **[`prove_network.md`](./prove_network.md)** ([MetaMask quickstart](https://docs.succinct.xyz/docs/sp1/prover-network/quickstart)).
 
-Execute only shows “the guest ran on this laptop.” Solana verifies **Groth16**. Local wrap (shrink → Docker gnark) **OOMs a 16 GB Mac** and needs an amd64 gnark image. Day 12 therefore uses a **remote prover** (Succinct network via `ProverClient::from_env()` when `SP1_PROVER=network`).
+- MetaMask **new** account = requester. Two balances exist; proving uses only the second:
+  - **Ethereum (L1):** buy/bridge `$PROVE` to this address like any ERC-20. MetaMask showing PROVE here only means you *own* tokens on Ethereum. The Succinct prover **cannot spend that**.
+  - **Succinct network:** open [explorer Account](https://explorer.succinct.xyz), connect the **same** address, click **Deposit**, sign. After ~5 min the page shows a **network** PROVE balance. `cargo run` bills **that**. If you skip Deposit, wrap fails even though MetaMask still shows PROVE.
+- Root **`.env`** (gitignored): `NETWORK_PRIVATE_KEY` (exported MetaMask key), and for a live wrap `SP1_USE_NETWORK=1` `SP1_PROVER=network` `SP1_GROTH16=1`. Copy `.env.example`.
+- Default: execute only. **You** wrap once with MetaMask key in root `.env` (`cargo run`, not a host test). That writes gitignored `sp1-artifacts/` and public bytes under `zk-circuit/fixtures/happy/` for later packing/settle tests. Missing files → skip those tests; do not fake Groth16.
+- Execute (Day 11) only shows the guest ran; Solana verifies **Groth16**, not RISC-V traces.
+- Local wrap (Docker gnark, often amd64) **OOMs a 16 GB Mac**, so this Day uses a **remote** prover (`SP1_PROVER=network`), not CPU/Docker as the default.
+- Default `cargo run -p zk-circuit-host` stays execute-only; prove is opt-in with `SP1_GROTH16=1`.
+- Network Groth16 is **not free** (`$PROVE` + a Succinct key, often `NETWORK_PRIVATE_KEY`). Never commit the key.
+- Mock / `SP1_PROVER=mock` is **not** Exit: `sp1-solana` needs a real wrap. If you cannot pay or wrap fails, write that honestly in `notes/proving.md` (Day 61 may cite it) and **do not fake** a proof file.
 
-Default host `cargo run` stays **execute-only** (`SP1_GROTH16` unset). Today you opt into prove **and** point it at the network.
+| Path | Cost | Counts as Day 12? |
+| --- | --- | --- |
+| Execute | $0 | No (Day 11 / 13) |
+| Mock | $0 | No |
+| Local Docker Groth16 | $0 compute, OOM here | No (not the plan) |
+| `SP1_PROVER=network` + `.groth16()` | `$PROVE` | **Yes** |
 
-### Hobby cost — is it free?
+```bash
+# Compile guest → RISC-V ELF only. Does not run the circuit, no journal, no proof.
+cargo prove build -p guest --elf-name guest --output-directory target/elf
 
-**No.** Succinct mainnet Groth16 is paid in **`$PROVE`** (base fee + prover-gas auction). It is **not** a free hobby quota. Check [explorer](https://explorer.succinct.xyz) / current docs for the live price; one fixture Groth16 is usually a **small one-shot**, not $0.
+# Host: execute guest (journal) then, with these env vars, produce a Groth16 proof
+# from the same ELF + stdin — not from a proof file written by the line above.
+SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info cargo run -p zk-circuit-host --release
+```
 
-| Path | Hobby cost |
-| --- | --- |
-| Day 11 / 13 **execute** | **Free** |
-| `SP1_PROVER=mock` | Free, **not** a real Groth16 for `sp1-solana` |
-| Local Docker Groth16 | “Free” compute, **does not fit this laptop** |
-| **`SP1_PROVER=network` + `.groth16()`** | **Not free** (`$PROVE` + network account) |
+- SP1 6.5 path: `setup` → `prove(&pk, stdin).groth16().await`; write gitignored `sp1-artifacts/` (`proof.bin`, `journal.bin`, `groth16.bin` from `proof.bytes()`, `vkey.bytes32.txt`).
+  - Create requester (MetaMask), send `$PROVE` to that ETH address, **Deposit** on explorer, set root `.env` `NETWORK_PRIVATE_KEY`. Full steps: **[`prove_network.md`](./prove_network.md)**. Never commit `.env`.
+  - Rebuild the ELF **only if** guest or `zk-circuit-io` changed since the last `cargo prove build`; then run the host with **`--release`**. `ProverClient::from_env().await` picks the backend from `SP1_PROVER` (`network` = Succinct, not local Docker wrap).
+    - The host **embeds** the ELF at compile time (`include_bytes!("../../../target/elf/guest")`). A new ELF does nothing until you **recompile the host**. If the guest is unchanged, skip `cargo prove build` and only re-run the host.
+    - `--release` is Cargo’s optimized profile for the **host** (your Mac binary / `sp1-sdk`), not a second guest compile. Debug `cargo run` works for execute; Groth16 wrap should use `--release` so you are not paying `$PROVE` on a slow debug client.
+    - Guest changed (edit `zk-circuit/guest` or `io`) — rebuild ELF, confirm the file, then host `--release` (re-embeds ELF):
 
-Do **not** treat mock as Day 12 Exit. If you cannot spend `$PROVE` this session, **do not mark Day 12 `[x]`**; keep building Days 13–16 on execute. Come back when you can pay for **one** remote wrap.
+      ```bash
+      mkdir -p target/elf
+      cargo prove build -p guest --elf-name guest --output-directory target/elf
+      ls -l target/elf/guest   # path may nest; use: find target/elf -type f
+      SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info cargo run -p zk-circuit-host --release
+      ```
 
-### Steps
+    - Guest unchanged — same host command only (still `--release` + env for wrap):
 
-Same crate (`zk-circuit/host`), **`--release`**. Confirm current env names in [Succinct network quickstart](https://docs.succinct.xyz/docs/sp1/prover-network/quickstart) (they move). Typical pattern:
+      ```bash
+      SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info cargo run -p zk-circuit-host --release
+      ```
 
-1. **Account.** Create a Succinct requester account; fund it with enough `$PROVE` for one Groth16. Set the private key env the SDK documents (often `NETWORK_PRIVATE_KEY`). Never commit the key.
-
-2. **Same ELF + fixture stdin as Day 11.** Rebuild ELF only if the guest changed:
-
-   ```bash
-   cargo prove build -p guest --elf-name guest --output-directory target/elf
-   ```
-
-3. **Remote client + Groth16.** `ProverClient::from_env()` already switches on `SP1_PROVER`. Host opt-in:
-
-   ```bash
-   SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info cargo run -p zk-circuit-host --release
-   ```
-
-   Code path (SP1 6.5, async): `setup` → `prove(&pk, stdin).groth16().await`. Import `Prover` + `ProveRequest` + `ProvingKey`. Journal asserts unchanged. `client.verify` on the host is still only a local sanity check.
-
-4. **Write gitignored artifacts** (`sp1-artifacts/`): `proof.save`, `journal.bin`, `groth16.bin` (`proof.bytes()`), `vkey.bytes32.txt`. Do not commit stdin/secrets.
-
-5. **`notes/proving.md`:** date, `SP1_PROVER=network`, explorer request URL if any, approx `$PROVE` spent, `proof.bytes().len()`, execute cycle count from Day 11. Re-run command copied verbatim.
-
-**Do not** use `SP1_PROVER=cpu` / Docker gnark as the Day 12 default on this machine.
-
-### Exit
-
-- Non-empty `sp1-artifacts/groth16.bin` (or `proof.bin`) produced with **`SP1_PROVER=network`** (not mock)
-- Journal matches fixture (`merkle_root`, amount, non-zero nullifier)
-- `notes/proving.md` has the re-run command **and** a one-line hobby-cost note (`$PROVE`, not free)
-- **Do not** wire `sp1-solana` CPI today (Month 2)
+    - `from_env()`: `SP1_PROVER=network` → remote prover. Live wrap also needs `SP1_USE_NETWORK=1` and `SP1_GROTH16=1` (root `.env`). Unset / `cpu` → local execute; wrap OOMs here. `mock` is **not** Day 12. Without those flags the host returns after journal asserts. A successful wrap also writes `zk-circuit/fixtures/happy/` for later packing/settle tests.
+  - Host already: fixture → `stdin.write` → `execute` (assert journal) → if `SP1_GROTH16=1`, `setup(ELF)` for `pk`/`vk`, then `client.prove(&pk, stdin).groth16().await`. Traits in scope: `Prover`, `ProveRequest`, `ProvingKey`, `HashableKey`.
+  - `client.verify(&proof, vk, None)` is a **local** sanity check, not Solana. Then write files: `proof.save` (SDK suitcase), `journal.bin` (`public_values` bytes), `groth16.bin` (`proof.bytes()` — this is what `sp1-solana` wants later), `vkey.bytes32.txt`.
+  - Confirm `groth16.bin` is **non-empty** (`ls -l sp1-artifacts/`). Empty `proof.bytes()` usually means you omitted `.groth16()`. `.gitignore` already has `sp1-artifacts/` — do not force-add it.
+- *Exit:* non-empty remote Groth16 + journal on disk, or a dated **blocked** note; re-run command + `$PROVE` line in `notes/proving.md`. No `sp1-solana` CPI today. **Done 2026-09-14:** remote wrap landed; numbers in `notes/proving.md`.
+  - Happy path: `notes/proving.md` with date, verbatim re-run command, explorer request URL if any, approx `$PROVE` spent, `proof.bytes().len()`, execute cycle count from the same run.
+  - Blocked path (RAM, Docker, no `$PROVE`, network error): same file, dated, **why** wrap did not finish, `sp1-artifacts/` empty **on purpose**. Do not copy a mock or dummy file to look done.
+  - Do not add verify CPI, `settle_shielded_spot` bodies, or commit proofs. Mark Day 12 `[x]` only if a real remote wrap landed **or** the blocked note is honest.
 
 ---
 
 ## Day 13 — Negative inclusion test
 
-### What we are trying to achieve, and why
+- Happy-path execute can hide a guest that never rejects fake membership; on-chain verify assumes **no proof exists** for a leaf that is not in the tree.
+- Clone the Day 11 fixture and corrupt **one** Merkle fact (flip `user_address`, one sibling, or `expected_root`); keep `balance >= requested_swap_amount` so you are not testing solvency.
+- Guest `assert!` usually **panics** the execute future (SP1 6.5 is async — there is no `.run()`). Use `#[should_panic]`, `catch_unwind`, or `Result::is_err` — one stable style, no flaky timeouts.
 
-A proving stack that only tests happy paths will accept a broken guest. You need **fail closed**: leaf not in the tree → execute **panics** (or returns a typed error the host treats as failure).
+```rust
+let err = client.execute(ELF, stdin).await;
+assert!(err.is_err()); // or should_panic on the guest assert
+```
 
-That is the same property the on-chain verifier relies on: you cannot obtain a valid proof for a fake membership.
-
-### Steps
-
-1. Clone the Day 11 fixture.
-2. **Corrupt one thing only**, e.g.:
-
-   - flip a bit in `user_address`, or
-   - swap one sibling, or
-   - set `expected_root` to random bytes
-
-   Keep solvency valid so you are testing **Merkle**, not underfunded.
-
-3. Host test:
-
-   ```text
-   let result = client.execute(&ELF, &stdin).run();
-   assert!(result.is_err()); // or catch panic if execute panics
-   ```
-
-   SP1 execute often **panics** on guest `assert!`. Use `#[should_panic]` **or** `std::panic::catch_unwind` **or** whatever the SDK returns. Pick one and make it CI-stable (no flaky timeout).
-
-4. Optional second test: `balance < requested_swap_amount` → also fails.
-
-### Exit
-
-- `cargo test -p zk-circuit-host` has a named test that **fails closed** on bad inclusion
-- Happy-path execute still passes
+- Optional second case: `balance < requested_swap_amount` also fails closed.
+- *Exit:* `cargo test -p zk-circuit-host` (or a host `#[test]`) fails closed on bad inclusion; happy-path execute still passes. This is **not** Groth16 and is **not** CI-default (`--lib` skips host).
 
 ---
 
 ## Day 14 — Proof packaging
 
-### What we are trying to achieve, and why
-
-Anchor instructions take **byte vectors**, not Rust structs. The settle ix will receive something like `proof: Vec<u8>` and `journal: Vec<u8>`. If packing is ad hoc, on-chain parse will disagree with the host.
-
-Today: one packing format + round-trip test in **host** (no Solana yet).
-
-### Suggested layout (document it in code)
-
-Keep it boring and length-prefixed so you can split without guessing:
+- Anchor ixs take **bytes**, not `PublicOutputs`. If host packing is ad hoc, settle parse will disagree later.
+- Pick one contract and use it only via helpers: either two ix args (`proof: Vec<u8>`, `journal: Vec<u8>`) or one length-prefixed blob.
 
 ```text
-[ u32 le proof_len ][ proof bytes ][ u32 le journal_len ][ journal bytes ]
+[ u32 le proof_len ][ proof ][ u32 le journal_len ][ journal ]
 ```
 
-Or two separate Vecs in the ix (even simpler for Day 32+). If you use two args, still write `pack_proof` / `pack_journal` helpers that are the **only** way bytes are produced.
-
-Journal: decode public values **through `sp1-sdk`** the same way the guest `io::commit`s (SP1’s default codec, typically bincode **inside** the SDK). Add a direct `bincode` host dep only if you call `bincode::serialize` yourself.
-
-### Steps
-
-1. `pack(proof: &[u8], journal: &[u8]) -> Vec<u8>`
-2. `unpack(&[u8]) -> (Vec<u8>, Vec<u8>)`
-3. Unit test: random bytes round-trip
-4. Unit test: real Day 12 artifacts unpack and journal deserializes to `PublicOutputs`
-
-### Exit
-
-- Host unit test passes without a live prove (fixture bytes are enough)
-- Comment in code: “this is the settle ix payload contract”
+- Decode the journal with **sp1-sdk** the same way `io::commit` wrote it; do not add a second `bincode` layout unless you serialize yourself.
+- Unit-test round-trip on random bytes; if Day 12 artifacts exist, unpack and read `PublicOutputs` (fixture bytes are enough — no live prove required).
+- *Exit:* host unit test passes; a code comment names this as the settle payload contract.
 
 ---
 
 ## Day 15 — Vkey extract + latency notes
 
-### What we are trying to achieve, and why
+- `GlobalConfig.vkey_hash` is the circuit fingerprint; a proof from a different guest ELF must fail on-chain. `program/src/constants.rs` still has `VKEY_HASH = [0u8; 32]` until you fill it.
+- After `setup`, print `vk.bytes32()` (hex **and** `[u8; 32]`). Any guest change → new ELF → new vkey → update the hash.
+- Log **remote** Groth16 wall time if Day 12 produced one; execute **cycle count** from Day 11 (`report.total_instruction_count()`). Local CPU/GPU prove is optional extra, not the laptop default.
 
-On-chain `GlobalConfig.vkey_hash` is the **fingerprint of the circuit**. If someone proves with a different guest, verification must fail. You need the **actual** hash from SP1’s verifying key, not `[0u8; 32]`.
+| Field in `notes/proving.md` | Example |
+| --- | --- |
+| Command | `SP1_PROVER=network SP1_GROTH16=1 …` |
+| Cycles | from execute |
+| Prove seconds | remote wrap, if any |
+| `vkey` | hex + Rust array |
+| ELF | git commit; rebuild after guest edits |
 
-Also record **how slow prove is** once, so later CU/latency work has a baseline.
-
-### Steps
-
-1. After `setup`, SP1 exposes a vk hash (name varies: `vk.bytes32()`, `vk.hash()`, `SP1ProofWithPublicValues` helpers). Print as hex **and** as a Rust `[u8; 32]` array.
-
-2. Replace or document `VKEY_HASH` in `program/src/constants.rs`. If you are not ready to change the program today, put the array in `notes/proving.md` and a `// TODO Day 21+` — but Exit wants bytes **documented**. Prefer writing them into `notes/proving.md` **and** constants if the hash is stable for this ELF.
-
-3. Time one Groth16 prove (CPU). If you have GPU (`SP1_PROVER=cuda` or whatever the CLI uses), run once more.
-
-4. From execute `report`, log **cycle count** if available.
-
-5. Create `notes/proving.md`:
-
-   - date, machine (CPU model), SP1 CLI version
-   - prove time CPU / GPU
-   - cycles
-   - vkey hash hex
-   - ELF identity (git commit + “rebuild ELF after guest changes”)
-
-### Exit
-
-- Vkey bytes in `notes/proving.md` (and constants if you choose)
-- At least one measured prove time
-
-**Rule:** any guest logic change → new ELF → new vkey → update hash. That is why this is a Day, not a footnote.
+- *Exit:* vkey bytes documented (notes, and constants if the ELF is frozen); one measured prove time **or** a pointer at the Day 12 blocked note.
 
 ---
 
 ## Day 16 — Wire program instruction stubs
 
-### What we are trying to achieve, and why
+- Month 2 fills bodies; without `settle_shielded_spot` on the `#[program]` table you will fight IDL/names instead of the verifier.
+- **Already in the program:** `initialize_global_config`, `initialize_vault`. Do not redo them. Add settle only.
 
-Month 2 fills **bodies**. If `settle_shielded_spot` does not exist in the `#[program]` table, you will fight scaffolding instead of verifier CPI. Stubs lock the **instruction names and account lists** so IDL/clients stay stable.
+```text
+lib.rs #[program]
+  initialize_global_config
+  initialize_vault
+  settle_shielded_spot   ← add today (stub)
+```
 
-**Already in repo:** `initialize_global_config`, `initialize_vault`. Do **not** redo those. Add **settle** (and only extra ix you still lack).
-
-### Steps
-
-1. `program/src/instructions/settle_shielded_spot.rs`:
-
-   - `#[derive(Accounts)]` with placeholders you will need later: `global_config`, `vault` (`AccountLoader`), `nullifier` PDA, `clean_funds_root`, token accounts, `system_program` / token program as comments if unused
-   - Args: `proof: Vec<u8>`, `journal: Vec<u8>` (even if unused)
-   - Handler: `msg!("settle_shielded_spot stub"); Ok(())`
-
-2. Register in `instructions.rs` and `lib.rs` `#[program]`.
-
-3. `anchor build` (or `cargo build -p zk_spot_shield`).
-
-4. Optional: `pause`/`unpause` stubs — roadmap Day 28 owns behavior; skip unless you want empty fns now.
-
-### Exit
-
-- Program builds
-- `settle_shielded_spot` appears in the instruction list
-- No verifier CPI yet (that is Day 23)
+- New `instructions/settle_shielded_spot.rs`: `Accounts` placeholders (`global_config`, `vault` as `AccountLoader`, nullifier PDA, `clean_funds_root`, token accounts); args `proof: Vec<u8>`, `journal: Vec<u8>`; handler `msg!(…); Ok(())`.
+- Register in `instructions.rs` + `lib.rs`. `pause`/`unpause` wait for Day 28.
+- *Exit:* `anchor build` (or `cargo build -p zk_spot_shield`); settle is in the ix list; **no** `sp1-solana` CPI (Day 23).
 
 ---
 
 ## Day 17 — Host ↔ guest fixture pack
 
-### What we are trying to achieve, and why
+- Day 11 host fixtures and “mental” guest inputs will drift (path flags, endianness). One canonical pack must feed execute, prove, and later the TS client (Day 33+).
 
-Day 11 fixtures in host and “mental” guest inputs will drift. One **canonical fixture** (JSON or a `const` module) used by:
+```text
+happy fixture ──► host execute
+               ──► host prove (Day 12)
+               ──► client (later)
+```
 
-- host execute
-- host prove
-- later TS client (Day 33+)
-
-Without it, Merkle path flags disagree and you debug ghosts for days.
-
-### Steps
-
-1. Add `zk-circuit/fixtures/happy.json` (or `host/src/fixture.rs` generated once) containing:
-
-   - all `PrivateInputs` fields (hex for 32-byte arrays)
-   - expected `PublicOutputs` (nullifier + root) **computed by the same hash fn**
-
-2. Host: load fixture → execute → assert journal == expected outputs.
-
-3. Prove path (optional today): same fixture as Day 12.
-
-4. Short `zk-circuit/README.md` or comment: how to regenerate if you change Poseidon.
-
-5. Do **not** commit secrets that look like real keys; use obvious test bytes (`[1u8; 32]`, etc.).
-
-### Exit
-
-- One fixture file
-- Execute test reads **only** that file
-- Guest was not forked into a second ad-hoc input shape
+- Put it in `zk-circuit/fixtures/happy.json` **or** keep `host/src/fixtures.rs` as the single source — not both disagreeing. Hex for 32-byte fields; expected journal from the **same** `zk-circuit-io` hashes (`compute_leaf`, path, `compute_nullifier`).
+- Use obvious test bytes (`[1u8; 32]`), not real secrets. Host execute asserts journal == expected outputs from that pack only.
+- *Exit:* one fixture; execute reads only that pack; guest I/O shape was not forked.
 
 ---
 
 ## Day 18 — Size & CU budget doc
 
-### What we are trying to achieve, and why
+- A Solana packet is **1232 bytes** before ALTs; a tx has ~**1.4M CU**. Groth16 verify is the hog (~**280k CU** target). Write numbers **before** settle so Days 23–32 measure against a plan.
+- Zero-copy accounts still store an **8-byte discriminator** on chain; rent `space` is `8 + size_of::<T>()` (see `initialize_vault`).
 
-Solana txs have a **1232-byte** packet limit (before ALTs) and ~**1.4M CU** per tx, but Groth16 verify is the hog (~**280k CU** target in the roadmap). If proof + accounts blow the budget, settle cannot ship.
-
-Today you **write numbers down** before coding settle, so Day 23–32 is measurement against a plan, not a surprise.
-
-### Steps
-
-Create `notes/budgets.md` (or `further_explanations/budgets.md`):
-
-| Item | Size / CU | How you got it |
+| Item | Size / CU | Source |
 | --- | --- | --- |
-| `GlobalConfig` | `8 + INIT_SPACE` | from struct |
-| `VaultState` | 8 disc + 120 data (check Anchor zero-copy disc) | `state.rs` asserts |
-| `NullifierAccount` | 32 + disc | |
-| `CleanFundsRoot` | 32 + disc | |
-| Groth16 proof bytes | from Day 12 file `len()` | |
-| Journal bytes | from packed `PublicOutputs` | |
-| Verifier CU target | ~280k | roadmap; confirm vs `sp1-solana` docs for your version |
+| `VaultState` | 8 disc + 120 data | `state.rs` `size_of` assert |
+| `NullifierAccount` / `CleanFundsRoot` | 8 + 32 | same |
+| `GlobalConfig` | `8 + INIT_SPACE` | init ix |
+| Groth16 / journal bytes | `len()` of Day 12 files, or “blocked” | `sp1-artifacts/` |
+| Verifier CU target | ~280k | roadmap; check `sp1-solana` for your version |
 
-Note: zero-copy accounts still have an 8-byte discriminator in the **account** data; confirm with Anchor docs for `zero_copy` so rent `space` is not short.
-
-### Exit
-
-- Doc exists with real proof/journal lengths from your artifacts
-- CU target written; no code required beyond measuring files
+- *Exit:* `notes/budgets.md` (or equivalent) exists with those rows; no settle code required.
 
 ---
 
 ## Day 19 — Month 1 review pass
 
-### What we are trying to achieve, and why
-
-Month 2 is verifier + mutations. Dirty names, leftover `Counter`, padding mistakes, and warnings will multiply. A dedicated cleanup Day is cheaper than debugging “wrong account size” during settle.
-
-### Steps (checklist)
-
-1. `cargo build -p zk_spot_shield` and `cargo test -p zk_spot_shield` — no new warnings you do not understand.
-2. `cargo test -p zk-circuit-host`
-3. Guest: still no `Vec` on the hot path.
-4. `VaultState` / nullifier / root: `#[repr(C)]`, padding, `size_of` asserts still true.
-5. Naming: seeds in `constants.rs` match `find_pda` comments.
-6. Remove or clearly mark toy `Counter` if it is unused (only if tests do not need it). If `test_initialize.rs` still uses Counter, **leave it** until a later Day replaces tests — do not break tests for cleanliness.
-7. `VKEY_HASH`: still zeros? File a one-line TODO pointing at `notes/proving.md`.
-
-### Exit
-
-- Warnings reviewed
-- Padding/size still valid
-- You can explain every public instruction in `lib.rs` in one sentence each
+- Month 2 is verifier + mutations. Wrong padding, leftover sample `Counter`, and unnamed seeds become “account size” bugs under settle.
+- Build/test program + io (`--lib`); host execute tests if you added Day 13. Guest hot path still has **no** `Vec`.
+- Confirm `#[repr(C)]` + padding + `size_of` asserts on `VaultState` / nullifier / root. Seeds in `constants.rs` must match PDA comments.
+- If LiteSVM still initializes a sample Counter, **leave it** until a later Day replaces that test. `VKEY_HASH` still zeros → one-line TODO to `notes/proving.md`.
+- *Exit:* warnings you understand; sizes still valid; you can say one sentence per public ix in `lib.rs`.
 
 ---
 
 ## Day 20 — Checkpoint
 
-### What we are trying to achieve, and why
-
-A **tag** is a restore point: “guest + host prove + program state types work.” README must tell a future you (or an interviewer) how to **build the program** and **prove once** without reading 20 days of chat.
-
-### Steps
-
-1. README section **Build** (program):
-
-   ```bash
-   export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-   anchor build
-   ```
-
-2. README section **Prove once** (host):
-
-   - `cargo prove build …`
-   - `cargo run -p zk-circuit-host -- …` (whatever flags you added)
-   - where proof lands
-
-3. Git tag (local is enough unless you want remote):
-
-   ```bash
-   git tag v0.1-month1
-   ```
-
-   Only if you have commits; if still uncommitted, commit Month 1 first **when you choose to**.
-
-4. Mark Days 11–20 `[x]` in `roadmap.md` only after each Day’s Exit actually passed.
-
-### Exit
-
-- README has both commands
-- Tag exists **or** you recorded “tag after first commit”
-- You can from a clean mental model: guest → host execute → Groth16 file → vkey hash → program stubs
+- Tag `v0.1-month1` is a restore point: guest + host execute (+ remote Groth16 or honest block) + program state types. README must let a stranger **build** and **execute** without twenty chat logs.
+- Program: `export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"` then `anchor build`.
+- Host: `cargo prove build …` then `cargo run -p zk-circuit-host --release` (execute); Groth16 only with `SP1_PROVER=network SP1_GROTH16=1`, artifacts under `sp1-artifacts/`.
+- `git tag v0.1-month1` after Month 1 is committed. Mark Days 11–20 `[x]` in `roadmap.md` only when each Exit actually passed.
+- *Exit:* README has both command sets; tag exists or you noted “tag after first commit.” **Next session is Write-1** (circuit article + LinkedIn), not Day 21.
 
 ---
-
-## Order reminder
-
-```text
-11 execute  →  12 remote Groth16  →  13 negative execute
-14 pack bytes  →  15 vkey + timing
-16 settle stub  →  17 one fixture  →  18 budgets
-19 cleanup  →  20 README + tag
-…
-50 threat model  →  48 CU notes (and 18 / 29)
-20 checkpoint → **Write-1** (circuit article + LinkedIn)
-40 month-2 tag → **Write-2** (settle article + LinkedIn)
-54–60 Devnet program + SDK (no UI)
-61 public artifact: staff README — no UI
-**Write-3** (honest prove / README article + LinkedIn)
-62 basic swap UI (localnet, relayer OK)
-63 manual Devnet walkthrough (see the product)
-64 automated tests on live Devnet
-65–68 uncensorable UI (file://, multi-RPC, IPFS, seizure runbook)
-```
-
-Month 2 Day 21+ starts filling `settle_shielded_spot` with `sp1-solana` verify. Do not pull that into Day 16.
-
-**After Day 60:** staff-quality shield README first (Day 61, **no UI**), then **Write-3**, then basic UI, then **see** the product on Devnet and **run tests that hit Devnet**, then uncensorable hardening. Do not start IPFS/mirrors before Day 62’s swap screen exists.
-
-Writing: **Write-1** after Day 20, **Write-2** after Day 40, **Write-3** after Day 61. Max 3 series, max 3 parts each. Drafts in `notes/articles/` → ChainTribe `blogs`. One hero mermaid per series; LinkedIn is an extract. No extra Days for animations.
-
----
-
-## Writing checkpoints (budget)
-
-### Why not more Days
-
-Overdesign (new icon sets, AE, four architecture posters) burns the same 1.5h as a CU test. The roadmap already produces the raw material (execute, threat model, CU). Writing Days **assemble** that; they do not invent a visual brand.
-
-### Per session
-
-1. Outline parts 1–3 (stop at 3).
-2. Write Part 1 in `notes/articles/0N-…/part-1.md`.
-3. One mermaid: private vs public, or the four settle gates, or README reuse.
-4. `linkedin.md`: 120–200 words + “diagram is the same file.”
-5. Skip GIF unless it fits in 20 minutes.
-
-### ChainTribe
-
-Publish target is ChainTribe blogs (sibling folder). This repo does not host the CMS. Copy markdown + the one diagram when that folder is in play.
-
----
-
-## Day 61 — Public artifact (staff README)
-
-### What we are trying to achieve, and why
-
-A first Solana+ZK repo is not a staff signal until a cold reader can **clone, run execute, understand prove (or why Groth16 is missing), read the threat model, and see CU numbers** from GitHub. This Day is that front door. **No UI.** Fake proofs are worse than an honest “blocked on RAM.”
-
-### Pull in (already built on earlier Days)
-
-| Piece | Source |
-| --- | --- |
-| Guest execute | Day 11 |
-| Remote Groth16 **or** honest block | Day 12 + `notes/proving.md` |
-| Vkey / timing | Day 15 |
-| Account size / CU targets | Days 18, 29, 48 |
-| Threat model | Day 50 |
-
-### Steps
-
-1. Rewrite root `README.md` for a staff reader: problem, trust boundaries, crates, commands.
-2. **Execute:** exact command; expected cycle-ish output.
-3. **Prove:** remote Groth16 command + where artifacts land — **or** a dated paragraph that wrap/prove did not run (RAM/Docker/cost) and that `sp1-artifacts/` is empty on purpose.
-4. Link threat model + CU notes; `--lib` test commands; Devnet program id if Days 54–60 exist.
-
-### Exit
-
-Clone-and-read works. README → execute → Groth16 **or** documented block → threat model → CU. No wallet UI.
-
----
-
-## Day 62 — Basic swap UI
-
-### What we are trying to achieve, and why
-
-Days 54–60 put a program on Devnet and a swap through the **SDK**. Day 61 is docs only. There is still nothing to **look at**. This Day is a normal wallet-connected swap screen. Relayer and localhost are fine. Uncensorable hosting is Days 65–68.
-
-### Steps
-
-1. Static or small web app (wallet adapter, program id, RPC).
-2. Read `VaultState` / `CleanFundsRoot` / pause into the page.
-3. Form: amount, mint, paste or load Groth16 + journal; submit via SDK (relayer or wallet fee payer).
-4. After confirm, refresh on-chain balances **in the UI**.
-
-### Exit
-
-Click-through swap on **localnet**; balances change on screen. No CID, no multi-RPC list required.
-
----
-
-## Day 63 — Manual Devnet walkthrough
-
-### What we are trying to achieve, and why
-
-Automated localnet is not “I used the product.” A human must open the Day 62 UI against **Devnet**, follow a checklist, and leave Explorer URLs.
-
-### Steps
-
-1. Point UI at Days 54–57 program id + Devnet RPC; airdrop/fund wallet.
-2. Write `notes/manual-devnet.md`: connect → see vault/root → submit or documented dry-run → Explorer.
-3. Record account URLs; if settle ran, record the tx signature.
-
-### Exit
-
-Checklist + Explorer links exist. Someone else could repeat it.
-
----
-
-## Day 64 — Automated on-chain Devnet tests
-
-### What we are trying to achieve, and why
-
-`cargo test --lib` and LiteSVM do **not** prove the finished stack on the cluster. Tests must use **Devnet RPC**, fetch real accounts, and land at least one write.
-
-### Steps
-
-1. Test harness: `ANCHOR_PROVIDER_URL=https://api.devnet.solana.com` (or documented equivalent).
-2. Read `GlobalConfig` + `VaultState` (+ ATAs); assert vkey / sizes / mints.
-3. One on-chain write: pause→unpause **or** `settle_shielded_spot` if a Groth16 fixture is on disk.
-4. Document the command; default CI stays localnet (Devnet run is explicit / key-gated).
-
-### Exit
-
-Command passes on live Devnet; signatures or pubkeys in output or `notes/devnet-tests.md`. Validator/LiteSVM runs do not satisfy this Day.
-
----
-
-## Days 65–68 — Uncensorable UI (after the product exists)
-
-Same intent as the original uncensorable phase: `file://` self-submit, multi-RPC, CID, relayer-optional, seizure runbook. The **first** swap UI is Day 62; these Days only remove single-origin dependence.

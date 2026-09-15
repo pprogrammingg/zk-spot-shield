@@ -17,7 +17,7 @@ Guidance for AI agents working in **zk-spot-shield**.
 | `02-sp1-circuit.mdc` | `zk-circuit/**` — guest/host SP1 constraints |
 | `03-session-roadmap.mdc` | Always — one Day per session, checklist hygiene |
 | `04-context-hygiene.mdc` | Always — skip `target/` and other generated trees |
-| `05-tests-security.mdc` | Always — unit tests + `cargo audit` are required; host execute is not a substitute |
+| `05-tests-security.mdc` | Always — after editing a crate, `--lib` + clippy on **that** crate; `cargo audit`; host execute is not a substitute |
 
 ## Repo shape
 
@@ -57,6 +57,7 @@ Deploy artifact: `target/deploy/zk_spot_shield.so` (required for program integra
 Unit + security are the default bar (GitHub Actions **Unit tests** and **Security**). Do not substitute host execute.
 
 ```bash
+# After editing crate `<p>`, run that crate first (clippy + --lib), then CI set:
 cargo test -p zk_spot_shield --lib --locked
 cargo test -p zk-circuit-io --lib --locked
 cargo clippy -p zk_spot_shield -p zk-circuit-io -p client --locked --all-targets -- -D warnings

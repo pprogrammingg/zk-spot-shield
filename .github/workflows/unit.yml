@@ -25,9 +25,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: 1.90.0
+      # rustup reads rust-toolchain.toml. dtolnay/rust-toolchain does not.
+      - name: Install rust-toolchain.toml
+        run: rustup show
 
       - uses: Swatinem/rust-cache@v2
         with:

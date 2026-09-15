@@ -20,6 +20,9 @@ dist/
 *.vkey
 sp1-artifacts/
 .sp1/
+!zk-circuit/fixtures/happy/*.bin
+!zk-circuit/fixtures/happy/*.txt
+!zk-circuit/fixtures/happy/*.md
 
 # Node
 node_modules/

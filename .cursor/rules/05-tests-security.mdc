@@ -9,7 +9,10 @@ Unit tests and security scans are **vital**. Host execute, Groth16, and “it co
 
 ## Always
 
-- Keep `cargo test -p zk_spot_shield --lib` and `cargo test -p zk-circuit-io --lib` passing
+- After editing a crate, **run that crate** before claiming done — rust-analyzer red is not this check:
+  `cargo test -p <crate> --lib --locked` and `cargo clippy -p <crate> --locked --all-targets -- -D warnings`
+- Keep `cargo test -p zk_spot_shield --lib` and `cargo test -p zk-circuit-io --lib` passing (CI default). Host `--lib` if you edited `zk-circuit/host`; skip host clippy unless asked (not CI-default)
+- After a `rust-toolchain.toml` bump, RA may show proc-macro ABI mismatch (old rustc vs new `target/`). Restart rust-analyzer; `cargo` is source of truth
 - Keep GitHub Actions **Unit tests** and **Security** workflows green; do not delete, skip (`continue-on-error`), or `--no-verify` them
 - New invariants (PDA seeds, zero-copy sizes, Poseidon/Merkle/nullifier, journal field layout) get **native unit tests** in the crate that owns them (`program` or `zk-circuit/io`)
 - `Cargo.lock` stays committed so `cargo audit` is reproducible

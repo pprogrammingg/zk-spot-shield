@@ -14,6 +14,7 @@ name = "zk-circuit-host"
 path = "src/main.rs"
 
 [dependencies]
-sp1-sdk = "6.5.0"
+dotenvy = "0.15"
+sp1-sdk = { version = "6.5.0", features = ["network"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 zk-circuit-io = { path = "../io" }

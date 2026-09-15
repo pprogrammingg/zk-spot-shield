@@ -42,6 +42,25 @@ pub fn verify_merkle_path(leaf: [u8; 32], path: &[([u8; 32], bool); 20]) -> [u8;
     current
 }
 
+/// Depth-20 Merkle path for **leaf index 0** when every other leaf is zero.
+///
+/// Each hash is 32 bytes (bn254 field). `empty[h]` is the hash of a 2^h-wide
+/// all-zero subtree: `empty[0] = [0; 32]`, `empty[h] = hash(empty[h-1], empty[h-1])`
+/// (left and right are the *same* empty child, not `h` and `h+1`).
+/// Index 0 always combines as `hash(current, sibling)`, so the sibling is on the
+/// right (`true`) — same flag `verify_merkle_path` uses.
+pub fn index0_empty_path() -> [([u8; 32], bool); 20] {
+    let mut empty = [[0u8; 32]; 20];
+    for h in 1..20 {
+        empty[h] = hash_nodes(&empty[h - 1], &empty[h - 1]);
+    }
+    let mut path = [([0u8; 32], false); 20];
+    for h in 0..20 {
+        path[h] = (empty[h], true);
+    }
+    path
+}
+
 /// Unique 32-byte nullifier (double-spend tag)
 pub fn compute_nullifier(secret: &[u8; 32], leaf: &[u8; 32], asset_id: &[u8; 32]) -> [u8; 32] {
     let mut hasher = Poseidon::<Fr>::new_circom(3).expect("Failed to initialize Poseidon hasher");
@@ -54,20 +73,6 @@ pub fn compute_nullifier(secret: &[u8; 32], leaf: &[u8; 32], asset_id: &[u8; 32]
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn index0_path(leaf: [u8; 32]) -> ([([u8; 32], bool); 20], [u8; 32]) {
-        let mut empty = [[0u8; 32]; 20];
-        empty[0] = [0u8; 32];
-        for h in 1..20 {
-            empty[h] = hash_nodes(&empty[h - 1], &empty[h - 1]);
-        }
-        let mut path = [([0u8; 32], false); 20];
-        for h in 0..20 {
-            path[h] = (empty[h], true);
-        }
-        let root = verify_merkle_path(leaf, &path);
-        (path, root)
-    }
 
     #[test]
     fn leaf_is_stable_and_balance_endianness_matters() {
@@ -84,8 +89,10 @@ mod tests {
     #[test]
     fn index0_inclusion_path_matches_verify() {
         let leaf = compute_leaf(&[1u8; 32], &[2u8; 32], 1_000);
-        let (path, root) = index0_path(leaf);
-        assert_eq!(verify_merkle_path(leaf, &path), root);
+        let path = index0_empty_path();
+        let root = verify_merkle_path(leaf, &path);
+        assert_eq!(path[0], ([0u8; 32], true));
+        assert_eq!(path[1].0, hash_nodes(&[0u8; 32], &[0u8; 32]));
         assert_ne!(root, leaf);
     }
 

@@ -3,10 +3,11 @@
 //! RUST_LOG=info cargo run -p zk-circuit-host --release
 //! ```
 //!
-//! Groth16 wrap OOMs this laptop. Day 12 is **remote** (`SP1_PROVER=network`); not free (`$PROVE`):
+//! Groth16 wrap OOMs this laptop. Day 12 is **remote** (root `.env`: `SP1_USE_NETWORK=1`).
+//! See `further_explanations/prove_network.md`. Not free (`$PROVE`):
 //!
 //! ```bash
-//! SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info cargo run -p zk-circuit-host --release
+//! SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info cargo run -p zk-circuit-host --release
 //! ```
 
 use std::fs;
@@ -23,6 +24,7 @@ const ELF: Elf = Elf::Static(include_bytes!("../../../target/elf/guest"));
 
 #[tokio::main]
 async fn main() {
+    fixtures::load_root_dotenv();
     utils::setup_logger();
 
     let inputs = fixtures::happy_path_inputs();
@@ -45,8 +47,11 @@ async fn main() {
         exec_public.merkle_root
     );
 
-    if std::env::var("SP1_GROTH16").ok().as_deref() != Some("1") {
-        println!("skip groth16 (set SP1_GROTH16=1 on a machine that can wrap)");
+    let want_groth16 = std::env::var("SP1_GROTH16").ok().as_deref() == Some("1");
+    if !fixtures::use_network() || !want_groth16 {
+        println!(
+            "skip groth16 (set SP1_USE_NETWORK=1 and SP1_GROTH16=1 in root .env, then cargo run --release)"
+        );
         return;
     }
 
@@ -93,4 +98,18 @@ async fn main() {
     fs::write("sp1-artifacts/groth16.bin", &groth16_bytes).expect("write groth16");
     fs::write("sp1-artifacts/vkey.bytes32.txt", vk.bytes32()).expect("write vk");
     println!("wrote sp1-artifacts/proof.bin journal.bin groth16.bin vkey.bytes32.txt");
+
+    let fixture = fixtures::happy_fixture_dir();
+    fs::create_dir_all(&fixture).expect("mkdir fixtures/happy");
+    fs::write(fixture.join("groth16.bin"), &groth16_bytes).expect("write fixture groth16");
+    fs::write(
+        fixture.join("journal.bin"),
+        proof.public_values.as_slice(),
+    )
+    .expect("write fixture journal");
+    fs::write(fixture.join("vkey.bytes32.txt"), vk.bytes32()).expect("write fixture vkey");
+    println!(
+        "copied public happy-path bytes to {} (tests; not a private key)",
+        fixture.display()
+    );
 }
