@@ -35,7 +35,7 @@ sp1-solana = "0.1.0"
 # solana-sysvar/wincode (0.5 vs 0.6) — Dependabot-only bumps fail clippy/tests.
 litesvm = "=0.10.0"
 solana-message = "3.0.1"
-solana-transaction = "3.0.2"
+solana-transaction = "5.0.0"
 solana-signer = "3.0.0"
 solana-keypair = "3.0.1"
 
