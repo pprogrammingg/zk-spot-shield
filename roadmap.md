@@ -14,6 +14,8 @@ Mark items `[x]` when done. A Day is **done** only when its *Exit* criteria pass
 [P3 25m] Prove: compile, run the smallest meaningful test, commit.
 ```
 
+**After commit (2 min):** post a Colosseum project update (Updates → Post an update): what shipped today, one line on what's next. Add a 1-min video when the week's update is due.
+
 Do not split a Day across sessions. If you finish early, deepen tests or docs for *that* deliverable — do not pull tomorrow's Day forward mid-session. If the leftover is writing, you may start that checkpoint’s **LinkedIn draft only** (not a new diagram set).
 
 ---
