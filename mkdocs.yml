@@ -1,0 +1,49 @@
+site_name: ZK Spot Shield
+site_description: Private spot settlement on Solana, verified with SP1 zero-knowledge proofs
+site_url: https://pprogrammingg.github.io/zk-spot-shield/
+repo_url: https://github.com/pprogrammingg/zk-spot-shield
+repo_name: pprogrammingg/zk-spot-shield
+docs_dir: docs
+
+nav:
+  - Introduction: index.md
+  - Architecture: architecture.md
+  - Solana Program: solana-program.md
+  - Guest and Host: circuit.md
+  - Tests: tests.md
+  - Glossary: glossary.md
+  - Links: links.md
+
+theme:
+  name: material
+  features:
+    - navigation.footer
+    - navigation.sections
+    - content.code.copy
+    - toc.follow
+  palette:
+    - scheme: default
+      primary: deep purple
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - scheme: slate
+      primary: deep purple
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format

@@ -2,6 +2,13 @@ use std::path::{Path, PathBuf};
 
 use zk_circuit_io::{compute_leaf, index0_empty_path, verify_merkle_path, PrivateInputs};
 
+pub fn corrupt_merkle_path_inputs() -> PrivateInputs {
+    let mut inputs = happy_path_inputs();
+    inputs.merkle_path[0].0 = [4u8; 32];
+    // leave expected_root alone
+    inputs
+}
+
 pub fn happy_path_inputs() -> PrivateInputs {
     let secret = [1u8; 32];
     let user_address = [2u8; 32];
@@ -41,7 +48,11 @@ pub fn load_root_dotenv() {
 mod tests {
     use super::*;
     use std::fs;
+    use sp1_sdk::{Elf, Prover, ProverClient, SP1Stdin};
     use zk_circuit_io::PublicOutputs;
+
+    /// Guest ELF from `cargo prove build` / host prove path. Needed for execute.
+    const GUEST_ELF: Elf = Elf::Static(include_bytes!("../../../target/elf/guest"));
 
     #[test]
     fn happy_fixture_journal_matches_happy_path_inputs() {
@@ -56,5 +67,34 @@ mod tests {
         assert_ne!(public.nullifier, [0u8; 32]);
         let groth16 = fs::read(dir.join("groth16.bin")).expect("commit groth16.bin");
         assert_eq!(groth16.len(), 356);
+    }
+
+    #[test]
+    fn corrupt_merkle_path_mismatches_expected_root() {
+        let inputs = corrupt_merkle_path_inputs();
+        let leaf = compute_leaf(&inputs.secret, &inputs.user_address, inputs.balance);
+        let computed = verify_merkle_path(leaf, &inputs.merkle_path);
+        assert_ne!(
+            computed, inputs.expected_root,
+            "fixture must disagree on root (do not recompute expected_root after corrupt)"
+        );
+    }
+
+    #[tokio::test]
+    async fn corrupt_merkle_path_execute_fails() {
+        let inputs = corrupt_merkle_path_inputs();
+        let mut stdin = SP1Stdin::new();
+        stdin.write(&inputs);
+        let client = ProverClient::from_env().await;
+        // Guest panics on root mismatch. SP1 6.5 may still `Ok` with an empty
+        // journal (commit never ran) instead of `Err` — both are fail-closed.
+        let rejected = match client.execute(GUEST_ELF, stdin).await {
+            Err(_) => true,
+            Ok((pv, _)) => pv.as_slice().is_empty(),
+        };
+        assert!(
+            rejected,
+            "guest must reject bad inclusion (Err or empty journal after panic)"
+        );
     }
 }

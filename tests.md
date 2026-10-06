@@ -54,11 +54,12 @@ After editing a crate, run `--lib` + clippy for **that** crate first (see `.curs
 Host execute / prove (not CI-default):
 
 ```bash
-# execute only (offline)
+# execute only (offline; happy Groth16 bytes already in fixtures/happy/)
 RUST_LOG=info cargo run -p zk-circuit-host --release
 
-# one-shot remote Groth16 (costs $PROVE; see notes/proving.md)
-SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info cargo run -p zk-circuit-host --release
+# one-shot remote Groth16 (costs $PROVE; needs --features network; see notes/proving.md)
+SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info \
+  cargo run -p zk-circuit-host --features network --release
 ```
 
 ## Local pre-push check (same as CI, no `act`)

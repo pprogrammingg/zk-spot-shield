@@ -7,7 +7,8 @@
 //! See `further_explanations/prove_network.md`. Not free (`$PROVE`):
 //!
 //! ```bash
-//! SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info cargo run -p zk-circuit-host --release
+//! SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info \
+//!   cargo run -p zk-circuit-host --features network --release
 //! ```
 
 use std::fs;
@@ -50,7 +51,7 @@ async fn main() {
     let want_groth16 = std::env::var("SP1_GROTH16").ok().as_deref() == Some("1");
     if !fixtures::use_network() || !want_groth16 {
         println!(
-            "skip groth16 (set SP1_USE_NETWORK=1 and SP1_GROTH16=1 in root .env, then cargo run --release)"
+            "skip groth16 (set SP1_USE_NETWORK=1 and SP1_GROTH16=1 in root .env, then cargo run --features network --release)"
         );
         return;
     }

@@ -13,8 +13,14 @@ path = "src/lib.rs"
 name = "zk-circuit-host"
 path = "src/main.rs"
 
+[features]
+default = []
+# Remote Succinct prover (Day 12 wrap). Off by default: pulls AWS smithy via
+# sp1-sdk and is easy to break on `cargo update`. Execute / Day 13 need it off.
+network = ["sp1-sdk/network"]
+
 [dependencies]
 dotenvy = "0.15"
-sp1-sdk = { version = "6.5.0", features = ["network"] }
+sp1-sdk = { version = "6.5.0", default-features = false }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 zk-circuit-io = { path = "../io" }

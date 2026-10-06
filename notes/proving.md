@@ -7,7 +7,8 @@ Remote Succinct Groth16 for the **happy-path fixture** (`zk_circuit_host::fixtur
 From repo root (needs deposited network `$PROVE` + gitignored `.env`):
 
 ```bash
-SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info cargo run -p zk-circuit-host --release
+SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info \
+  cargo run -p zk-circuit-host --features network --release
 ```
 
 Guest/io unchanged → skip `cargo prove build`. Guest changed → rebuild ELF, then recompile host (it `include_bytes!` the ELF).

@@ -1,6 +1,5 @@
 {
-  // rustup proxy + discover: follow rust-toolchain.toml (no channel pin here).
-  "rust-analyzer.server.path": "${userHome}/.cargo/bin/rust-analyzer",
+  // Extension-bundled RA + discover: follow rust-toolchain.toml (no server.path pin).
   "rust-analyzer.rustc.source": "discover",
   "files.exclude": {
     "**/.git": false,

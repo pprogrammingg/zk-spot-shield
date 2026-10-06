@@ -114,9 +114,9 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
   - [x] Document hobby cost: network Groth16 is **not free** (`$PROVE`); execute stays $0
   - [x] *Exit:* Non-empty Groth16 + journal on disk from a **remote** prove; re-run command + cost note in `notes/proving.md`. If wrap/prove is blocked (e.g. RAM/Docker), write that honestly in the same note — Day 61’s public artifact may cite it; do not fake a Groth16 file.
 
-- [ ] **Day 13 — Negative inclusion test**
-  - [ ] Host test: address *not* in tree → guest/execution failure
-  - [ ] *Exit:* Test fails closed; CI-friendly assertion
+- [x] **Day 13 — Negative inclusion test**
+  - [x] Host test: address *not* in tree → guest/execution failure
+  - [x] *Exit:* Test fails closed; CI-friendly assertion
 
 - [ ] **Day 14 — Proof packaging**
   - [ ] Helpers to pack proof + journal into `Vec<u8>` for Anchor instruction data

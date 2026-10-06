@@ -31,7 +31,8 @@ Succinct’s site **does not create a wallet**. You use MetaMask, send **`$PROVE
 - **Get `$PROVE`.** Buy or bridge PROVE onto **that same address on Ethereum mainnet** (see Succinct token overview from the quickstart). Tokens live on L1 until you deposit.
 - **Deposit.** Open explorer Account, connect this account, **Deposit**. Wait until **network** PROVE shows. Proving spends this, not undeposited L1.
 - **Export key.** MetaMask: export this account’s private key. Put it in root `.env` as `NETWORK_PRIVATE_KEY`. The explorer cannot run `cargo run` for you.
-- **You prove once.** Copy the requester MetaMask private key into root `.env` as `NETWORK_PRIVATE_KEY`. Then `SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info cargo run -p zk-circuit-host --release`. That is the wrap — not `cargo test`.
+- **You prove once.** Copy the requester MetaMask private key into root `.env` as `NETWORK_PRIVATE_KEY`. Then `SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info \
+  cargo run -p zk-circuit-host --features network --release`. That is the wrap — not `cargo test`.
 - **Save once.** Success writes gitignored `sp1-artifacts/` and public `groth16.bin` / `journal.bin` / `vkey.bytes32.txt` into `zk-circuit/fixtures/happy/`. Change the guest, prove again.
 - **Later tests.** Default CI still only `--lib` on program / io / client (`zk-circuit-io` reads the saved happy files). Future packing/settle tests can too. Do not fake Groth16. Wrap log: [`notes/proving.md`](../notes/proving.md).
 
