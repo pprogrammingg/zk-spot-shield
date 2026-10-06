@@ -29,7 +29,8 @@ zk-circuit/host/      # SP1 host prover driver
 client/               # client placeholder → SDK later
 Anchor.toml           # localnet + program id
 Cargo.toml            # workspace
-further_explanations/ # glossary + session notes
+docs/ # public docs site (MkDocs) incl. glossary
+further_explanations/ # session notes
 ```
 
 Ignore for search/context: `target/`, `.anchor/`, `test-ledger/` (see `.cursorignore`).

@@ -3,8 +3,19 @@
 [![Unit tests](https://github.com/pprogrammingg/zk-spot-shield/actions/workflows/unit.yml/badge.svg)](https://github.com/pprogrammingg/zk-spot-shield/actions/workflows/unit.yml)
 [![Security](https://github.com/pprogrammingg/zk-spot-shield/actions/workflows/security.yml/badge.svg)](https://github.com/pprogrammingg/zk-spot-shield/actions/workflows/security.yml)
 [![Program tests](https://github.com/pprogrammingg/zk-spot-shield/actions/workflows/program-tests.yml/badge.svg)](https://github.com/pprogrammingg/zk-spot-shield/actions/workflows/program-tests.yml)
+[![Docs](https://github.com/pprogrammingg/zk-spot-shield/actions/workflows/docs.yml/badge.svg)](https://pprogrammingg.github.io/zk-spot-shield/)
 
 ZK Spot Shield is a Solana program that settles spot swaps behind SP1 zero-knowledge proofs: the chain verifies a Groth16 proof and public journal, then updates zero-copy vault state and moves SPL tokens. Compliance membership and unlinkability are enforced off-chain in the circuit (Merkle inclusion + nullifier); on-chain logic checks the proof, registered Merkle root, and unused nullifier before settlement.
+
+**Read the docs:** [pprogrammingg.github.io/zk-spot-shield](https://pprogrammingg.github.io/zk-spot-shield/)
+
+## Table of contents
+
+- [Flow summary (user swap request → settle)](#flow-summary-user-swap-request--settle)
+- [Installation](#installation)
+- [Tests](#tests)
+- [Docs site](#docs-site)
+- [Cursor / agents](#cursor--agents)
 
 ## Flow summary (user swap request → settle)
 
@@ -38,7 +49,7 @@ User/client → backend (path + root) → ZK host/guest (proof + journal) → So
 | **Leaf** preimage (`secret` ∥ address ∥ balance) | **Leaf** as an opaque 32-byte blob if inserted on-chain |
 | Proving key, guest stdin | **Groth16 proof**, `vkey_hash`, `NullifierAccount` PDA existence |
 
-Terms: `further_explanations/glossary.md`. ZK tool map: `further_explanations/zero-knowledge.md`. Happy-path Merkle (empty tree): `further_explanations/merkle_trees.md`.
+Terms: [`docs/glossary.md`](./docs/glossary.md) (also on the docs site). ZK tool map: `further_explanations/zero-knowledge.md`. Happy-path Merkle (empty tree): `further_explanations/merkle_trees.md`.
 
 ## Installation
 
@@ -78,9 +89,31 @@ nvm install --lts
 
 You are ready when every **Verify** command succeeds and `solana config get` shows `localhost`.
 
-# Tests
+## Tests
 
 See **[tests.md](./tests.md)** for the full map: ZK guest/host/io coverage, stubs vs live prove, CI workflows, and local commands.
+
+## Docs site
+
+The public docs live in `docs/` as Markdown and are built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/). Diagrams are Mermaid blocks inside the pages, so they change in the same commit as the text.
+
+**Deploy is automatic.** The [Docs workflow](.github/workflows/docs.yml) runs on every push to `main` that touches `docs/**`, `mkdocs.yml`, or the workflow itself. It runs `mkdocs build --strict` (broken links or nav entries fail the build) and publishes to GitHub Pages. You can also start it by hand from the Actions tab (`workflow_dispatch`).
+
+One-time repo setup: **Settings → Pages → Source: GitHub Actions**.
+
+**Edit or add a page:**
+
+1. Write or change a Markdown file in `docs/`.
+2. For a new page, add it to `nav:` in `mkdocs.yml`.
+3. Preview locally, then push to `main`.
+
+```bash
+python3 -m venv .venv-docs && .venv-docs/bin/pip install -r docs/requirements.txt
+.venv-docs/bin/mkdocs serve           # live preview at http://127.0.0.1:8000
+.venv-docs/bin/mkdocs build --strict  # same check CI runs
+```
+
+The build output (`site/`) is gitignored.
 
 ## Cursor / agents
 

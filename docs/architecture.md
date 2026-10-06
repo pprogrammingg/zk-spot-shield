@@ -4,8 +4,15 @@ The system has three parts. The **client** holds the user's secret note. The **Z
 
 ## Components
 
+Dotted boxes and arrows are planned and not built yet. Solid ones exist in the repo today.
+
 ```mermaid
-flowchart LR
+flowchart TB
+    User(["User"])
+    Ui["Trading UI (planned)"]
+    User -.->|"opens"| Ui
+    Ui -.->|"swap request"| Client
+
     subgraph offchain [Off-chain]
         Client["Client / wallet"]
         Indexer["Backend indexer"]
@@ -28,8 +35,8 @@ flowchart LR
     Client -->|"secret, amount"| Host
     Indexer -->|"Merkle path, root"| Host
     Host -->|"PrivateInputs"| Guest
-    Guest -.->|uses| Io
-    Host -.->|uses| Io
+    Guest -->|uses| Io
+    Host -->|uses| Io
     Host -->|"ELF + stdin"| Prover
     Prover -->|"Groth16 proof + journal"| Host
     Host -->|"proof + journal"| Client
@@ -39,6 +46,9 @@ flowchart LR
     Program --> Roots
     Program --> Nullifiers
     Program -->|"transfer"| Spl
+
+    classDef planned stroke-dasharray: 5 5
+    class Ui planned
 ```
 
 ## Settlement flow

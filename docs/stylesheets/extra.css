@@ -1,0 +1,22 @@
+/* Wider content column so diagrams are not shrunk to fit. */
+.md-grid {
+  max-width: 1440px;
+}
+
+/* Keep the right-hand table of contents pinned while scrolling. */
+.md-sidebar--secondary {
+  position: sticky;
+  top: 2.4rem;
+  align-self: flex-start;
+  max-height: calc(100vh - 2.4rem);
+}
+
+.mermaid {
+  text-align: center;
+}
+
+.mermaid svg {
+  width: 100%;
+  height: auto;
+  font-size: 16px;
+}

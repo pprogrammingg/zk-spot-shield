@@ -16,7 +16,7 @@ Solana + Anchor program that settles spot swaps after SP1 Groth16 verification. 
 - `Anchor.toml` + root `Cargo.toml` — workspace source of truth
 - `roadmap.md` — session checklist; mark `[x]` only when Exit passes
 - `.github/workflows/` — unit + security CI must stay green (see `05-tests-security.mdc`)
-- `further_explanations/glossary.md` — term map (owner vs payer vs authority, etc.)
+- `docs/` — public docs site (MkDocs); `docs/glossary.md` is the term map (owner vs payer vs authority, etc.)
 
 ## Stack pins
 

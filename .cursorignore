@@ -37,3 +37,8 @@ node_modules/
 # Keypairs (never index)
 **/id.json
 **/*-keypair.json
+
+
+# MkDocs build output
+site/
+.venv-docs/

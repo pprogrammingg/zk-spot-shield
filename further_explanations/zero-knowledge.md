@@ -1,6 +1,6 @@
 # Zero-knowledge notes
 
-How the proving stack fits this repo. Protocol terms (journal, vkey, nullifier) live in `glossary.md`. Session tasks live in `roadmap_related.md`.
+How the proving stack fits this repo. Protocol terms (journal, vkey, nullifier) live in `docs/glossary.md`. Session tasks live in `roadmap_related.md`.
 
 This project: **SP1 guest** proves Merkle inclusion + solvency + nullifier; **host** executes then (Day 12) wraps as **Groth16**; **Solana** verifies that Groth16 proof against `vkey_hash`.
 
