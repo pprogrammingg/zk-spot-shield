@@ -1,6 +1,12 @@
 skip_local_validator = true
 
 [toolchain]
+# AVM looks for program crates under programs/*/, and this crate lives in
+# program/, so the Anchor CLI release is named here (same as anchor-lang).
+# `avm solana install` maps that release through AVM's Anchor→Solana map
+# (1.1.2 → 3.1.10: Agave 3.x, platform-tools v1.52). Agave 4 / SBPFv3
+# waits for the LiteSVM and platform-tools bump in program/Cargo.toml.
+anchor_version = "1.1.2"
 
 [features]
 resolution = true

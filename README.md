@@ -58,8 +58,8 @@ For someone who needs to build and run this repo locally (localnet).
 | Topic | Task | Version / target | Verify |
 | --- | --- | --- | --- |
 | Rust | Install via [rustup](https://rustup.rs/) | **1.94.1** host (`rust-toolchain.toml` for `sp1-sdk`); **program BPF** uses Solana’s own rustc (~1.89) — `program` MSRV is `1.87`, not 1.94 | `rustc --version` · `cargo --version` |
-| Solana CLI | Install Anza release tools | `stable` channel ([install](https://docs.anza.xyz/cli/install)) | `solana --version` |
-| Anchor CLI | Install AVM, then Anchor | latest via `avm` | `anchor --version` |
+| Solana CLI | In the repo, `avm solana install` | Mapped from the Anchor release in `Anchor.toml`: **3.1.10** for Anchor 1.1.2 (Agave 3.x, platform-tools v1.52). Agave 4 / SBPFv3 waits for the LiteSVM and platform-tools bump in `program/Cargo.toml` ([Agave install](https://docs.anza.xyz/cli/install)) | `solana --version` |
+| Anchor CLI | Install [AVM](https://www.anchor-lang.com/docs/references/avm), then that release | **1.1.2**, `[toolchain] anchor_version` in `Anchor.toml` (same release as `anchor-lang`; AVM looks under `programs/*/`, and this crate is `program/`) | `anchor --version` |
 | SP1 CLI | Install + update via `sp1up` | current SP1 release | `cargo prove --version` |
 | Node.js | Runtime for Anchor/TS client | `20+` LTS | `node --version` · `npm --version` |
 | Local keypair | Create wallet for localnet | any fresh keypair | `solana-keygen new` |
@@ -71,13 +71,14 @@ Install snippets:
 # Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Solana
-sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
-# add active_release/bin to PATH if the installer prompts you
-
-# Anchor
-cargo install --git https://github.com/coral-xyz/anchor avm --locked
-avm install latest && avm use latest
+# Anchor version manager, from the release named in Anchor.toml.
+# Requires Python 3.11+ (tomllib). Git HEAD of AVM can need a newer rustc.
+anchor_version=$(python3 -c 'import tomllib; print(tomllib.load(open("Anchor.toml","rb"))["toolchain"]["anchor_version"])')
+cargo install --git https://github.com/solana-foundation/anchor --tag "v${anchor_version}" avm --locked --force
+avm install "$anchor_version"
+# Solana CLI from AVM's Anchor→Solana map (3.1.10 for Anchor 1.1.2).
+avm solana install
+# add ~/.local/share/solana/install/active_release/bin to PATH if `solana` is not found
 
 # SP1
 curl -L https://sp1.succinct.xyz | bash

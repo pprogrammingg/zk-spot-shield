@@ -34,7 +34,7 @@ jobs:
           workspaces: "."
           cache-on-failure: true
 
-      - name: Cache Solana CLI
+      - name: Cache Anchor and Solana CLIs
         uses: actions/cache@v4
         with:
           path: |
@@ -42,23 +42,29 @@ jobs:
             ~/.cargo/bin/avm
             ~/.cargo/bin/anchor
             ~/.avm
-          key: solana-anchor-${{ runner.os }}-1.1.2-cli-tag
+          key: avm-solana-${{ hashFiles('Anchor.toml', 'program/Cargo.toml', 'Cargo.lock') }}-${{ runner.os }}
 
-      - name: Install Solana CLI
+      # AVM from the release named in Anchor.toml, not git HEAD (HEAD can
+      # require a newer rustc). The shim installs that Anchor CLI; Solana
+      # comes from AVM's map. Non-interactive runners skip the install prompt.
+      - name: Install Anchor and Solana
         run: |
-          if ! command -v solana >/dev/null 2>&1; then
-            sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+          anchor_version=$(python3 -c 'import tomllib; print(tomllib.load(open("Anchor.toml","rb"))["toolchain"]["anchor_version"])')
+          test -n "$anchor_version"
+          if ! command -v avm >/dev/null 2>&1; then
+            cargo install --git https://github.com/solana-foundation/anchor --tag "v${anchor_version}" avm --locked --force
           fi
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
-
-      # Pin Anchor CLI to tag v1.1.2 (same as program/Cargo.toml). Unpinned git
-      # HEAD of avm can require a newer rustc than this job.
-      - name: Install Anchor CLI
-        run: |
-          if ! command -v anchor >/dev/null 2>&1; then
-            cargo install --git https://github.com/coral-xyz/anchor --tag v1.1.2 anchor-cli --locked
+          # Creates ~/.cargo/bin/anchor as the AVM shim.
+          avm --version
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.cargo/bin:$PATH"
+          if ! anchor --version >/dev/null 2>&1; then
+            avm install "$anchor_version"
           fi
+          avm solana install
+          anchor --version
+          solana --version
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
 
       - name: Build BPF program
         run: |
