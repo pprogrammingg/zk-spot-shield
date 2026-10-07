@@ -96,6 +96,8 @@ See **[tests.md](./tests.md)** for the full map: ZK guest/host/io coverage, stub
 
 ## Docs site
 
+Live site: [https://pprogrammingg.github.io/zk-spot-shield/](https://pprogrammingg.github.io/zk-spot-shield/)
+
 The public docs live in `docs/` as Markdown and are built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/). Diagrams are Mermaid blocks inside the pages, so they change in the same commit as the text.
 
 **Deploy is automatic.** The [Docs workflow](.github/workflows/docs.yml) runs on every push to `main` that touches `docs/**`, `mkdocs.yml`, or the workflow itself. It runs `mkdocs build --strict` (broken links or nav entries fail the build) and publishes to GitHub Pages. You can also start it by hand from the Actions tab (`workflow_dispatch`).
