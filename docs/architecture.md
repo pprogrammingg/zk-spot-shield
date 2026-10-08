@@ -104,7 +104,7 @@ flowchart TB
 
 | Folder | Role |
 | --- | --- |
-| `program/` | Anchor program `zk_spot_shield` (on-chain) |
+| `programs/zk_spot_shield/` | Anchor program `zk_spot_shield` (on-chain) |
 | `zk-circuit/io/` | Shared input/output types and Poseidon Merkle helpers, used by both guest and host |
 | `zk-circuit/guest/` | SP1 guest: the circuit that runs inside the zkVM |
 | `zk-circuit/host/` | Host: feeds inputs to the guest, runs execute or requests a proof |

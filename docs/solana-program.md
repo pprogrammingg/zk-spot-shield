@@ -1,6 +1,6 @@
 # Solana Program and Anchor
 
-The on-chain crate is `program/` (program name `zk_spot_shield`), written with the Anchor framework. Today it has the account layer in place: the config, the vault, and the accounts that record approved roots and spent nullifiers. Proof verification and settlement build on top of these.
+The on-chain crate is `programs/zk_spot_shield/` (program name `zk_spot_shield`), written with the Anchor framework. Today it has the account layer in place: the config, the vault, and the accounts that record approved roots and spent nullifiers. Proof verification and settlement build on top of these.
 
 | Piece | Kind | Seeds | Size (data) | Purpose |
 | --- | --- | --- | --- | --- |

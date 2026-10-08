@@ -343,7 +343,7 @@ assert!(err.is_err()); // or should_panic on the guest assert
 
 ## Day 15 — Vkey extract + latency notes
 
-- `GlobalConfig.vkey_hash` is the circuit fingerprint; a proof from a different guest ELF must fail on-chain. `program/src/constants.rs` still has `VKEY_HASH = [0u8; 32]` until you fill it.
+- `GlobalConfig.vkey_hash` is the circuit fingerprint; a proof from a different guest ELF must fail on-chain. `programs/zk_spot_shield/src/constants.rs` still has `VKEY_HASH = [0u8; 32]` until you fill it.
 - After `setup`, print `vk.bytes32()` (hex **and** `[u8; 32]`). Any guest change → new ELF → new vkey → update the hash.
 - Log **remote** Groth16 wall time if Day 12 produced one; execute **cycle count** from Day 11 (`report.total_instruction_count()`). Local CPU/GPU prove is optional extra, not the laptop default.
 

@@ -9,7 +9,7 @@ Solana + Anchor program that settles spot swaps after SP1 Groth16 verification. 
 
 ## Layout
 
-- `program/` — Anchor on-chain crate (`zk_spot_shield`), flat (not `programs/...`)
+- `programs/zk_spot_shield/` — Anchor on-chain crate (`zk_spot_shield`); Anchor/AVM expect `programs/*/`
 - `zk-circuit/io` — shared I/O types + Poseidon Merkle (no zkVM)
 - `zk-circuit/guest` — SP1 guest; `zk-circuit/host` — prover driver
 - `client/` — client helpers / later SDK
@@ -21,12 +21,12 @@ Solana + Anchor program that settles spot swaps after SP1 Groth16 verification. 
 ## Stack pins
 
 - Anchor `1.1.x`, Solana/Agave CLI on PATH, SP1 via `cargo prove` / `sp1up`
-- Host/workspace rustc: `rust-toolchain.toml` (1.94.1 for `sp1-sdk`). Program crate MSRV is `1.87` (≤ Solana platform ~1.89); do not set `program` to 1.94+
+- Host/workspace rustc: `rust-toolchain.toml` (1.94.1 for `sp1-sdk`). Program crate MSRV is `1.87` (≤ Solana platform ~1.89); do not set the program crate to 1.94+
 - Localnet: `solana config get` → localhost; wallet `~/.config/solana/id.json`
 
 ## Do not
 
-- Do not invent nested `program/programs/...` layouts
+- Do not nest the Anchor crate under a second `programs/` (e.g. `programs/foo/programs/...`)
 - Do not commit keypairs, ledgers, `.so` proofs, or SP1 device caches (see `.gitignore`)
 - Do not index `target/`, `.anchor/`, `test-ledger/`, or proof artifacts (see `.cursorignore`)
 - Do not expand scope past the current `roadmap.md` Day unless asked

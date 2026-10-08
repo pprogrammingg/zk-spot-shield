@@ -24,7 +24,7 @@ fn test_global_config_initialize() {
     let mut svm = LiteSVM::new();
 
     let mut program_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    program_path.push("../target/deploy/zk_spot_shield.so");
+    program_path.push("../../target/deploy/zk_spot_shield.so");
 
     let bytes = std::fs::read(&program_path).unwrap_or_else(|_| {
         panic!(
@@ -99,7 +99,7 @@ fn test_vault_initialize() {
     let mut svm = LiteSVM::new();
 
     let mut program_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    program_path.push("../target/deploy/zk_spot_shield.so");
+    program_path.push("../../target/deploy/zk_spot_shield.so");
 
     let bytes = std::fs::read(&program_path).unwrap_or_else(|_| {
         panic!(

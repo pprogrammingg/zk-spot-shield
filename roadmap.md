@@ -1,8 +1,37 @@
-# ZK-Shielded Spot Settlement Engine — Session Roadmap
+# ZK-Shielded Spot Settlement Engine — Session Roadmap (+ private agent payments over HTTP 402; payment-flow UI planned as a separate repo)
 
 Calibrated for **~72 sessions** (Days **0–68** engineering + **3 writing checkpoints**). Each engineering Day is 1.5 hours (3 × 25 min). Writing checkpoints are also full sessions, but they are **not** design sprints — see the visual budget below.
 
 Mark items `[x]` when done. A Day is **done** only when its *Exit* criteria pass — not when the code “mostly exists.”
+
+---
+
+## Track: private agent payments over HTTP 402 (hackathons · jobs · funding)
+
+**Why:** ZK Spot Shield becomes the private payer for machine payments — an AI agent pays an API over HTTP 402 (Stripe MPP / Coinbase x402 on Solana) from a shielded note, so the payment settles without exposing the agent's wallet or balance. This is the rail Stripe and Coinbase are building, which makes the project a hackathon entry, a job-loop talking point and, if traction shows up, a fundable startup.
+
+**Scope rule:** the core slice comes first (on-chain verify → settle → localnet E2E, target **Nov 8**). Nothing on this track starts before that, except the plain 402 demo (no ZK) built on Mondays.
+
+### Milestones
+
+- [ ] **P0 — Plain 402 demo (Mondays, from Oct 12):** agent hits a paid endpoint → `402` with price → pays USDC on Solana devnet (Circle faucet) → server verifies → returns data. Published early. No Stripe approval needed on devnet.
+- [ ] **P1 — Shielded payer (after the Nov 8 E2E):** the agent's payment comes from a ZK Spot Shield settle instead of a public wallet. *Exit:* one paid request on localnet where the chain sees amount + nullifier, not the payer.
+- [ ] **P2 — Payment-flow UI (separate repo):** small web app showing the flow end-to-end — request → 402 quote → shielded pay → response — with what the chain sees vs what stays private. Lives in its own repo (e.g. `zk-spot-shield-pay`) that depends on this one; this repo stays program + prover + SDK.
+- [ ] **P3 — Stripe sandbox path (optional):** same demo through the Stripe MPP sandbox (cards / Tempo testnet). Real USDC-on-Solana into a Stripe balance needs approval via `machine-payments@stripe.com` — only once there is a real user.
+
+### Where it gets shown
+
+| When | Stage | What to show |
+| --- | --- | --- |
+| Oct 12 | Colosseum World's Fair submission | Core proof flow + docs site; 402 track as the roadmap |
+| Weekly | Colosseum project updates / Eternal | What shipped, what's next (1-min video when due) |
+| Nov 3 | Stripe Sessions 2027 talk proposal | "Private machine payments: agents paying over MPP on Solana with ZK proofs" + real numbers from P0/P1 |
+| Nov 13–15 | Agentic Payments Hackathon (Toronto) | Mentor on Solana ZK + 402; demo P1 if ready |
+| After E2E | Local Solana meetup showcase | P1 live demo |
+
+### Funding (only if traction)
+
+Colosseum Eternal → accelerator (up to US$250K pre-seed, very selective). Not a goal on its own: the primary outcome is a top-tier job offer; funding is considered only if real users or a design partner appear. Revisit after P1.
 
 ---
 
@@ -389,6 +418,14 @@ The program on Solana already survives a seized website. The **basic UI** does n
   - [ ] *Exit:* Runbook a stranger can follow if the primary URL is gone; tag or note `uncensorable-ui`
 
 **Out of scope here:** fully trustless in-browser Groth16 on a phone. Prove can stay remote; uncensorable means **anyone can host the UI and submit the tx**, not that prove is free or local.
+
+---
+
+## Tech debt (extra — not a Day)
+
+Tasks outside the numbered Day sequence. Do when they unblock toolchain/CI; do not pull them into a session Mid-Day.
+
+- [x] **Anchor `programs/*/` layout** — Move on-chain crate from `program/` → `programs/zk_spot_shield/` so AVM/Anchor discover `anchor-lang` under the standard path. Workspace + `Anchor.toml` members, LiteSVM `.so` path, docs/rules/CI updated. *Exit:* `cargo test -p zk_spot_shield --lib` and `anchor build --ignore-keys` succeed.
 
 ---
 

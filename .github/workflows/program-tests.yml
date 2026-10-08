@@ -42,7 +42,7 @@ jobs:
             ~/.cargo/bin/avm
             ~/.cargo/bin/anchor
             ~/.avm
-          key: avm-solana-${{ hashFiles('Anchor.toml', 'program/Cargo.toml', 'Cargo.lock') }}-${{ runner.os }}
+          key: avm-solana-${{ hashFiles('Anchor.toml', 'programs/zk_spot_shield/Cargo.toml', 'Cargo.lock') }}-${{ runner.os }}
 
       # AVM from the release named in Anchor.toml, not git HEAD (HEAD can
       # require a newer rustc). The shim installs that Anchor CLI; Solana

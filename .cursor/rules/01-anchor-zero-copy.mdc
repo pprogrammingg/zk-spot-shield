@@ -1,6 +1,6 @@
 ---
 description: Anchor zero-copy account layout and AccountLoader conventions
-globs: program/**/*.rs
+globs: programs/**/*.rs
 alwaysApply: false
 ---
 

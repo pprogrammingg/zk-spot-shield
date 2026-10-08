@@ -19,7 +19,7 @@ ZK Spot Shield is a Solana program that settles spot swaps behind SP1 zero-knowl
 
 ## Flow summary (user swap request → settle)
 
-End-to-end path once the protocol is live. **Client** = wallet / `client/` SDK. **Backend** = off-chain operator (tree indexer + optional relayer; not in-repo yet). **ZK** = `zk-circuit/` (shared I/O, SP1 guest, host prover). **Solana** = `program/` (`zk_spot_shield`) + SPL token program.
+End-to-end path once the protocol is live. **Client** = wallet / `client/` SDK. **Backend** = off-chain operator (tree indexer + optional relayer; not in-repo yet). **ZK** = `zk-circuit/` (shared I/O, SP1 guest, host prover). **Solana** = `programs/zk_spot_shield/` + SPL token program.
 
 Some later crates (relayer, on-chain tree insert) are still on the roadmap; the **objects and I/O** below match the circuit journal (`PublicOutputs`) and on-chain accounts (`GlobalConfig`, `CleanFundsRoot`, `NullifierAccount`, `VaultState`).
 
@@ -58,8 +58,8 @@ For someone who needs to build and run this repo locally (localnet).
 | Topic | Task | Version / target | Verify |
 | --- | --- | --- | --- |
 | Rust | Install via [rustup](https://rustup.rs/) | **1.94.1** host (`rust-toolchain.toml` for `sp1-sdk`); **program BPF** uses Solana’s own rustc (~1.89) — `program` MSRV is `1.87`, not 1.94 | `rustc --version` · `cargo --version` |
-| Solana CLI | In the repo, `avm solana install` | Mapped from the Anchor release in `Anchor.toml`: **3.1.10** for Anchor 1.1.2 (Agave 3.x, platform-tools v1.52). Agave 4 / SBPFv3 waits for the LiteSVM and platform-tools bump in `program/Cargo.toml` ([Agave install](https://docs.anza.xyz/cli/install)) | `solana --version` |
-| Anchor CLI | Install [AVM](https://www.anchor-lang.com/docs/references/avm), then that release | **1.1.2**, `[toolchain] anchor_version` in `Anchor.toml` (same release as `anchor-lang`; AVM looks under `programs/*/`, and this crate is `program/`) | `anchor --version` |
+| Solana CLI | In the repo, `avm solana install` | Mapped from the Anchor release in `Anchor.toml`: **3.1.10** for Anchor 1.1.2 (Agave 3.x, platform-tools v1.52). Agave 4 / SBPFv3 waits for the LiteSVM and platform-tools bump in `programs/zk_spot_shield/Cargo.toml` ([Agave install](https://docs.anza.xyz/cli/install)) | `solana --version` |
+| Anchor CLI | Install [AVM](https://www.anchor-lang.com/docs/references/avm), then that release | **1.1.2**, `[toolchain] anchor_version` in `Anchor.toml` (same as `anchor-lang` in `programs/zk_spot_shield/`) | `anchor --version` |
 | SP1 CLI | Install + update via `sp1up` | current SP1 release | `cargo prove --version` |
 | Node.js | Runtime for Anchor/TS client | `20+` LTS | `node --version` · `npm --version` |
 | Local keypair | Create wallet for localnet | any fresh keypair | `solana-keygen new` |

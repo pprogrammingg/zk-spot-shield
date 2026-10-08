@@ -1,11 +1,10 @@
 skip_local_validator = true
 
 [toolchain]
-# AVM looks for program crates under programs/*/, and this crate lives in
-# program/, so the Anchor CLI release is named here (same as anchor-lang).
-# `avm solana install` maps that release through AVM's Anchor→Solana map
+# Explicit Anchor CLI pin (matches programs/zk_spot_shield anchor-lang).
+# `avm solana install` maps it through AVM's Anchor→Solana map
 # (1.1.2 → 3.1.10: Agave 3.x, platform-tools v1.52). Agave 4 / SBPFv3
-# waits for the LiteSVM and platform-tools bump in program/Cargo.toml.
+# waits for the LiteSVM and platform-tools bump in programs/zk_spot_shield.
 anchor_version = "1.1.2"
 
 [features]
@@ -20,7 +19,7 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [workspace]
-members = ["program"]
+members = ["programs/zk_spot_shield"]
 
 [scripts]
 test = "cargo test -p zk_spot_shield"
