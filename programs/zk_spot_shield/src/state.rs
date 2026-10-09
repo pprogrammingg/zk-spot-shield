@@ -1,6 +1,8 @@
 use anchor_lang::prelude::*;
 
-use crate::{CLEAN_FUNDS_ROOT_SEED_PREFIX, NULLIFIER_SEED_PREFIX};
+use crate::{
+    error::ErrorCode, CLEAN_FUNDS_ROOT_SEED_PREFIX, NULLIFIER_SEED_PREFIX,
+};
 
 
 #[account]
@@ -45,6 +47,35 @@ impl VaultState {
             program_id,
         )
     }
+
+    /// Day 26: 1:1 spot accounting on zero-copy reserves.
+    /// Vault takes `asset_mint` (`checked_add`) and pays the other mint (`checked_sub`).
+    pub fn apply_swap(&mut self, amount: u64, asset_mint: &Pubkey) -> Result<()> {
+        require!(amount > 0, ErrorCode::ZeroSwapAmount);
+
+        if asset_mint == &self.mint_a {
+            self.reserve_a = self
+                .reserve_a
+                .checked_add(amount)
+                .ok_or(error!(ErrorCode::VaultReserveOverflow))?;
+            self.reserve_b = self
+                .reserve_b
+                .checked_sub(amount)
+                .ok_or(error!(ErrorCode::VaultReserveUnderflow))?;
+        } else if asset_mint == &self.mint_b {
+            self.reserve_b = self
+                .reserve_b
+                .checked_add(amount)
+                .ok_or(error!(ErrorCode::VaultReserveOverflow))?;
+            self.reserve_a = self
+                .reserve_a
+                .checked_sub(amount)
+                .ok_or(error!(ErrorCode::VaultReserveUnderflow))?;
+        } else {
+            return err!(ErrorCode::UnknownVaultMint);
+        }
+        Ok(())
+    }
 }
 
 /// PDA seeds:
@@ -77,10 +108,10 @@ impl NullifierAccount {
 }
 
 /// PDA seeds:
-/// ["clean_funds_root"]
+/// ["clean_funds_root", root]
 ///
-/// A single account is used to store the approved Merkle root.
-/// This root is used to verify that a transaction is valid.
+/// One account per approved Merkle root. Existence means the root is allow-listed
+/// for settle (journal `merkle_root` must match this PDA).
 #[account(zero_copy)]
 #[repr(C)]
 #[derive(Debug, PartialEq)]
@@ -108,6 +139,66 @@ impl CleanFundsRoot {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn vault_state_is_120_bytes_and_aligned() {
+        assert_eq!(std::mem::size_of::<VaultState>(), 120);
+        assert!(std::mem::size_of::<VaultState>().is_multiple_of(8));
+    }
+
+    fn sample_vault(reserve_a: u64, reserve_b: u64) -> VaultState {
+        let mint_a = Pubkey::new_from_array([3u8; 32]);
+        let mint_b = Pubkey::new_from_array([4u8; 32]);
+        VaultState {
+            authority: Pubkey::new_unique(),
+            mint_a,
+            mint_b,
+            reserve_a,
+            reserve_b,
+            bump: 255,
+            _padding: [0u8; 7],
+        }
+    }
+
+    #[test]
+    fn apply_swap_moves_reserves_one_to_one() {
+        let mut vault = sample_vault(1_000, 1_000);
+        let mint_a = vault.mint_a;
+        vault.apply_swap(100, &mint_a).unwrap();
+        assert_eq!(vault.reserve_a, 1_100);
+        assert_eq!(vault.reserve_b, 900);
+    }
+
+    #[test]
+    fn apply_swap_rejects_underflow() {
+        let mut vault = sample_vault(1_000, 50);
+        let mint_a = vault.mint_a;
+        let err = vault.apply_swap(100, &mint_a).unwrap_err();
+        assert_eq!(err, error!(ErrorCode::VaultReserveUnderflow));
+    }
+
+    #[test]
+    fn apply_swap_rejects_overflow() {
+        let mut vault = sample_vault(u64::MAX, 1_000);
+        let mint_a = vault.mint_a;
+        let err = vault.apply_swap(1, &mint_a).unwrap_err();
+        assert_eq!(err, error!(ErrorCode::VaultReserveOverflow));
+    }
+
+    #[test]
+    fn apply_swap_rejects_unknown_mint() {
+        let mut vault = sample_vault(1_000, 1_000);
+        let err = vault
+            .apply_swap(1, &Pubkey::new_from_array([9u8; 32]))
+            .unwrap_err();
+        assert_eq!(err, error!(ErrorCode::UnknownVaultMint));
+    }
+
+    #[test]
+    fn global_config_init_space_is_65() {
+        // authority (32) + vkey_hash (32) + pause_flag (1); rent space = 8 + INIT_SPACE.
+        assert_eq!(GlobalConfig::INIT_SPACE, 65);
+    }
 
     #[test]
     fn nullifier_account_size_is_32_bytes() {

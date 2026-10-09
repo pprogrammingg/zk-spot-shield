@@ -18,13 +18,20 @@ use sp1_sdk::{
     utils, Elf, HashableKey, ProveRequest, Prover, ProvingKey, ProverClient, SP1Stdin,
 };
 
-use zk_circuit_host::fixtures;
+use zk_circuit_host::{fixtures, format_vkey_rust_array, parse_vkey_bytes32, print_happy_fixture_vkey};
 use zk_circuit_io::PublicOutputs;
 
 const ELF: Elf = Elf::Static(include_bytes!("../../../target/elf/guest"));
 
 #[tokio::main]
 async fn main() {
+    // Day 15: offline print of frozen fixture vkey (no SP1 / network).
+    //   cargo run -p zk-circuit-host -- --print-vkey
+    if std::env::args().any(|a| a == "--print-vkey") {
+        print_happy_fixture_vkey();
+        return;
+    }
+
     fixtures::load_root_dotenv();
     utils::setup_logger();
 
@@ -53,12 +60,16 @@ async fn main() {
         println!(
             "skip groth16 (set SP1_USE_NETWORK=1 and SP1_GROTH16=1 in root .env, then cargo run --features network --release)"
         );
+        println!("Day 15 offline vkey: cargo run -p zk-circuit-host -- --print-vkey");
         return;
     }
 
     let pk = client.setup(ELF).await.expect("setup failed");
     let vk = pk.verifying_key();
-    println!("vk.bytes32() = {}", vk.bytes32());
+    let vk_hex = vk.bytes32();
+    println!("vk.bytes32() = {vk_hex}");
+    let vk_bytes = parse_vkey_bytes32(&vk_hex).expect("vk.bytes32 parse");
+    println!("VKEY_HASH (Rust):\n{}", format_vkey_rust_array(&vk_bytes));
 
     let t0 = Instant::now();
     let proof = client

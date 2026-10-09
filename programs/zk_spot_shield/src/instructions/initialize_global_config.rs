@@ -1,3 +1,6 @@
+//! Day 21: create `GlobalConfig` PDA (`["global-config"]`).
+//! Stores authority, frozen circuit `vkey_hash`, and `pause_flag = false`.
+
 use anchor_lang::prelude::*;
 
 use crate::{constants::*, state::GlobalConfig};

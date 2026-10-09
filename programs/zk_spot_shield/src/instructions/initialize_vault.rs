@@ -1,3 +1,6 @@
+//! Day 21: create the zero-copy escrow `VaultState` PDA (`["spot_vault"]`).
+//! Mints stay unset until deposit wiring; reserves start at zero.
+
 use crate::{state::VaultState, SPOT_VAULT_SEED};
 use anchor_lang::prelude::*;
 
@@ -18,12 +21,9 @@ pub struct InitializeVault<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handle_initialize_vault(
-    ctx: Context<InitializeVault>,
-) -> Result<()> {
-    // Use load_init() when setting up a zero account for the first time
+pub fn handle_initialize_vault(ctx: Context<InitializeVault>) -> Result<()> {
     let mut vault = ctx.accounts.vault.load_init()?;
-    
+
     vault.authority = ctx.accounts.payer.key();
     vault.mint_a = Pubkey::default();
     vault.mint_b = Pubkey::default();

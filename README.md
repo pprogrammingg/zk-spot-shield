@@ -13,6 +13,7 @@ ZK Spot Shield is a Solana program that settles spot swaps behind SP1 zero-knowl
 
 - [Flow summary (user swap request → settle)](#flow-summary-user-swap-request--settle)
 - [Installation](#installation)
+- [Build and run (Month 1 checkpoint)](#build-and-run-month-1-checkpoint)
 - [Tests](#tests)
 - [Docs site](#docs-site)
 - [Cursor / agents](#cursor--agents)
@@ -89,6 +90,50 @@ nvm install --lts
 ```
 
 You are ready when every **Verify** command succeeds and `solana config get` shows `localhost`.
+
+## Build and run (Month 1 checkpoint)
+
+Stranger path after toolchain install. Tag restore point: `v0.1-month1` (create once Month 1 work is committed: `git tag v0.1-month1`).
+
+### Solana program
+
+```bash
+export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+anchor build
+# artifact: target/deploy/zk_spot_shield.so
+```
+
+### Host execute (local, free)
+
+Rebuild the guest ELF only if `zk-circuit/guest` or `zk-circuit/io` changed; the host embeds it at compile time.
+
+```bash
+mkdir -p target/elf
+cargo prove build -p guest --elf-name guest --output-directory target/elf
+# path may nest: find target/elf -type f
+
+RUST_LOG=info cargo run -p zk-circuit-host --release
+```
+
+Default run is **execute only** (happy-path fixture → guest → journal asserts). No Groth16, no `$PROVE`.
+
+Offline vkey from the frozen fixture:
+
+```bash
+cargo run -p zk-circuit-host -- --print-vkey
+```
+
+### Groth16 via remote prover (not this laptop)
+
+Local Docker wrap OOMs a 16 GB machine. Use Succinct network (needs deposited `$PROVE` + gitignored root `.env`). Details: [`notes/proving.md`](./notes/proving.md), [`further_explanations/prove_network.md`](./further_explanations/prove_network.md).
+
+```bash
+# root .env: SP1_USE_NETWORK=1, NETWORK_PRIVATE_KEY=… (and related Succinct vars)
+SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info \
+  cargo run -p zk-circuit-host --features network --release
+```
+
+Writes gitignored `sp1-datas/`; copies public happy-path bytes to `zk-circuit/fixtures/happy/` for CI. Budgets for settle (sizes / ~280k CU / ALT): [`notes/budgets.md`](./notes/budgets.md).
 
 ## Tests
 

@@ -29,13 +29,20 @@ anchor-spl = "1.1.2"
 # 2. Zero-Copy RAM Management
 bytemuck = { version = "1.16", features = ["derive"] }
 
-# 3. SP1 On-Chain Verifier
-sp1-solana = "0.1.0"
+# 3. SP1 v6 Groth16 on Solana (BN254 precompiles). crates.io `sp1-solana`
+# 0.1.0 only covers SP1 ≤ v5; we verify the v6.1.0 envelope in `verify_sp1`.
+groth16-solana = "0.2.0"
+sha2 = "0.10"
+ark-bn254 = "0.4.0"
+ark-ff = "0.4.2"
+ark-serialize = "0.4.2"
 
 [dev-dependencies]
 # Stay on 0.10 until a coordinated Agave/LiteSVM bump. 0.15+ needs matching
 # solana-sysvar/wincode (0.5 vs 0.6) — Dependabot-only bumps fail clippy/tests.
 litesvm = "=0.10.0"
+solana-account = "3.2.0"
+solana-compute-budget-interface = "3.1.0"
 solana-message = "3.0.1"
 solana-transaction = "3.0.2"
 solana-signer = "3.0.0"

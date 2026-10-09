@@ -2302,6 +2302,11 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 [[package]]
 name = "client"
 version = "0.1.0"
+dependencies = [
+ "solana-compute-budget-interface",
+ "solana-instruction",
+ "solana-pubkey 3.0.0",
+]
 
 [[package]]
 name = "cmake"
@@ -9271,22 +9276,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sp1-solana"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "52f3933caad3aa61eeebfa4d1dffd83e3c09653ad1b4208f45ea16570d66e406"
-dependencies = [
- "ark-bn254 0.4.0",
- "ark-ff 0.4.2",
- "ark-serialize 0.4.2",
- "groth16-solana",
- "hex",
- "num-bigint 0.4.8",
- "sha2 0.10.9",
- "thiserror 1.0.69",
-]
-
-[[package]]
 name = "sp1-verifier"
 version = "6.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11057,13 +11046,19 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "ark-bn254 0.4.0",
+ "ark-ff 0.4.2",
+ "ark-serialize 0.4.2",
  "bytemuck",
+ "groth16-solana",
  "litesvm",
+ "sha2 0.10.9",
+ "solana-account",
+ "solana-compute-budget-interface",
  "solana-keypair",
  "solana-message",
  "solana-signer",
  "solana-transaction",
- "sp1-solana",
 ]
 
 [[package]]

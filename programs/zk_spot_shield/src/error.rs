@@ -22,4 +22,31 @@ pub enum ErrorCode {
 
     #[msg("The Merkle root was not found.")]
     MerkleRootNotFound,
+
+    #[msg("Proof bytes are required for settle.")]
+    EmptyProof,
+
+    #[msg("Journal bytes are required for settle.")]
+    EmptyJournal,
+
+    #[msg("Failed to parse the proof journal public values.")]
+    InvalidJournal,
+
+    #[msg("Journal mint does not match vault mint_a or mint_b.")]
+    UnknownVaultMint,
+
+    #[msg("Vault reserve overflow.")]
+    VaultReserveOverflow,
+
+    #[msg("Vault reserve underflow.")]
+    VaultReserveUnderflow,
+
+    #[msg("Swap amount must be non-zero.")]
+    ZeroSwapAmount,
+
+    #[msg("Token account mint or authority does not match the vault.")]
+    InvalidTokenAccount,
+
+    #[msg("Protocol is paused; settle is disabled.")]
+    ProtocolPaused,
 }

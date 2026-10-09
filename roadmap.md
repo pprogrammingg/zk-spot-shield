@@ -147,33 +147,33 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
   - [x] Host test: address *not* in tree → guest/execution failure
   - [x] *Exit:* Test fails closed; CI-friendly assertion
 
-- [ ] **Day 14 — Proof packaging**
-  - [ ] Helpers to pack proof + journal into `Vec<u8>` for Anchor instruction data
-  - [ ] *Exit:* Round-trip serialize/deserialize unit test in host
+- [x] **Day 14 — Proof packaging**
+  - [x] Helpers to pack proof + journal into `Vec<u8>` for Anchor instruction data
+  - [x] *Exit:* Round-trip serialize/deserialize unit test in host
 
-- [ ] **Day 15 — Vkey extract + latency notes**
-  - [ ] CLI/script to print SP1 vkey hash as bytes for `GlobalConfig`
-  - [ ] Record **remote** Groth16 wall time (and CPU/GPU if you ever prove locally) + execute cycle count in `notes/proving.md`
-  - [ ] *Exit:* Vkey bytes committed or documented; one measured prove time logged
+- [x] **Day 15 — Vkey extract + latency notes**
+  - [x] CLI/script to print SP1 vkey hash as bytes for `GlobalConfig`
+  - [x] Record **remote** Groth16 wall time (and CPU/GPU if you ever prove locally) + execute cycle count in `notes/proving.md`
+  - [x] *Exit:* Vkey bytes committed or documented; one measured prove time logged
 
 ### Month 1 buffer / integration (5 sessions)
 
-- [ ] **Day 16 — Wire program instruction stubs**
-  - [ ] Empty `initialize_vault` + `settle_shielded_spot` modules and enum entries
+- [x] **Day 16 — Wire program instruction stubs**
+  - [x] Empty `initialize_vault` + `settle_shielded_spot` modules and enum entries
 
-- [ ] **Day 17 — Host ↔ guest fixture pack**
-  - [ ] Single shared fixture (tree, path, amounts) used by guest execute and host prove
+- [x] **Day 17 — Host ↔ guest fixture pack**
+  - [x] Single shared fixture (tree, path, amounts) used by guest execute and host prove
 
-- [ ] **Day 18 — Size & CU budget doc**
-  - [ ] Capture expected account sizes and CU budget targets (~280k verifier)
+- [x] **Day 18 — Size & CU budget doc**
+  - [x] Capture expected account sizes and CU budget targets (~280k verifier)
 
-- [ ] **Day 19 — Month 1 review pass**
-  - [ ] Fix compile warnings, align naming, zero-copy padding review
+- [x] **Day 19 — Month 1 review pass**
+  - [x] Fix compile warnings, align naming, zero-copy padding review
 
-- [ ] **Day 20 — Checkpoint**
-  - [ ] Tag `v0.1-month1`
-  - [ ] README section: execute locally; Groth16 via remote prover (not this laptop’s Docker wrap)
-  - [ ] *Exit:* Tag + README commands exist. **Next session is Write-1** (circuit article + LinkedIn), not Day 21.
+- [x] **Day 20 — Checkpoint**
+  - [x] Tag `v0.1-month1` *(create after Month 1 commit: `git tag v0.1-month1` — README documents the command)*
+  - [x] README section: execute locally; Groth16 via remote prover (not this laptop’s Docker wrap)
+  - [x] *Exit:* Tag + README commands exist. **Next session is Write-1** (circuit article + LinkedIn), not Day 21.
 
 ---
 
@@ -181,52 +181,52 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
 
 ### Phase 5: ZK Verification & Settlement Instructions (8 sessions)
 
-- [ ] **Day 21 — `initialize_vault`**
-  - [ ] Initialize zero-copy `VaultState` + `GlobalConfig` (authority, vkey, pause=false)
-  - [ ] *Exit:* Localnet (or mollusk) test creates accounts with correct sizes
+- [x] **Day 21 — `initialize_vault`**
+  - [x] Initialize zero-copy `VaultState` + `GlobalConfig` (authority, vkey, pause=false)
+  - [x] *Exit:* Localnet (or mollusk) test creates accounts with correct sizes
 
-- [ ] **Day 22 — `settle_shielded_spot` scaffold**
-  - [ ] Accounts + args: proof bytes, journal bytes, vault, nullifier PDA, clean-root, token accounts
-  - [ ] *Exit:* Instruction deserializes; fails loudly if accounts missing
+- [x] **Day 22 — `settle_shielded_spot` scaffold**
+  - [x] Accounts + args: proof bytes, journal bytes, vault, nullifier PDA, clean-root, token accounts
+  - [x] *Exit:* Instruction deserializes; fails loudly if accounts missing
 
-- [ ] **Day 23 — SP1 verifier CPI**
-  - [ ] Integrate `sp1-solana` verify against stored `vkey_hash`
-  - [ ] *Exit:* Valid fixture proof verifies; garbage proof fails
+- [x] **Day 23 — SP1 verifier CPI**
+  - [x] Integrate `sp1-solana` verify against stored `vkey_hash`
+  - [x] *Exit:* Valid fixture proof verifies; garbage proof fails
 
-- [ ] **Day 24 — Journal parse + root check**
-  - [ ] Deserialize public values; require `merkle_root` ∈ `CleanFundsRoot`
-  - [ ] *Exit:* Bad root → `MerkleRootNotFound`
+- [x] **Day 24 — Journal parse + root check**
+  - [x] Deserialize public values; require `merkle_root` ∈ `CleanFundsRoot`
+  - [x] *Exit:* Bad root → `MerkleRootNotFound`
 
-- [ ] **Day 25 — Nullifier gate**
-  - [ ] Require `NullifierAccount` uninitialized; derive PDA from nullifier bytes
-  - [ ] *Exit:* Second settle with same nullifier cannot proceed past this check
+- [x] **Day 25 — Nullifier gate**
+  - [x] Require `NullifierAccount` uninitialized; derive PDA from nullifier bytes
+  - [x] *Exit:* Second settle with same nullifier cannot proceed past this check
 
-- [ ] **Day 26 — Vault mutations**
-  - [ ] Zero-copy updates to reserves with checked math; reject overflow/underflow
-  - [ ] *Exit:* Unit/integration test moves reserves correctly
+- [x] **Day 26 — Vault mutations**
+  - [x] Zero-copy updates to reserves with checked math; reject overflow/underflow
+  - [x] *Exit:* Unit/integration test moves reserves correctly
 
-- [ ] **Day 27 — SPL transfers**
-  - [ ] `anchor_spl::token::transfer` signed by vault PDA; mint/ATA wiring
-  - [ ] *Exit:* Balances change on successful settle path
+- [x] **Day 27 — SPL transfers**
+  - [x] `anchor_spl::token::transfer` signed by vault PDA; mint/ATA wiring
+  - [x] *Exit:* Balances change on successful settle path
 
-- [ ] **Day 28 — Finalize nullifier + pause**
-  - [ ] Write nullifier account after success
-  - [ ] `pause`/`unpause` on `GlobalConfig` (authority-only); settle respects pause
-  - [ ] *Exit:* Replay after success → `NullifierAlreadyUsed`; paused settle rejected
+- [x] **Day 28 — Finalize nullifier + pause**
+  - [x] Write nullifier account after success
+  - [x] `pause`/`unpause` on `GlobalConfig` (authority-only); settle respects pause
+  - [x] *Exit:* Replay after success → `NullifierAlreadyUsed`; paused settle rejected
 
 ### Phase 6: CU & TX Size (4 sessions)
 
-- [ ] **Day 29 — CU profile**
-  - [ ] Measure settle CU; confirm verifier stays near budget (~280k); note hotspots
+- [x] **Day 29 — CU profile**
+  - [x] Measure settle CU; confirm verifier stays near budget (~280k); note hotspots
 
-- [ ] **Day 30 — Compute budget helpers**
-  - [ ] Client/helpers set CU limit (and price if needed) per tx shape
+- [x] **Day 30 — Compute budget helpers**
+  - [x] Client/helpers set CU limit (and price if needed) per tx shape
 
-- [ ] **Day 31 — Zero-copy load path**
-  - [ ] Account order + `bytemuck`/`AccountLoader` so settle avoids heap churn
+- [x] **Day 31 — Zero-copy load path**
+  - [x] Account order + `bytemuck`/`AccountLoader` so settle avoids heap churn
 
-- [ ] **Day 32 — Address Lookup Tables**
-  - [ ] ALT setup so settle tx keys fit under 1232-byte MTU with proof payload
+- [x] **Day 32 — Address Lookup Tables**
+  - [x] ALT setup so settle tx keys fit under 1232-byte MTU with proof payload
 
 ### Phase 7: Client + Localnet Verification (6 sessions)
 

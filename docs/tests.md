@@ -9,7 +9,7 @@
 
 Default tests never call a live prover or cluster. The one real proof was recorded once and is reused as a fixture.
 
-All 32-byte values below are shown as hex. The JSON mirrors the Rust struct `PrivateInputs`. Each `merkle_path` entry is a `sibling` hash and an `is_right` flag (`true` means the sibling sits on the right, so the parent is `hash(current, sibling)`).
+All 32-byte values below are shown as hex. The canonical portable dump is [`zk-circuit/fixtures/happy.json`](../zk-circuit/fixtures/happy.json); the host builds the same pack in Rust via `happy_path_inputs()`. Each `merkle_path` entry is a `sibling` hash and an `is_right` flag (`true` means the sibling sits on the right, so the parent is `hash(current, sibling)`).
 
 ## Happy Path Example
 

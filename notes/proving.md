@@ -1,4 +1,4 @@
-# Proving log (Day 12)
+# Proving log (Day 12 + Day 15)
 
 Remote Succinct Groth16 for the **happy-path fixture** (`zk_circuit_host::fixtures::happy_path_inputs`). Not a mock. Local Docker wrap OOMs this 16 GB Mac.
 
@@ -11,7 +11,17 @@ SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info \
   cargo run -p zk-circuit-host --features network --release
 ```
 
-Guest/io unchanged → skip `cargo prove build`. Guest changed → rebuild ELF, then recompile host (it `include_bytes!` the ELF).
+Guest/io unchanged → skip `cargo prove build`. Guest changed → rebuild ELF, then recompile host (it `include_bytes!` the ELF). Re-prove updates fixtures + this note + `programs/zk_spot_shield` `VKEY_HASH`.
+
+## Day 15 — print vkey without proving
+
+Frozen fixture only (offline, free):
+
+```bash
+cargo run -p zk-circuit-host -- --print-vkey
+```
+
+Prints `vk.bytes32()` hex and a Rust `[u8; 32]` for `GlobalConfig` / `constants::VKEY_HASH`.
 
 ## This wrap
 
@@ -33,4 +43,15 @@ Guest/io unchanged → skip `cargo prove build`. Guest changed → rebuild ELF, 
 0x00b3a15ce4c0ea94e3b0267473c6b7543a80c72d209b2c947f71886c6a5735d7
 ```
 
-Public bytes (commit these, not `sp1-artifacts/`): `zk-circuit/fixtures/happy/{groth16,journal}.bin` + `vkey.bytes32.txt`. On-chain packing still uses `groth16.bin` (`proof.bytes()`), not the SDK suitcase `proof.bin`.
+**vkey** as Rust (`programs/zk_spot_shield/src/constants.rs` `VKEY_HASH`):
+
+```rust
+[
+    0x00, 0xb3, 0xa1, 0x5c, 0xe4, 0xc0, 0xea, 0x94,
+    0xe3, 0xb0, 0x26, 0x74, 0x73, 0xc6, 0xb7, 0x54,
+    0x3a, 0x80, 0xc7, 0x2d, 0x20, 0x9b, 0x2c, 0x94,
+    0x7f, 0x71, 0x88, 0x6c, 0x6a, 0x57, 0x35, 0xd7,
+]
+```
+
+Public bytes (commit these, not `sp1-datas/`): `zk-circuit/fixtures/happy/{groth16,journal}.bin` + `vkey.bytes32.txt`. On-chain packing still uses `groth16.bin` (`proof.bytes()`), not the SDK suitcase `proof.bin`.
