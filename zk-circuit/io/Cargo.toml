@@ -8,4 +8,4 @@ rust-version.workspace = true
 [dependencies]
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 light-poseidon = { version = "0.2", default-features = false }
-ark-bn254 = { version = "0.4", default-features = false }
+ark-bn254 = { version = "0.5", default-features = false }
