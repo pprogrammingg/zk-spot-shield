@@ -110,3 +110,5 @@ flowchart TB
 | `zk-circuit/host/` | Host: feeds inputs to the guest, runs execute or requests a proof |
 | `zk-circuit/fixtures/happy/` | Recorded Groth16 proof, journal, and verifying key from one real remote proof |
 | `client/` | Client helpers (placeholder for the future SDK) |
+
+See [Security](security.md) for the attack-surface table (threat, mitigation, recovery).

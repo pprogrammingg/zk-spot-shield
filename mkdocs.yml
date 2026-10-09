@@ -8,6 +8,7 @@ docs_dir: docs
 nav:
   - Introduction: index.md
   - Architecture: architecture.md
+  - Security: security.md
   - Solana Program: solana-program.md
   - Guest and Host: circuit.md
   - Tests: tests.md
