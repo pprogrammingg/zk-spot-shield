@@ -230,27 +230,27 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
 
 ### Phase 7: Client + Localnet Verification (6 sessions)
 
-- [ ] **Day 33 — TS client + Merkle util**
-  - [ ] `client` Anchor provider to localhost
-  - [ ] Poseidon/SHA-256 tree util matching guest
+- [x] **Day 33 — TS client + Merkle util**
+  - [x] `client` Anchor provider to localhost
+  - [x] Poseidon/SHA-256 tree util matching guest
 
-- [ ] **Day 34 — Prove bridge**
-  - [ ] Client helper invokes host prove and returns proof + public bytes
+- [x] **Day 34 — Prove bridge**
+  - [x] Client helper invokes host prove and returns proof + public bytes
 
-- [ ] **Day 35 — Instruction wrappers**
-  - [ ] Package ALT + compute budget + settle ix
+- [x] **Day 35 — Instruction wrappers**
+  - [x] Package ALT + compute budget + settle ix
 
-- [ ] **Day 36 — Happy-path E2E**
-  - [ ] Init → prove → settle → assert token balances + vault reserves
+- [x] **Day 36 — Happy-path E2E**
+  - [x] Init → prove → settle → assert token balances + vault reserves
 
-- [ ] **Day 37 — Negative E2E triad**
-  - [ ] Flip 1 proof byte → `InvalidProof`
-  - [ ] Replay → `NullifierAlreadyUsed`
-  - [ ] Unregistered root → `MerkleRootNotFound`
+- [x] **Day 37 — Negative E2E triad**
+  - [x] Flip 1 proof byte → `InvalidProof`
+  - [x] Replay → `NullifierAlreadyUsed`
+  - [x] Unregistered root → `MerkleRootNotFound`
 
-- [ ] **Day 38 — `test:e2e` pipeline**
-  - [ ] One command: validator, deploy, prove, settle, assertions
-  - [ ] Optional confirmation listener
+- [x] **Day 38 — `test:e2e` pipeline**
+  - [x] One command: validator, deploy, prove, settle, assertions
+  - [x] Optional confirmation listener
 
 ### Phase 8: Hardening (2 sessions)
 

@@ -12,7 +12,8 @@ Solana + Anchor program that settles spot swaps after SP1 Groth16 verification. 
 - `programs/zk_spot_shield/` — Anchor on-chain crate (`zk_spot_shield`); Anchor/AVM expect `programs/*/`
 - `zk-circuit/io` — shared I/O types + Poseidon Merkle (no zkVM)
 - `zk-circuit/guest` — SP1 guest; `zk-circuit/host` — prover driver
-- `client/` — client helpers / later SDK
+- `client/` — Rust CU/ALT helpers
+- `sdk/` — TypeScript SDK (Anchor provider, Merkle, prove bridge, settle E2E)
 - `Anchor.toml` + root `Cargo.toml` — workspace source of truth
 - `roadmap.md` — session checklist; mark `[x]` only when Exit passes
 - `.github/workflows/` — unit + security CI must stay green (see `05-tests-security.mdc`)

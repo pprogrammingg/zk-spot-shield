@@ -135,6 +135,18 @@ SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info \
 
 Writes gitignored `sp1-datas/`; copies public happy-path bytes to `zk-circuit/fixtures/happy/` for CI. Budgets for settle (sizes / ~280k CU / ALT): [`notes/budgets.md`](./notes/budgets.md).
 
+### TypeScript SDK (`sdk/`, Days 33–38)
+
+Anchor provider for **localhost**, Poseidon Merkle util, prove bridge (fixture or optional host network prove), settle ix + compute-budget wrappers, localnet E2E.
+
+```bash
+cd sdk && npm install && npm test         # unit tests (no validator)
+cd sdk && npm run test:e2e                # validator + deploy preload + settle E2E
+# IDL copy: sdk/idl/zk_spot_shield.json (refresh after `anchor build` if the API changes)
+```
+
+`test:e2e` starts `solana-test-validator` with the program at `declare_id!` plus preloaded config/vault/SPL accounts, runs happy + negative settle cases, then tears down.
+
 ## Tests
 
 See **[tests.md](./tests.md)** for the full map: ZK guest/host/io coverage, stubs vs live prove, CI workflows, and local commands.

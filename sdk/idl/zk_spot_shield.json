@@ -1,0 +1,695 @@
+{
+  "address": "H6X5T8TP6T8hyTySiDVAug8bfULbKGMhCTV5PA9VMHPv",
+  "metadata": {
+    "name": "zk_spot_shield",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "ZK-shielded spot settlement engine (Anchor program)"
+  },
+  "instructions": [
+    {
+      "name": "initialize_global_config",
+      "docs": [
+        "Create `GlobalConfig` PDA: authority, frozen `VKEY_HASH`, pause=false."
+      ],
+      "discriminator": [
+        113,
+        216,
+        122,
+        131,
+        225,
+        209,
+        22,
+        55
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "global_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_vault",
+      "docs": [
+        "Create zero-copy escrow `VaultState` PDA (mints/reserves; token ATAs wired later)."
+      ],
+      "discriminator": [
+        48,
+        191,
+        163,
+        44,
+        71,
+        129,
+        63,
+        164
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  112,
+                  111,
+                  116,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "pause",
+      "docs": [
+        "Authority sets `GlobalConfig.pause_flag = true` (Day 28)."
+      ],
+      "discriminator": [
+        211,
+        22,
+        221,
+        251,
+        74,
+        121,
+        193,
+        47
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global_config"
+          ]
+        },
+        {
+          "name": "global_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "register_clean_funds_root",
+      "docs": [
+        "Authority registers a `CleanFundsRoot` PDA for an approved Merkle root."
+      ],
+      "discriminator": [
+        72,
+        127,
+        15,
+        67,
+        20,
+        98,
+        48,
+        137
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "global_config"
+          ]
+        },
+        {
+          "name": "global_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "clean_funds_root",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  101,
+                  97,
+                  110,
+                  95,
+                  102,
+                  117,
+                  110,
+                  100,
+                  115,
+                  95,
+                  114,
+                  111,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "root"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "settle_shielded_spot",
+      "docs": [
+        "Settle: verify + root + vault reserves + SPL + nullifier (respects pause)."
+      ],
+      "discriminator": [
+        233,
+        96,
+        13,
+        60,
+        148,
+        116,
+        38,
+        171
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "global_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  112,
+                  111,
+                  116,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "clean_funds_root",
+          "docs": [
+            "Approved root PDA for journal `merkle_root` (seeds checked in handler)."
+          ]
+        },
+        {
+          "name": "nullifier_account",
+          "docs": [
+            "One-time spend tag PDA. Must be empty; created after success (Day 28)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "vault_token_a",
+          "writable": true
+        },
+        {
+          "name": "vault_token_b",
+          "writable": true
+        },
+        {
+          "name": "user_token_a",
+          "writable": true
+        },
+        {
+          "name": "user_token_b",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "proof",
+          "type": "bytes"
+        },
+        {
+          "name": "journal",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "unpause",
+      "docs": [
+        "Authority clears `GlobalConfig.pause_flag` (Day 28)."
+      ],
+      "discriminator": [
+        169,
+        144,
+        4,
+        38,
+        10,
+        141,
+        188,
+        255
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global_config"
+          ]
+        },
+        {
+          "name": "global_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "CleanFundsRoot",
+      "discriminator": [
+        208,
+        254,
+        132,
+        180,
+        117,
+        8,
+        33,
+        245
+      ]
+    },
+    {
+      "name": "GlobalConfig",
+      "discriminator": [
+        149,
+        8,
+        156,
+        202,
+        160,
+        252,
+        176,
+        217
+      ]
+    },
+    {
+      "name": "VaultState",
+      "discriminator": [
+        228,
+        196,
+        82,
+        165,
+        98,
+        210,
+        235,
+        152
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "Only the counter authority can update this counter"
+    },
+    {
+      "code": 6001,
+      "name": "CounterOverflow",
+      "msg": "Counter has reached the maximum value"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidProof",
+      "msg": "The zero-knowledge proof is invalid."
+    },
+    {
+      "code": 6003,
+      "name": "NullifierAlreadyUsed",
+      "msg": "The nullifier has already been used."
+    },
+    {
+      "code": 6004,
+      "name": "ZeroCopyDeserializationError",
+      "msg": "Failed to deserialize zero-copy account data."
+    },
+    {
+      "code": 6005,
+      "name": "MerkleRootNotFound",
+      "msg": "The Merkle root was not found."
+    },
+    {
+      "code": 6006,
+      "name": "EmptyProof",
+      "msg": "Proof bytes are required for settle."
+    },
+    {
+      "code": 6007,
+      "name": "EmptyJournal",
+      "msg": "Journal bytes are required for settle."
+    },
+    {
+      "code": 6008,
+      "name": "InvalidJournal",
+      "msg": "Failed to parse the proof journal public values."
+    },
+    {
+      "code": 6009,
+      "name": "UnknownVaultMint",
+      "msg": "Journal mint does not match vault mint_a or mint_b."
+    },
+    {
+      "code": 6010,
+      "name": "VaultReserveOverflow",
+      "msg": "Vault reserve overflow."
+    },
+    {
+      "code": 6011,
+      "name": "VaultReserveUnderflow",
+      "msg": "Vault reserve underflow."
+    },
+    {
+      "code": 6012,
+      "name": "ZeroSwapAmount",
+      "msg": "Swap amount must be non-zero."
+    },
+    {
+      "code": 6013,
+      "name": "InvalidTokenAccount",
+      "msg": "Token account mint or authority does not match the vault."
+    },
+    {
+      "code": 6014,
+      "name": "ProtocolPaused",
+      "msg": "Protocol is paused; settle is disabled."
+    }
+  ],
+  "types": [
+    {
+      "name": "CleanFundsRoot",
+      "docs": [
+        "PDA seeds:",
+        "[\"clean_funds_root\", root]",
+        "",
+        "One account per approved Merkle root. Existence means the root is allow-listed",
+        "for settle (journal `merkle_root` must match this PDA)."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root",
+            "docs": [
+              "An approved 32-byte Merkle root."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "GlobalConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "vkey_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "pause_flag",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultState",
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint_a",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint_b",
+            "type": "pubkey"
+          },
+          {
+            "name": "reserve_a",
+            "type": "u64"
+          },
+          {
+            "name": "reserve_b",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "type": {
+              "array": [
+                "u8",
+                7
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "constants": [
+    {
+      "name": "CLEAN_FUNDS_ROOT_SEED_PREFIX",
+      "type": "bytes",
+      "value": "[99, 108, 101, 97, 110, 95, 102, 117, 110, 100, 115, 95, 114, 111, 111, 116]"
+    },
+    {
+      "name": "GLOBAL_CONFIG_SEED",
+      "type": "bytes",
+      "value": "[103, 108, 111, 98, 97, 108, 45, 99, 111, 110, 102, 105, 103]"
+    },
+    {
+      "name": "NULLIFIER_SEED_PREFIX",
+      "type": "bytes",
+      "value": "[110, 117, 108, 108, 105, 102, 105, 101, 114]"
+    },
+    {
+      "name": "SPOT_VAULT_SEED",
+      "type": "bytes",
+      "value": "[115, 112, 111, 116, 95, 118, 97, 117, 108, 116]"
+    },
+    {
+      "name": "VKEY_HASH",
+      "docs": [
+        "SP1 `vk.bytes32()` for the frozen happy-path guest ELF (Day 15).",
+        "Source: `zk-circuit/fixtures/happy/vkey.bytes32.txt` / `notes/proving.md`.",
+        "Rebuild guest → re-prove → update this array, the fixture, and the notes."
+      ],
+      "type": {
+        "array": [
+          "u8",
+          32
+        ]
+      },
+      "value": "[0, 179, 161, 92, 228, 192, 234, 148, 227, 176, 38, 116, 115, 198, 183, 84, 58, 128, 199, 45, 32, 155, 44, 148, 127, 113, 136, 108, 106, 87, 53, 215]"
+    }
+  ]
+}

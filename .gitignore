@@ -21,10 +21,21 @@
 # Keypairs & Cryptographic Secrets (CRITICAL FOR SAFETY)
 *.json
 !package.json
+!package-lock.json
 !tsconfig.json
 !Anchor.toml
 !**/package.json
+!**/package-lock.json
 !**/tsconfig.json
+!sdk/idl/*.json
+!zk-circuit/fixtures/**/*.json
+!vitest.config.ts
+
+# Day 38 localnet scratch
+sdk/.e2e-accounts/
+/test-ledger-e2e/
+/**/test-ledger-e2e/
+sdk/dist/
 
 # Exclude specific wallet keypair filenames if JSON rule is relaxed later
 id.json

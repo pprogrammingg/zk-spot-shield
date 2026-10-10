@@ -26,14 +26,15 @@ programs/zk_spot_shield/  # Anchor crate zk_spot_shield
 zk-circuit/io/        # shared I/O + Poseidon Merkle (no sp1-zkvm)
 zk-circuit/guest/     # SP1 guest circuit
 zk-circuit/host/      # SP1 host prover driver
-client/               # client placeholder → SDK later
+client/               # Rust helpers (CU budget, ALT sizing)
+sdk/                  # TypeScript SDK: Anchor provider, Merkle, prove, settle E2E
 Anchor.toml           # localnet + program id
 Cargo.toml            # workspace
 docs/ # public docs site (MkDocs) incl. glossary
 further_explanations/ # session notes
 ```
 
-Ignore for search/context: `target/`, `.anchor/`, `test-ledger/` (see `.cursorignore`).
+Ignore for search/context: `target/`, `.anchor/`, `test-ledger/`, `sdk/node_modules/` (see `.cursorignore`).
 
 ## Verify toolchain
 
