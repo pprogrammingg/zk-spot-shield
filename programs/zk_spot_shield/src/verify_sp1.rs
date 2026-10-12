@@ -306,4 +306,40 @@ mod tests {
         let bad = [0u8; 32];
         assert!(verify_sp1_groth16_v6(&proof, &journal, &bad).is_err());
     }
+
+    /// Day 39: deterministic mutations of proof bytes must fail closed (never panic).
+    #[test]
+    fn random_proof_bytes_fail_closed_no_panic() {
+        let journal = std::fs::read(happy_dir().join("journal.bin")).expect("journal.bin");
+        let base = std::fs::read(happy_dir().join("groth16.bin")).expect("groth16.bin");
+        let vkey = crate::constants::VKEY_HASH;
+
+        // Wrong lengths.
+        for len in [0usize, 1, 100, 355, 357, 512, 1024] {
+            let proof = vec![0xABu8; len];
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                verify_sp1_groth16_v6(&proof, &journal, &vkey)
+            }))
+            .unwrap_or_else(|_| panic!("verify panicked on length {len}"));
+            assert!(result.is_err(), "bad length {len} must fail closed");
+        }
+
+        // LCG-mutated full-length proofs (reproducible).
+        let mut state: u64 = 0xC0FFEE_u64;
+        for i in 0..64 {
+            let mut proof = base.clone();
+            for _ in 0..8 {
+                state = state
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1);
+                let idx = (state >> 33) as usize % proof.len();
+                proof[idx] ^= ((state >> 16) as u8).max(1);
+            }
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                verify_sp1_groth16_v6(&proof, &journal, &vkey)
+            }))
+            .unwrap_or_else(|_| panic!("verify panicked on mutation {i}"));
+            assert!(result.is_err(), "mutated proof {i} must not verify");
+        }
+    }
 }

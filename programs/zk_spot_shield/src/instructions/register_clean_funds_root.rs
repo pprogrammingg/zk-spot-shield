@@ -3,6 +3,7 @@
 use anchor_lang::prelude::*;
 
 use crate::{
+    error::ErrorCode,
     state::{CleanFundsRoot, GlobalConfig},
     CLEAN_FUNDS_ROOT_SEED_PREFIX, GLOBAL_CONFIG_SEED,
 };
@@ -16,7 +17,7 @@ pub struct RegisterCleanFundsRoot<'info> {
     #[account(
         seeds = [GLOBAL_CONFIG_SEED],
         bump,
-        has_one = authority,
+        has_one = authority @ ErrorCode::Unauthorized,
     )]
     pub global_config: Account<'info, GlobalConfig>,
 

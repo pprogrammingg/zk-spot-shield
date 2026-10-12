@@ -114,7 +114,7 @@ describe.skipIf(!run)("Day 36–37 localnet E2E", () => {
     );
   });
 
-  it("unregistered root → MerkleRootNotFound", async () => {
+  it("unregistered root → seeds / MerkleRootNotFound", async () => {
     const bundle = loadBundle();
     const wallet = loadKeypairWallet();
     const provider = createLocalhostProvider({
@@ -155,7 +155,7 @@ describe.skipIf(!run)("Day 36–37 localnet E2E", () => {
       journal,
     );
     await expect(provider.sendAndConfirm(tx)).rejects.toThrow(
-      /MerkleRootNotFound|custom program error|Error/,
+      /MerkleRootNotFound|ConstraintSeeds|seeds|custom program error|Error/,
     );
   });
 

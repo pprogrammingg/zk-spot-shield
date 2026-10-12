@@ -254,14 +254,15 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
 
 ### Phase 8: Hardening (2 sessions)
 
-- [ ] **Day 39 — Fuzz / invariant harness**
-  - [ ] Trident or mollusk: arithmetic edges + random proof bytes (no verifier crash)
+- [x] **Day 39 — Fuzz / invariant harness**
+  - [x] **LiteSVM** (not Mollusk/Trident — keeps pinned `litesvm = 0.10`): arithmetic edges (`apply_swap` `--lib`) + random/mutated proof bytes fail closed (verify `--lib` + settle LiteSVM; no verifier crash; reserves unchanged)
+  - [x] *Exit:* `--lib` harness green; LiteSVM random-proof settle fails closed
 
-- [ ] **Day 40 — Constraint audit + Month 2 tag**
-  - [ ] PDA `seeds`/`bump`/`has_one` pass
-  - [ ] Strip noisy `msg!`
-  - [ ] Tag `v0.2-month2`
-  - [ ] *Exit:* Tag exists. **Next session is Write-2** (settle article + LinkedIn), not Day 41.
+- [x] **Day 40 — Constraint audit + Month 2 tag**
+  - [x] PDA `seeds`/`bump`/`has_one` pass (`clean_funds_root` seeds on settle; `has_one` + `Unauthorized` on register)
+  - [x] Strip noisy `msg!` (pause / settle success / verify debug logs)
+  - [x] Tag `v0.2-month2`
+  - [x] *Exit:* Tag exists. **Next session is Write-2** (settle article + LinkedIn), not Day 41.
 
 ---
 

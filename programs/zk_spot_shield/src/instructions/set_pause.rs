@@ -19,12 +19,10 @@ pub struct SetPause<'info> {
 
 pub fn handle_pause(ctx: Context<SetPause>) -> Result<()> {
     ctx.accounts.global_config.pause_flag = true;
-    msg!("global_config: paused");
     Ok(())
 }
 
 pub fn handle_unpause(ctx: Context<SetPause>) -> Result<()> {
     ctx.accounts.global_config.pause_flag = false;
-    msg!("global_config: unpaused");
     Ok(())
 }

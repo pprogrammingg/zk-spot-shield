@@ -39,6 +39,8 @@ Rustc comes from `rust-toolchain.toml` (`rustup show` after checkout). Do not pi
 
 **LiteSVM:** program tests/clippy `--all-targets` use `litesvm = "=0.10.0"`. Do not merge lone bumps to 0.15+ (wincode 0.5 vs 0.6 vs Solana 3.x). Dependabot ignores those; upgrade only with a coordinated Agave stack change.
 
+**Day 39 invariant harness:** uses LiteSVM (same pin), not Mollusk/Trident. `--lib` covers `apply_swap` arithmetic edges + mutated Groth16 bytes (no panic); `cargo test --tests` covers settle with random proof bytes (fail closed, reserves unchanged).
+
 ## Local commands (same as CI unit + security bar)
 
 ```bash

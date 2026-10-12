@@ -13,7 +13,7 @@ use crate::{
     journal::{JournalPublic, JOURNAL_BYTE_LEN},
     state::{CleanFundsRoot, GlobalConfig, NullifierAccount, VaultState},
     verify_sp1::{verify_sp1_groth16_v6, SP1_V6_PROOF_BYTE_LEN},
-    GLOBAL_CONFIG_SEED, NULLIFIER_SEED_PREFIX, SPOT_VAULT_SEED,
+    CLEAN_FUNDS_ROOT_SEED_PREFIX, GLOBAL_CONFIG_SEED, NULLIFIER_SEED_PREFIX, SPOT_VAULT_SEED,
 };
 
 /// Happy-path fixture sizes (`notes/budgets.md` / Day 12 wrap).
@@ -22,8 +22,10 @@ pub const SETTLE_JOURNAL_BYTE_LEN: usize = JOURNAL_BYTE_LEN;
 
 /// Journal layout: amount(8) | mint(32) | nullifier(32) | merkle_root(32).
 const JOURNAL_NULLIFIER_OFFSET: usize = 8 + 32;
+const JOURNAL_MERKLE_ROOT_OFFSET: usize = 8 + 32 + 32;
 
 /// Account order (Day 31): signers/config → zero-copy loaders → tokens → programs.
+/// Day 40: every PDA uses `seeds` + `bump` (clean-funds root bound to journal bytes).
 #[derive(Accounts)]
 #[instruction(proof: Vec<u8>, journal: Vec<u8>)]
 pub struct SettleShieldedSpot<'info> {
@@ -33,7 +35,7 @@ pub struct SettleShieldedSpot<'info> {
     #[account(
         seeds = [GLOBAL_CONFIG_SEED],
         bump,
-        constraint = journal.len() >= JOURNAL_NULLIFIER_OFFSET + 32 @ ErrorCode::InvalidJournal
+        constraint = journal.len() >= JOURNAL_MERKLE_ROOT_OFFSET + 32 @ ErrorCode::InvalidJournal
     )]
     pub global_config: Account<'info, GlobalConfig>,
 
@@ -44,7 +46,14 @@ pub struct SettleShieldedSpot<'info> {
     )]
     pub vault: AccountLoader<'info, VaultState>,
 
-    /// Approved root PDA for journal `merkle_root` (seeds checked in handler).
+    /// Approved root PDA for journal `merkle_root` (Day 40: seeds, not handler-only).
+    #[account(
+        seeds = [
+            CLEAN_FUNDS_ROOT_SEED_PREFIX,
+            &journal[JOURNAL_MERKLE_ROOT_OFFSET..JOURNAL_MERKLE_ROOT_OFFSET + 32],
+        ],
+        bump,
+    )]
     pub clean_funds_root: AccountLoader<'info, CleanFundsRoot>,
 
     /// One-time spend tag PDA. Must be empty; created after success (Day 28).
@@ -92,7 +101,7 @@ pub fn handle_settle_shielded_spot(
     require!(!proof.is_empty(), ErrorCode::EmptyProof);
     require!(!journal.is_empty(), ErrorCode::EmptyJournal);
     require!(
-        journal.len() >= JOURNAL_NULLIFIER_OFFSET + 32,
+        journal.len() >= JOURNAL_MERKLE_ROOT_OFFSET + 32,
         ErrorCode::InvalidJournal
     );
     require!(
@@ -106,24 +115,13 @@ pub fn handle_settle_shielded_spot(
 
     let vkey_hash = ctx.accounts.global_config.vkey_hash;
 
-    verify_sp1_groth16_v6(&proof, &journal, &vkey_hash).map_err(|e| {
-        msg!("sp1 groth16 verify failed: {:?}", e);
-        error!(ErrorCode::InvalidProof)
-    })?;
+    verify_sp1_groth16_v6(&proof, &journal, &vkey_hash)
+        .map_err(|_| error!(ErrorCode::InvalidProof))?;
 
-    let public = JournalPublic::from_journal_bytes(&journal).ok_or_else(|| {
-        msg!("journal parse failed (expected {} bytes)", JOURNAL_BYTE_LEN);
-        error!(ErrorCode::InvalidJournal)
-    })?;
+    let public = JournalPublic::from_journal_bytes(&journal)
+        .ok_or_else(|| error!(ErrorCode::InvalidJournal))?;
 
-    let (expected_root_pda, _) =
-        CleanFundsRoot::find_pda(ctx.program_id, &public.merkle_root);
-    require_keys_eq!(
-        ctx.accounts.clean_funds_root.key(),
-        expected_root_pda,
-        ErrorCode::MerkleRootNotFound
-    );
-
+    // Seeds already bind the PDA to journal merkle_root; still check account bytes.
     {
         let root_acc = ctx.accounts.clean_funds_root.load()?;
         require!(
@@ -248,10 +246,6 @@ pub fn handle_settle_shielded_spot(
         data[8..40].copy_from_slice(&public.nullifier);
     }
 
-    msg!(
-        "settle_shielded_spot: ok amount={}",
-        public.requested_swap_amount
-    );
     Ok(())
 }
 

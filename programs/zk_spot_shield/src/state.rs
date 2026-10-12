@@ -50,27 +50,32 @@ impl VaultState {
 
     /// Day 26: 1:1 spot accounting on zero-copy reserves.
     /// Vault takes `asset_mint` (`checked_add`) and pays the other mint (`checked_sub`).
+    /// Both sides are computed before any write so a failed edge leaves reserves unchanged.
     pub fn apply_swap(&mut self, amount: u64, asset_mint: &Pubkey) -> Result<()> {
         require!(amount > 0, ErrorCode::ZeroSwapAmount);
 
         if asset_mint == &self.mint_a {
-            self.reserve_a = self
+            let new_a = self
                 .reserve_a
                 .checked_add(amount)
                 .ok_or(error!(ErrorCode::VaultReserveOverflow))?;
-            self.reserve_b = self
+            let new_b = self
                 .reserve_b
                 .checked_sub(amount)
                 .ok_or(error!(ErrorCode::VaultReserveUnderflow))?;
+            self.reserve_a = new_a;
+            self.reserve_b = new_b;
         } else if asset_mint == &self.mint_b {
-            self.reserve_b = self
+            let new_b = self
                 .reserve_b
                 .checked_add(amount)
                 .ok_or(error!(ErrorCode::VaultReserveOverflow))?;
-            self.reserve_a = self
+            let new_a = self
                 .reserve_a
                 .checked_sub(amount)
                 .ok_or(error!(ErrorCode::VaultReserveUnderflow))?;
+            self.reserve_a = new_a;
+            self.reserve_b = new_b;
         } else {
             return err!(ErrorCode::UnknownVaultMint);
         }
@@ -192,6 +197,55 @@ mod tests {
             .apply_swap(1, &Pubkey::new_from_array([9u8; 32]))
             .unwrap_err();
         assert_eq!(err, error!(ErrorCode::UnknownVaultMint));
+    }
+
+    /// Day 39: arithmetic edges — success keeps `reserve_a + reserve_b` invariant;
+    /// overflow / underflow / zero / unknown mint fail closed (no panic).
+    #[test]
+    fn apply_swap_arithmetic_edge_harness() {
+        // (reserve_a, reserve_b, amount, expect_ok) for mint_a = receive A / pay B.
+        let edges: &[(u64, u64, u64, bool)] = &[
+            (1_000, 1_000, 0, false),       // zero amount
+            (0, 1_000, 1, true),            // receive into empty A
+            (1_000, 0, 1, false),           // pay-side empty
+            (1_000, 1, 1, true),            // exact pay drain
+            (1_000, 1, 2, false),           // pay underflow
+            (u64::MAX, 1_000, 1, false),    // receive overflow
+            (u64::MAX - 10, 10, 5, true),   // near max receive (sum stays ≤ u64::MAX)
+            (0, 0, 1, false),               // both empty → pay underflow
+            (500, 500, 500, true),          // equal drain
+        ];
+
+        for &(ra, rb, amount, expect_ok) in edges {
+            let mut vault = sample_vault(ra, rb);
+            let mint_a = vault.mint_a;
+            let result = vault.apply_swap(amount, &mint_a);
+            if expect_ok {
+                assert!(result.is_ok(), "expected ok ra={ra} rb={rb} amt={amount}");
+                let sum_before = ra.checked_add(rb).expect("start sum");
+                assert_eq!(
+                    vault.reserve_a.checked_add(vault.reserve_b),
+                    Some(sum_before),
+                    "1:1 sum invariant"
+                );
+                assert_eq!(vault.reserve_a, ra.checked_add(amount).unwrap());
+                assert_eq!(vault.reserve_b, rb.checked_sub(amount).unwrap());
+            } else {
+                assert!(result.is_err(), "expected err ra={ra} rb={rb} amt={amount}");
+                assert_eq!(vault.reserve_a, ra, "fail closed: reserve_a unchanged");
+                assert_eq!(vault.reserve_b, rb, "fail closed: reserve_b unchanged");
+            }
+
+            // mint_b direction mirrors mint_a with reserves swapped.
+            let mut vault_b = sample_vault(rb, ra);
+            let mint_b = vault_b.mint_b;
+            let result_b = vault_b.apply_swap(amount, &mint_b);
+            assert_eq!(result_b.is_ok(), expect_ok);
+            if result_b.is_err() {
+                assert_eq!(vault_b.reserve_a, rb);
+                assert_eq!(vault_b.reserve_b, ra);
+            }
+        }
     }
 
     #[test]

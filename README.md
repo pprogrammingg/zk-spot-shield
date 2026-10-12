@@ -93,7 +93,7 @@ You are ready when every **Verify** command succeeds and `solana config get` sho
 
 ## Build and run (Month 1 checkpoint)
 
-Stranger path after toolchain install. Tag restore point: `v0.1-month1` (create once Month 1 work is committed: `git tag v0.1-month1`).
+Stranger path after toolchain install. Restore point tags: **`v0.1-month1`** (Month 1), **`v0.2-month2`** (Month 2 settle + hardening) — `git checkout <tag>` or `git show <tag>`.
 
 ### Solana program
 

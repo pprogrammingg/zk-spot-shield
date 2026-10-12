@@ -647,9 +647,14 @@ fn settle_rejects_unregistered_merkle_root() {
         settle_ix(program_id, &accounts, proof, journal),
     )
     .expect_err("wrong CleanFundsRoot PDA must fail");
+    // Day 40: seeds bind clean_funds_root to journal merkle_root → ConstraintSeeds
+    // before the handler's MerkleRootNotFound path.
     assert!(
-        err.contains("MerkleRootNotFound") || err.contains("custom program error"),
-        "expected MerkleRootNotFound, got: {err}"
+        err.contains("MerkleRootNotFound")
+            || err.contains("ConstraintSeeds")
+            || err.contains("seeds")
+            || err.contains("custom program error"),
+        "expected seeds/root rejection, got: {err}"
     );
 }
 
@@ -723,4 +728,66 @@ fn settle_scaffold_fails_on_empty_proof() {
     )
     .expect_err("empty proof must fail");
     assert!(!err.is_empty());
+}
+
+/// Day 39 (LiteSVM harness): random/mutated proof bytes must fail closed — no verifier
+/// crash, vault reserves unchanged. Chose LiteSVM over Mollusk/Trident to keep the
+/// pinned `litesvm = 0.10` Agave stack (see `tests.md`).
+#[test]
+fn settle_random_proof_bytes_fail_closed() {
+    let program_id = zk_spot_shield::id();
+    let payer = Keypair::new();
+    let mut svm = LiteSVM::new();
+    load_program(&mut svm, program_id);
+    svm.airdrop(&payer.pubkey(), 10_000_000_000).unwrap();
+
+    let (base_proof, journal, _public, accounts) =
+        prepare_happy_settle(&mut svm, program_id, &payer, 1_000);
+
+    let vault_before = read_vault(&svm, program_id);
+    let mut state: u64 = 0x39D39u64;
+
+    for case in 0..16u64 {
+        state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1);
+        let mut proof = base_proof.clone();
+        // Mix: wrong length, single-byte flip, multi-byte scramble.
+        match case % 3 {
+            0 => {
+                let len = 1 + (state as usize % 400);
+                proof = vec![(state >> 8) as u8; len];
+            }
+            1 => {
+                let idx = (state as usize) % proof.len();
+                proof[idx] ^= 0xff;
+            }
+            _ => {
+                for _ in 0..4 {
+                    state = state
+                        .wrapping_mul(6364136223846793005)
+                        .wrapping_add(1);
+                    let idx = (state >> 33) as usize % proof.len();
+                    proof[idx] = (state >> 16) as u8;
+                }
+            }
+        }
+
+        let err = send_ix(
+            &mut svm,
+            &payer,
+            settle_ix(program_id, &accounts, proof, journal.clone()),
+        )
+        .expect_err("mutated proof must not settle");
+        assert!(
+            !err.is_empty(),
+            "case {case}: expected program error, got empty"
+        );
+
+        svm.expire_blockhash();
+    }
+
+    let vault_after = read_vault(&svm, program_id);
+    assert_eq!(vault_after.reserve_a, vault_before.reserve_a);
+    assert_eq!(vault_after.reserve_b, vault_before.reserve_b);
 }

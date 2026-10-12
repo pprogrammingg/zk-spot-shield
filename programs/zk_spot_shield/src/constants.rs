@@ -45,6 +45,19 @@ mod tests {
         }
     }
 
+    /// Day 40 constraint audit checklist (seeds/bump/has_one surface).
+    #[test]
+    fn day40_pda_constraint_surface_documented() {
+        // Init: global_config + vault — seeds + bump on init.
+        assert_eq!(GLOBAL_CONFIG_SEED, b"global-config");
+        assert_eq!(SPOT_VAULT_SEED, b"spot_vault");
+        // Authority gates: register_clean_funds_root + pause/unpause use has_one = authority.
+        // Settle PDAs: global_config, vault (bump from account), clean_funds_root (journal root),
+        // nullifier (journal nullifier). Settle is permissionless (no has_one on payer).
+        assert_eq!(CLEAN_FUNDS_ROOT_SEED_PREFIX, b"clean_funds_root");
+        assert_eq!(NULLIFIER_SEED_PREFIX, b"nullifier");
+    }
+
     #[test]
     fn vkey_hash_matches_day12_happy_fixture() {
         assert_ne!(VKEY_HASH, [0u8; 32]);
