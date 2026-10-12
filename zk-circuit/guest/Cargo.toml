@@ -2,7 +2,8 @@
 name = "guest"
 version = "0.1.0"
 edition.workspace = true
-rust-version.workspace = true
+# SP1 `+succinct` reports 1.94.0-dev; workspace host pin is 1.94.1 — don't inherit.
+rust-version = "1.88.0"
 
 [dependencies]
 sp1-zkvm = "6.5.0"

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ZK Spot Shield — 2 min pitch</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #111; color: #f5f5f5; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+    .slide {
+      display: none;
+      height: 100%;
+      padding: 7vh 9vw;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .slide.on { display: flex; }
+    h1 { font-size: 4.2rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.4em; }
+    h2 { font-size: 2.6rem; font-weight: 650; letter-spacing: -0.02em; margin-bottom: 0.7em; }
+    .sub { font-size: 1.6rem; color: #bdbdbd; }
+    .p { font-size: 1.55rem; line-height: 1.45; color: #e8e8e8; max-width: 42em; }
+    .p + .p { margin-top: 0.85em; }
+    ul { list-style: none; font-size: 1.55rem; line-height: 1.45; max-width: 42em; }
+    ul li { margin: 0.4em 0; padding-left: 1.1em; position: relative; }
+    ul li::before { content: "–"; position: absolute; left: 0; color: #888; }
+    ul ul { margin-top: 0.25em; margin-bottom: 0.15em; }
+    ul ul li { font-size: 1.35rem; color: #d0d0d0; margin: 0.28em 0; padding-left: 1.8em; }
+    ul ul li::before { left: 0.7em; content: "–"; }
+    .nav {
+      position: fixed;
+      bottom: 1.1rem;
+      right: 1.4rem;
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      z-index: 10;
+      user-select: none;
+    }
+    .nav button {
+      appearance: none;
+      border: none;
+      background: transparent;
+      color: #f0f0f0;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 2.4rem;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.08em;
+      cursor: pointer;
+      padding: 0.1rem 0.25rem;
+    }
+    .nav button:disabled {
+      color: #3a3a3a;
+      cursor: default;
+    }
+    .nav .count {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: #888;
+      min-width: 6.5em;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <section class="slide on">
+    <h1>ZK Spot Shield</h1>
+    <p class="sub">Private spot settlement on Solana</p>
+    <p class="p" style="margin-top:1.4rem">
+      I’m Pooyan. I build protocol and payments infrastructure.
+      ZK Spot Shield is a Solana program for private spot settlement.
+    </p>
+  </section>
+
+  <section class="slide">
+    <h2>Problem</h2>
+    <ul>
+      <li>On Solana every transfer is public: who paid, how much, which wallet — bad for traders hiding inventory, ticket buyers who don’t want seats published, and agents paying APIs all day.</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <h2>Solution</h2>
+    <p class="p">
+      Prove clean funds, solvency, and a one-time spend on your machine — get a note you can spend without doxing yourself.
+    </p>
+    <p class="p" style="margin-top:1em">
+      On-chain we check the proof and move tokens; the chain sees the trade and spend-tag, <strong>not</strong> who you are or what’s left.
+    </p>
+  </section>
+
+  <section class="slide">
+    <h2>Why me</h2>
+    <p class="p">
+      Tech lead, 18 years shipping — I need a settle that doesn’t dox the payer, and a year from now I’m still climbing that hill, company or protocol team.
+    </p>
+  </section>
+
+  <section class="slide">
+    <h2>Why now, why Solana</h2>
+    <ul>
+      <li>HTTP 402 is no longer theoretical. Coinbase shipped x402; Stripe and Tempo shipped the Machine Payments Protocol.</li>
+      <li>Agents will pay per request.</li>
+      <li>Solana is cheap and fast enough that checking a short proof and moving the tokens fits in one transaction.</li>
+      <li>USDC on Solana is already what those 402 rails use.</li>
+      <li>Stripe’s choice of Tempo forces settlement onto a permissioned (invite-only) blockchain. I built on Solana so inclusion doesn’t depend on that list.</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <h2>Where it is</h2>
+    <ul>
+      <li>Already runs on a local Solana network: the proof checks out, the vault moves tokens, and a replay or an unregistered tree fingerprint is rejected.</li>
+      <li>The docs are public. It is not live on mainnet.</li>
+      <li>Next: a relayer (pays the fee so your wallet isn’t linked and you don’t need SOL), then a private pay button for those 402 APIs.</li>
+    </ul>
+  </section>
+
+  <div class="nav" aria-label="Slide navigation">
+    <button type="button" id="prev" aria-label="Previous slide">&lt;</button>
+    <button type="button" id="next" aria-label="Next slide">&gt;</button>
+    <span class="count" id="count">slide 1 of 6</span>
+  </div>
+  <script>
+    const slides = [...document.querySelectorAll(".slide")];
+    const prev = document.getElementById("prev");
+    const next = document.getElementById("next");
+    const count = document.getElementById("count");
+    const total = slides.length;
+    let i = 0;
+
+    function show(n) {
+      // Clamp — no wrap, so back/forth keeps a stable 1…M order.
+      i = Math.max(0, Math.min(total - 1, n));
+      slides.forEach((s, k) => s.classList.toggle("on", k === i));
+      count.textContent = `slide ${i + 1} of ${total}`;
+      prev.disabled = i === 0;
+      next.disabled = i === total - 1;
+    }
+
+    prev.addEventListener("click", (e) => {
+      e.stopPropagation();
+      show(i - 1);
+    });
+    next.addEventListener("click", (e) => {
+      e.stopPropagation();
+      show(i + 1);
+    });
+
+    show(0);
+  </script>
+</body>
+</html>

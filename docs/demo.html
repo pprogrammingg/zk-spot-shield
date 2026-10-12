@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ZK Spot Shield — demo script</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #111; color: #f5f5f5; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+    .slide {
+      display: none;
+      height: 100%;
+      padding: 7vh 9vw;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .slide.on { display: flex; }
+    h1 { font-size: 4.2rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.4em; }
+    h2 { font-size: 2.6rem; font-weight: 650; letter-spacing: -0.02em; margin-bottom: 0.35em; }
+    .show {
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #8a8a8a;
+      margin-bottom: 0.85em;
+    }
+    .sub { font-size: 1.6rem; color: #bdbdbd; }
+    .p { font-size: 1.55rem; line-height: 1.45; color: #e8e8e8; max-width: 42em; }
+    .p + .p { margin-top: 0.75em; }
+    .look {
+      margin-top: 0.9em;
+      font-size: 1.25rem;
+      color: #b8d4a8;
+      max-width: 42em;
+      line-height: 1.4;
+    }
+    .look::before { content: "Look for: "; color: #7a9a6a; font-weight: 600; }
+    pre.cmd {
+      margin-top: 1rem;
+      padding: 0.85rem 1rem;
+      background: #1c1c1c;
+      border: 1px solid #333;
+      border-radius: 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 1.05rem;
+      line-height: 1.45;
+      color: #e0e0e0;
+      max-width: 48em;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .nav {
+      position: fixed;
+      bottom: 1.1rem;
+      right: 1.4rem;
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      z-index: 10;
+      user-select: none;
+    }
+    .nav button {
+      appearance: none;
+      border: none;
+      background: transparent;
+      color: #f0f0f0;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 2.4rem;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.08em;
+      cursor: pointer;
+      padding: 0.1rem 0.25rem;
+    }
+    .nav button:disabled {
+      color: #3a3a3a;
+      cursor: default;
+    }
+    .nav .count {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: #888;
+      min-width: 6.5em;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <section class="slide on">
+    <h1>ZK Spot Shield</h1>
+    <p class="p" style="margin-top:1.2rem">Cue cards + commands. Advance with <strong>&lt;</strong> <strong>&gt;</strong> only.</p>
+  </section>
+
+  <section class="slide">
+    <h2>Docs</h2>
+    <p class="show">Browser</p>
+    <p class="p">Public docs: private spot settle on Solana — circuit, remote Groth16, localnet settle.</p>
+    <pre class="cmd">open https://pprogrammingg.github.io/zk-spot-shield/
+# or: pip install mkdocs-material && mkdocs serve</pre>
+    <p class="look">Homepage / intro — “private spot settlement”</p>
+  </section>
+
+  <section class="slide">
+    <h2>Architecture</h2>
+    <p class="show">Docs → Architecture</p>
+    <p class="p">Off-chain secret + Merkle path + Groth16 wrap; on-chain verify, root, nullifier, vault, SPL. No UI in this video.</p>
+    <pre class="cmd">open https://pprogrammingg.github.io/zk-spot-shield/architecture/</pre>
+    <p class="look">Off-chain vs on-chain boxes</p>
+  </section>
+
+  <section class="slide">
+    <h2>Private inputs</h2>
+    <p class="show">Editor / Tests page</p>
+    <p class="p">Secret, address, balance stay private — prover inputs, not in the tx.</p>
+    <pre class="cmd">open zk-circuit/fixtures/happy.json
+# or: open https://pprogrammingg.github.io/zk-spot-shield/tests/</pre>
+    <p class="look">Fields: secret, user_address / address, balance</p>
+  </section>
+
+  <section class="slide">
+    <h2>Journal</h2>
+    <p class="show">Terminal</p>
+    <p class="p">104 bytes the chain may see: amount, mint, nullifier, root.</p>
+    <pre class="cmd">xxd -l 128 zk-circuit/fixtures/happy/journal.bin
+ls -l zk-circuit/fixtures/happy/journal.bin   # expect 104</pre>
+    <p class="look">File size 104; hex dump of public journal bytes</p>
+  </section>
+
+  <section class="slide">
+    <h2>E2E (all settle cases)</h2>
+    <p class="show">Terminal — main demo command</p>
+    <p class="p">One command: invalid proof, bad root, happy settle, then replay.</p>
+    <pre class="cmd">export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+cd sdk && npm install && npm run test:e2e</pre>
+    <p class="look">All vitest e2e tests green; see next slides for which line means what</p>
+  </section>
+
+  <section class="slide">
+    <h2>Fail: bad root</h2>
+    <p class="show">In test:e2e output</p>
+    <p class="p">Same settle shape, root never registered — vault does not move.</p>
+    <pre class="cmd"># part of: cd sdk && npm run test:e2e
+# test name: unregistered root → seeds / MerkleRootNotFound</pre>
+    <p class="look"><code>✓ unregistered root</code> — error mentions seeds / MerkleRootNotFound / custom program error</p>
+  </section>
+
+  <section class="slide">
+    <h2>Pause (emergency)</h2>
+    <p class="show">Terminal — LiteSVM (not in npm e2e)</p>
+    <p class="p">Authority pause blocks settle; unpause restores. Can’t revoke a registered root yet.</p>
+    <pre class="cmd">export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+anchor build --ignore-keys   # if target/deploy .so missing
+cargo test -p zk_spot_shield --test test_settle_scaffold -- \
+  settle_rejects_when_paused unpause_allows_settle_again</pre>
+    <p class="look">Both tests <code>ok</code>; paused path mentions ProtocolPaused</p>
+  </section>
+
+  <section class="slide">
+    <h2>Happy path</h2>
+    <p class="show">In test:e2e output</p>
+    <p class="p">Fixture Groth16 verifies; vault + SPL balances move. No live Succinct prove.</p>
+    <pre class="cmd"># part of: cd sdk && npm run test:e2e
+# test name: happy path: settle moves token balances</pre>
+    <p class="look"><code>✓ happy path: settle moves token balances</code></p>
+  </section>
+
+  <section class="slide">
+    <h2>What’s in the tx</h2>
+    <p class="show">Talk over e2e / explorer later</p>
+    <p class="p">Localhost; ix = proof + 104-byte journal; accounts = vault, root, nullifier, tokens. No secret. Test wallet is fee payer — relayer would pay instead.</p>
+    <pre class="cmd"># optional after a manual settle sig:
+solana confirm -v &lt;SIGNATURE&gt; --url http://127.0.0.1:8899</pre>
+    <p class="look">Accounts list; no secret in logs; fee payer = your keypair</p>
+  </section>
+
+  <section class="slide">
+    <h2>Fail: replay</h2>
+    <p class="show">In test:e2e output</p>
+    <p class="p">Same proof again — double-spend closed.</p>
+    <pre class="cmd"># part of: cd sdk && npm run test:e2e
+# test name: replay → NullifierAlreadyUsed</pre>
+    <p class="look"><code>✓ replay → NullifierAlreadyUsed</code></p>
+  </section>
+
+  <section class="slide">
+    <h2>Close</h2>
+    <p class="p">Not mainnet. Not a DEX UI. Repo is in the submission. That’s the walkthrough.</p>
+  </section>
+
+  <div class="nav" aria-label="Slide navigation">
+    <button type="button" id="prev" aria-label="Previous slide">&lt;</button>
+    <button type="button" id="next" aria-label="Next slide">&gt;</button>
+    <span class="count" id="count">slide 1 of 12</span>
+  </div>
+  <script>
+    const slides = [...document.querySelectorAll(".slide")];
+    const prev = document.getElementById("prev");
+    const next = document.getElementById("next");
+    const count = document.getElementById("count");
+    const total = slides.length;
+    let i = 0;
+
+    function show(n) {
+      i = Math.max(0, Math.min(total - 1, n));
+      slides.forEach((s, k) => s.classList.toggle("on", k === i));
+      count.textContent = `slide ${i + 1} of ${total}`;
+      prev.disabled = i === 0;
+      next.disabled = i === total - 1;
+    }
+
+    prev.addEventListener("click", (e) => {
+      e.stopPropagation();
+      show(i - 1);
+    });
+    next.addEventListener("click", (e) => {
+      e.stopPropagation();
+      show(i + 1);
+    });
+
+    show(0);
+  </script>
+</body>
+</html>

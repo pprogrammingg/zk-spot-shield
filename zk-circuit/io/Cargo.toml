@@ -3,7 +3,8 @@ name = "zk-circuit-io"
 version = "0.1.0"
 description = "Shared guest/host I/O types and Poseidon Merkle helpers (no sp1-zkvm)"
 edition.workspace = true
-rust-version.workspace = true
+# Shared with guest under `cargo prove` (`+succinct` ≈ 1.94.0-dev).
+rust-version = "1.88.0"
 
 [dependencies]
 serde = { version = "1.0", default-features = false, features = ["derive"] }
