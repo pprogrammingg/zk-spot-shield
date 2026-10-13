@@ -59,6 +59,8 @@ sp1-artifacts/
 !zk-circuit/fixtures/happy/*.bin
 !zk-circuit/fixtures/happy/*.txt
 !zk-circuit/fixtures/happy/*.md
+# On-chain SP1 Groth16 VK (public; required by include_bytes! / CI).
+!programs/zk_spot_shield/vk/groth16_vk_v6_1_0.bin
 
 # ==============================================================================
 # Node.js, TypeScript & Anchor Client Dependencies

@@ -9,7 +9,7 @@ The on-chain crate is `programs/zk_spot_shield/` (program name `zk_spot_shield`)
 | `CleanFundsRoot` | zero-copy | `["clean_funds_root", root]` | 32 bytes | One account per approved Merkle root |
 | `NullifierAccount` | zero-copy | `["nullifier", nullifier]` | 32 bytes | One account per spent nullifier |
 
-Every account also carries Anchor's 8-byte type tag in front of the data, so allocations are `8 + size`. Rent space, proof/journal byte lengths, and CU / packet targets for settle live in [`notes/budgets.md`](../notes/budgets.md) (Day 18).
+Every account also carries Anchor's 8-byte type tag in front of the data, so allocations are `8 + size`. Rent space, proof/journal byte lengths, and CU / packet targets for settle live in [`notes/budgets.md`](https://github.com/pprogrammingg/zk-spot-shield/blob/main/notes/budgets.md) (Day 18).
 
 **Anchor sets the program's shape.** Each instruction declares the accounts it needs in a `#[derive(Accounts)]` struct, and Anchor checks them before the handler runs: right owner, right seeds, signer present, writable when it must be. Instructions today: `initialize_global_config`, `initialize_vault`, `register_clean_funds_root`, `pause` / `unpause` (authority toggles `GlobalConfig.pause_flag`), and `settle_shielded_spot` (Groth16 verify + journal root ∈ `CleanFundsRoot`; vault reserves move 1:1; SPL transfers with the vault PDA as signer on the payout leg; nullifier PDA is created only after those succeed — a second settle hits `NullifierAlreadyUsed`; paused settle hits `ProtocolPaused`). The TypeScript SDK under `sdk/` (Day 33+) builds an Anchor provider for localhost and mirrors the guest Poseidon Merkle helpers against `zk-circuit/fixtures/happy.json`.
 
