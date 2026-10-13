@@ -208,6 +208,9 @@ describe.skipIf(!run)("Day 36–37 localnet E2E", () => {
     );
     const sig = await provider.sendAndConfirm(tx);
     await confirmSignature(provider.connection, sig);
+    // Ready-to-paste for demo slide "What's in the tx" (use with KEEP_VALIDATOR=1).
+    const rpc = process.env.ANCHOR_PROVIDER_URL ?? "http://127.0.0.1:8899";
+    console.log(`\nsolana confirm -v ${sig} --url ${rpc}`);
 
     const amount = pub.requestedSwapAmount;
     const userAAfter = await getAccount(

@@ -313,6 +313,25 @@ async function main() {
     },
   );
 
+  if (process.env.KEEP_VALIDATOR === "1") {
+    console.log(
+      "==> KEEP_VALIDATOR=1 — leaving validator up on http://127.0.0.1:8899",
+    );
+    console.log(
+      "    Paste the `solana confirm -v …` line from happy-path stdout into another terminal.",
+    );
+    console.log("    Ctrl+C here when done.");
+    await new Promise((resolve) => {
+      const stop = () => {
+        validator.kill("SIGTERM");
+        resolve();
+      };
+      process.once("SIGINT", stop);
+      process.once("SIGTERM", stop);
+    });
+    process.exit(r.status ?? 1);
+  }
+
   console.log("==> stopping validator");
   validator.kill("SIGTERM");
   try {

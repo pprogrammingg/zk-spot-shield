@@ -35,6 +35,23 @@
       line-height: 1.4;
     }
     .look::before { content: "Look for: "; color: #7a9a6a; font-weight: 600; }
+    .look-steps {
+      margin-top: 0.85em;
+      padding-left: 1.35em;
+      font-size: 1.2rem;
+      color: #c8dcc0;
+      max-width: 46em;
+      line-height: 1.45;
+    }
+    .look-steps::before {
+      content: "Look for —";
+      display: block;
+      color: #7a9a6a;
+      font-weight: 600;
+      margin-bottom: 0.35em;
+      margin-left: -1.35em;
+    }
+    .look-steps li { margin: 0.28em 0; }
     pre.cmd {
       margin-top: 1rem;
       padding: 0.85rem 1rem;
@@ -48,6 +65,30 @@
       max-width: 48em;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
+    }
+    table.fields {
+      margin-top: 1rem;
+      border-collapse: collapse;
+      font-size: 1.15rem;
+      max-width: 48em;
+      color: #e8e8e8;
+    }
+    table.fields th,
+    table.fields td {
+      border: 1px solid #333;
+      padding: 0.45rem 0.75rem;
+      text-align: left;
+    }
+    table.fields th {
+      background: #1c1c1c;
+      color: #bdbdbd;
+      font-weight: 600;
+    }
+    table.fields td:first-child,
+    table.fields td:nth-child(2) {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 1.05rem;
+      color: #c8c8c8;
     }
     .nav {
       position: fixed;
@@ -120,28 +161,80 @@
   <section class="slide">
     <h2>Journal</h2>
     <p class="show">Terminal</p>
-    <p class="p">104 bytes the chain may see: amount, mint, nullifier, root.</p>
+    <p class="p">104-byte happy journal — what the chain may see (little-endian).</p>
+    <table class="fields">
+      <thead>
+        <tr><th>Offset</th><th>Bytes (happy fixture)</th><th>Meaning</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>00..07</td>
+          <td>64 00 00 00 00 00 00 00</td>
+          <td><strong>amount</strong> = 0x64 = <strong>100</strong></td>
+        </tr>
+        <tr>
+          <td>08..27</td>
+          <td>03 × 32</td>
+          <td><strong>mint</strong> = 0x0303…03</td>
+        </tr>
+        <tr>
+          <td>28..47</td>
+          <td>1023 e6c7 … f8bd</td>
+          <td><strong>nullifier</strong> (spend-tag)</td>
+        </tr>
+        <tr>
+          <td>48..67</td>
+          <td>1aa6 0d6e … f354</td>
+          <td><strong>merkle root</strong> (deposit-tree fingerprint)</td>
+        </tr>
+      </tbody>
+    </table>
     <pre class="cmd">xxd -l 128 zk-circuit/fixtures/happy/journal.bin
 ls -l zk-circuit/fixtures/happy/journal.bin   # expect 104</pre>
-    <p class="look">File size 104; hex dump of public journal bytes</p>
+    <p class="look">File size 104; hex matches the table</p>
   </section>
 
   <section class="slide">
     <h2>E2E (all settle cases)</h2>
     <p class="show">Terminal — main demo command</p>
-    <p class="p">One command: invalid proof, bad root, happy settle, then replay.</p>
+    <p class="p">One command runs the four settle cases in order (negatives before happy, then replay).</p>
     <pre class="cmd">export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
 cd sdk && npm install && npm run test:e2e</pre>
-    <p class="look">All vitest e2e tests green; see next slides for which line means what</p>
+    <ol class="look-steps">
+      <li><code>==&gt; anchor build</code> then <code>solana-test-validator</code> starting (program + preloaded accounts)</li>
+      <li>Unit tests pass, then vitest e2e file <code>Day 36–37 localnet E2E</code></li>
+      <li>Four green checks in this order: InvalidProof → unregistered root → happy path → replay</li>
+      <li>Footer: <code>Test Files  1 passed</code> / <code>Tests  4 passed</code>; validator stops / ledger torn down</li>
+    </ol>
+  </section>
+
+  <section class="slide">
+    <h2>Fail: bad proof</h2>
+    <p class="show">In test:e2e output (1st e2e test)</p>
+    <p class="p">Flip one byte inside the Groth16 body — verify fails; no vault move.</p>
+    <pre class="cmd"># part of: cd sdk && npm run test:e2e
+# test name: flip 1 proof byte → InvalidProof</pre>
+    <ol class="look-steps">
+      <li>Line: <code>✓ flip 1 proof byte → InvalidProof</code></li>
+      <li>Narrate: same accounts + journal, proof[120] XOR’d — pairing / verify rejects</li>
+      <li>Expect reject text matching <code>InvalidProof</code> or <code>custom program error</code> (test asserts throw)</li>
+      <li>Nullifier PDA still empty after this case (spend never succeeded)</li>
+    </ol>
   </section>
 
   <section class="slide">
     <h2>Fail: bad root</h2>
-    <p class="show">In test:e2e output</p>
-    <p class="p">Same settle shape, root never registered — vault does not move.</p>
+    <p class="show">In test:e2e output (2nd e2e test)</p>
+    <p class="p">Same proof + journal; <code>cleanFundsRoot</code> is a PDA for root <code>0xAB…</code>, not the journal root — vault does not move.</p>
     <pre class="cmd"># part of: cd sdk && npm run test:e2e
 # test name: unregistered root → seeds / MerkleRootNotFound</pre>
-    <p class="look"><code>✓ unregistered root</code> — error mentions seeds / MerkleRootNotFound / custom program error</p>
+    <ol class="look-steps">
+      <li>Line: <code>✓ unregistered root → seeds / MerkleRootNotFound</code></li>
+      <li>Narrate: journal still has the happy merkle root; we pass the wrong root PDA on purpose</li>
+      <li>Day 40: Anchor <strong>seeds</strong> bind PDA to journal root → usually <code>ConstraintSeeds</code> (handler may never run)</li>
+      <li>Test still accepts <code>MerkleRootNotFound</code> / <code>seeds</code> / <code>custom program error</code></li>
+      <li>Vault / SPL unchanged; happy path later still has a fresh nullifier</li>
+    </ol>
   </section>
 
   <section class="slide">
@@ -151,40 +244,60 @@ cd sdk && npm install && npm run test:e2e</pre>
     <pre class="cmd">export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
 anchor build --ignore-keys   # if target/deploy .so missing
 cargo test -p zk_spot_shield --test test_settle_scaffold -- \
-  settle_rejects_when_paused unpause_allows_settle_again</pre>
-    <p class="look">Both tests <code>ok</code>; paused path mentions ProtocolPaused</p>
+  settle_rejects_when_paused unpause_allows_settle_again --nocapture</pre>
+    <ol class="look-steps">
+      <li><code>test settle_rejects_when_paused ... ok</code></li>
+      <li>With <code>--nocapture</code>, failure string may include <code>ProtocolPaused</code></li>
+      <li><code>test unpause_allows_settle_again ... ok</code> — settle succeeds after unpause</li>
+      <li>Narrate: emergency switch only; registered roots stay until a future revoke path</li>
+    </ol>
   </section>
 
   <section class="slide">
     <h2>Happy path</h2>
-    <p class="show">In test:e2e output</p>
+    <p class="show">In test:e2e output (3rd e2e test)</p>
     <p class="p">Fixture Groth16 verifies; vault + SPL balances move. No live Succinct prove.</p>
     <pre class="cmd"># part of: cd sdk && npm run test:e2e
 # test name: happy path: settle moves token balances</pre>
-    <p class="look"><code>✓ happy path: settle moves token balances</code></p>
+    <ol class="look-steps">
+      <li>Line: <code>✓ happy path: settle moves token balances</code></li>
+      <li>Registers the <strong>journal’s</strong> merkle root, then <code>sendAndConfirm</code> succeeds (signature confirmed)</li>
+      <li>Asserts: user token A ↓ by amount (100), user token B ↑ by 100</li>
+      <li>Asserts: nullifier PDA now exists and is owned by the program</li>
+      <li>Narrate: recorded <code>groth16.bin</code> + on-chain verifier — not a live <code>$PROVE</code> wrap</li>
+    </ol>
   </section>
 
   <section class="slide">
     <h2>What’s in the tx</h2>
-    <p class="show">Talk over e2e / explorer later</p>
+    <p class="show">Talk over happy-path settle (same e2e run)</p>
     <p class="p">Localhost; ix = proof + 104-byte journal; accounts = vault, root, nullifier, tokens. No secret. Test wallet is fee payer — relayer would pay instead.</p>
-    <pre class="cmd"># optional after a manual settle sig:
-solana confirm -v &lt;SIGNATURE&gt; --url http://127.0.0.1:8899</pre>
-    <p class="look">Accounts list; no secret in logs; fee payer = your keypair</p>
+    <pre class="cmd"># optional live inspect (same settle tx):
+KEEP_VALIDATOR=1 npm run test:e2e
+# leave that terminal running; paste the printed `solana confirm -v …` line into another shell
+# Ctrl+C the e2e terminal when done. Default test:e2e tears ledger down — talk bullets instead.</pre>
+    <ol class="look-steps">
+      <li>Cluster URL is localhost / custom (not mainnet-beta)</li>
+      <li>Instruction data: large proof blob + 104-byte journal (amount/mint/nullifier/root)</li>
+      <li>Account metas: global config, vault, clean-funds root, nullifier PDA, four token accounts, token + system programs</li>
+      <li>No <code>secret</code> / Merkle path in the tx — only journal publics</li>
+      <li>Fee payer = <code>~/.config/solana/id.json</code> test wallet (privacy link → why relayer comes next)</li>
+    </ol>
   </section>
 
   <section class="slide">
     <h2>Fail: replay</h2>
-    <p class="show">In test:e2e output</p>
-    <p class="p">Same proof again — double-spend closed.</p>
+    <p class="show">In test:e2e output (4th e2e test)</p>
+    <p class="p">Same proof again after happy settle — double-spend closed.</p>
     <pre class="cmd"># part of: cd sdk && npm run test:e2e
 # test name: replay → NullifierAlreadyUsed</pre>
-    <p class="look"><code>✓ replay → NullifierAlreadyUsed</code></p>
-  </section>
-
-  <section class="slide">
-    <h2>Close</h2>
-    <p class="p">Not mainnet. Not a DEX UI. Repo is in the submission. That’s the walkthrough.</p>
+    <ol class="look-steps">
+      <li>Line: <code>✓ replay → NullifierAlreadyUsed</code></li>
+      <li>Must run <strong>after</strong> happy path — nullifier PDA already created</li>
+      <li>Same proof + journal + accounts; <code>sendAndConfirm</code> rejects</li>
+      <li>Expect <code>NullifierAlreadyUsed</code> or <code>custom program error</code></li>
+      <li>Narrate: one-time spend-tag — second settle cannot drain the vault again</li>
+    </ol>
   </section>
 
   <div class="nav" aria-label="Slide navigation">

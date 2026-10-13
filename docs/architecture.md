@@ -53,18 +53,31 @@ flowchart TB
 
 ## Settlement flow
 
+Deposit → leaf → registered root is the intended start of the story (vault custody + leaf insert + root register are being wired as one flow). Prove and settle below are what the repo exercises today with fixtures.
+
 ```mermaid
 sequenceDiagram
     participant U as Client
+    participant V as Vault / SPL
     participant I as Indexer
     participant H as ZK host
     participant G as ZK guest
     participant P as Prover network
     participant S as Solana program
 
-    U->>I: which leaf is mine?
+    Note over U,S: 1) Deposit and membership
+    U->>U: choose secret, address, balance
+    U->>V: send USDC into ZK Spot Shield vault
+    U->>U: leaf = Poseidon(secret, address, balance)
+    U->>I: submit public leaf only (not the secret)
+    I->>I: insert leaf into deposit Merkle tree
+    I->>S: register new root as CleanFundsRoot
+    Note over U,S: root fingerprint is now an approved deposit-tree tip
+
+    Note over U,S: 2) Later — prove and settle
+    U->>I: path for my leaf under a still-registered root?
     I-->>U: Merkle path + root
-    U->>H: secret, balance, amount, mint, path, root
+    U->>H: secret, balance, swap amount, mint, path, root
     H->>G: PrivateInputs
     G->>G: check balance covers amount
     G->>G: recompute leaf and root

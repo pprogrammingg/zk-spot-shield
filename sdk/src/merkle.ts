@@ -3,9 +3,10 @@
  * (`light_poseidon` circom BN254, big-endian 32-byte field encoding).
  *
  * Depth-20 tree; path entries are `(sibling, is_right)` as in Rust.
+ * Uses `poseidon-lite` (no ethers) so npm audit stays clear of circomlibjs.
  */
 
-import { buildPoseidon } from "circomlibjs";
+import { poseidon2, poseidon3 } from "poseidon-lite";
 
 export const MERKLE_DEPTH = 20;
 
@@ -15,22 +16,6 @@ export type MerklePathEntry = {
   isRight: boolean;
 };
 
-type PoseidonFn = ((inputs: unknown[]) => unknown) & {
-  F: {
-    e: (x: bigint | string | number) => unknown;
-    toObject: (x: unknown) => bigint;
-  };
-};
-
-let poseidonPromise: Promise<PoseidonFn> | null = null;
-
-async function getPoseidon(): Promise<PoseidonFn> {
-  if (!poseidonPromise) {
-    poseidonPromise = buildPoseidon() as Promise<PoseidonFn>;
-  }
-  return poseidonPromise;
-}
-
 function assertBytes32(label: string, bytes: Uint8Array): void {
   if (bytes.length !== 32) {
     throw new Error(`${label} must be 32 bytes, got ${bytes.length}`);
@@ -38,18 +23,18 @@ function assertBytes32(label: string, bytes: Uint8Array): void {
 }
 
 /** Big-endian 32-byte → BN254 field element (circom / light_poseidon). */
-function bytes32ToField(poseidon: PoseidonFn, bytes: Uint8Array): unknown {
+function bytes32ToField(bytes: Uint8Array): bigint {
   assertBytes32("field input", bytes);
   let x = 0n;
   for (const b of bytes) {
     x = (x << 8n) + BigInt(b);
   }
-  return poseidon.F.e(x);
+  return x;
 }
 
 /** Field element → big-endian 32 bytes. */
-function fieldToBytes32(poseidon: PoseidonFn, fe: unknown): Uint8Array {
-  const hex = poseidon.F.toObject(fe).toString(16).padStart(64, "0");
+function fieldToBytes32(fe: bigint): Uint8Array {
+  const hex = fe.toString(16).padStart(64, "0");
   const out = new Uint8Array(32);
   for (let i = 0; i < 32; i++) {
     out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
@@ -75,12 +60,8 @@ export async function hashNodes(
   left: Uint8Array,
   right: Uint8Array,
 ): Promise<Uint8Array> {
-  const poseidon = await getPoseidon();
-  const h = poseidon([
-    bytes32ToField(poseidon, left),
-    bytes32ToField(poseidon, right),
-  ]);
-  return fieldToBytes32(poseidon, h);
+  const h = poseidon2([bytes32ToField(left), bytes32ToField(right)]);
+  return fieldToBytes32(h);
 }
 
 /** Note leaf: Poseidon(secret, user_address, balance_be32). */
@@ -91,13 +72,12 @@ export async function computeLeaf(
 ): Promise<Uint8Array> {
   assertBytes32("secret", secret);
   assertBytes32("userAddress", userAddress);
-  const poseidon = await getPoseidon();
-  const h = poseidon([
-    bytes32ToField(poseidon, secret),
-    bytes32ToField(poseidon, userAddress),
-    bytes32ToField(poseidon, balanceToFieldBytes(balance)),
+  const h = poseidon3([
+    bytes32ToField(secret),
+    bytes32ToField(userAddress),
+    bytes32ToField(balanceToFieldBytes(balance)),
   ]);
-  return fieldToBytes32(poseidon, h);
+  return fieldToBytes32(h);
 }
 
 /** Nullifier: Poseidon(secret, leaf, asset_id_mint). */
@@ -109,13 +89,12 @@ export async function computeNullifier(
   assertBytes32("secret", secret);
   assertBytes32("leaf", leaf);
   assertBytes32("assetIdMint", assetIdMint);
-  const poseidon = await getPoseidon();
-  const h = poseidon([
-    bytes32ToField(poseidon, secret),
-    bytes32ToField(poseidon, leaf),
-    bytes32ToField(poseidon, assetIdMint),
+  const h = poseidon3([
+    bytes32ToField(secret),
+    bytes32ToField(leaf),
+    bytes32ToField(assetIdMint),
   ]);
-  return fieldToBytes32(poseidon, h);
+  return fieldToBytes32(h);
 }
 
 /** Climb a depth-20 path to a Merkle root (`verify_merkle_path`). */

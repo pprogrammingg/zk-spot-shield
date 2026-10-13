@@ -147,6 +147,8 @@ cd sdk && npm run test:e2e                # validator + deploy preload + settle 
 
 `test:e2e` starts `solana-test-validator` with the program at `declare_id!` plus preloaded config/vault/SPL accounts, runs happy + negative settle cases, then tears down.
 
+`sdk/package.json` uses `overrides` for `uuid` / `ws` / `stream-json` / `tinypool` and Vitest 5 so `npm audit` stays clear of the old criticals. Remaining findings are transitive (`@coral-xyz/anchor` → `toml`, `circomlibjs` → `ethers` 5, Solana web3 helpers) with no non-breaking upstream fix yet.
+
 ## Tests
 
 See **[tests.md](./tests.md)** for the full map: ZK guest/host/io coverage, stubs vs live prove, CI workflows, and local commands.
