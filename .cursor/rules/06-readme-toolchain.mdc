@@ -1,0 +1,24 @@
+---
+description: Keep README Installation pins tied to source-of-truth files
+alwaysApply: true
+---
+
+# README toolchain pins
+
+GitHub cannot auto-update README version numbers. **Do not hardcode** Rust / Anchor / Solana / Node pins in `README.md`.
+
+## Source of truth
+
+| Tool | File |
+| --- | --- |
+| Host Rust | `rust-toolchain.toml` (`channel`) |
+| Anchor | `Anchor.toml` (`toolchain.anchor_version`) |
+| Solana CLI | Whatever `avm solana install` maps for that Anchor |
+| Node | `sdk/package.json` → `engines.node` |
+| SP1 | `sp1up` current (no repo pin) |
+
+## When you bump a pin
+
+1. Edit the source file above.
+2. Keep README Installation as a **pointer table** to those paths (no duplicated version numbers).
+3. Install snippets should keep reading `Anchor.toml` via Python — do not paste a fixed `avm install 1.x.y`.
