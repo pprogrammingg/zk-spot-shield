@@ -1,0 +1,36 @@
+---
+description: Descriptive git commit subjects ≤50 chars; no vague one-liners
+alwaysApply: true
+---
+
+# Commit messages
+
+Every commit subject must be **descriptive enough that a stranger can tell what changed without opening the diff**.
+
+## Required shape
+
+- One line: `Area/Day: concrete outcome - YES`
+- **Max 50 characters** for the entire subject (including the ` - YES` suffix)
+- Always end with ` - YES` (see `03-session-roadmap.mdc`)
+- Prefer why / outcome over file lists; name the Day when the work is a roadmap Day
+- Optional body (2–4 lines) when the subject cannot capture a multi-crate change
+- Do **not** add `Co-authored-by: Cursor` (or any Cursor agent trailer)
+
+## Reject (rewrite before committing)
+
+Subjects that are only a label, number, or buzzword — even if they fit in 50 chars:
+
+- `fix ci - YES`, `CI fix - YES`, `arch - YES`, `pages - YES`
+- `Day 40 - YES`, `day 32 - YES`, `Day 38 - YES` (Day number alone is not enough)
+- `update - YES`, `wip - YES`, `misc - YES`, `docs - YES`
+
+Also reject any subject longer than 50 characters; shorten outcome wording first, put detail in the body.
+
+## Prefer (all ≤50 chars)
+
+- `fix(ci): pin LiteSVM 0.10 for CI - YES`
+- `Day 40: Month 2 audit + harness - YES`
+- `docs: slim README, pin toolchain - YES`
+- `security: ignore RUSTSEC-2026-0344 - YES`
+
+If the draft subject could fit many unrelated diffs, rewrite it from the staged change summary before `git commit`.
