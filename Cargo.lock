@@ -11124,7 +11124,7 @@ dependencies = [
  "anchor-spl",
  "ark-bn254 0.4.0",
  "ark-ff 0.4.2",
- "ark-serialize 0.4.2",
+ "ark-serialize 0.6.0",
  "bytemuck",
  "groth16-solana",
  "litesvm",
