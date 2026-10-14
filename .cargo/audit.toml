@@ -1,0 +1,4 @@
+[advisories]
+# Transitive via sp1-sdk → object 0.37 → ruzstd 0.8; object pins ^0.8.1 until SP1 bumps to object≥0.40.
+# Host only; we do not decode untrusted zstd. Revisit when upgrading sp1-sdk.
+ignore = ["RUSTSEC-2026-0344"]
