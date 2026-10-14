@@ -23,10 +23,11 @@ Guidance for AI agents working in **zk-spot-shield**.
 
 ```text
 programs/zk_spot_shield/  # Anchor crate zk_spot_shield
-zk-circuit/io/        # shared I/O + Poseidon Merkle (no sp1-zkvm)
+zk-circuit/io/        # shared I/O + Poseidon Merkle + deposit tree (no sp1-zkvm)
 zk-circuit/guest/     # SP1 guest circuit
 zk-circuit/host/      # SP1 host prover driver
 client/               # Rust helpers (CU budget, ALT sizing)
+relayer/              # Axum fee-payer scaffold (/health, /submit-proof queue)
 sdk/                  # TypeScript SDK: Anchor provider, Merkle, prove, settle E2E
 Anchor.toml           # localnet + program id
 Cargo.toml            # workspace

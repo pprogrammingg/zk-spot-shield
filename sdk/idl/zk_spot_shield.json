@@ -8,6 +8,115 @@
   },
   "instructions": [
     {
+      "name": "deposit_shielded",
+      "docs": [
+        "Day 41: transfer SPL into vault and record a public leaf commitment PDA."
+      ],
+      "discriminator": [
+        153,
+        236,
+        36,
+        173,
+        34,
+        236,
+        165,
+        0
+      ],
+      "accounts": [
+        {
+          "name": "depositor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  112,
+                  111,
+                  116,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "deposit_leaf",
+          "docs": [
+            "Public leaf commitment; `init` fails if this leaf was already deposited."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  95,
+                  108,
+                  101,
+                  97,
+                  102
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "leaf"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_token",
+          "writable": true
+        },
+        {
+          "name": "user_token",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "leaf",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "initialize_global_config",
       "docs": [
         "Create `GlobalConfig` PDA: authority, frozen `VKEY_HASH`, pause=false."
@@ -335,7 +444,7 @@
         {
           "name": "clean_funds_root",
           "docs": [
-            "Approved root PDA for journal `merkle_root` (seeds checked in handler)."
+            "Approved root PDA for journal `merkle_root` (Day 40: seeds, not handler-only)."
           ]
         },
         {
@@ -449,6 +558,19 @@
       ]
     },
     {
+      "name": "DepositLeafAccount",
+      "discriminator": [
+        254,
+        116,
+        142,
+        246,
+        155,
+        241,
+        36,
+        152
+      ]
+    },
+    {
       "name": "GlobalConfig",
       "discriminator": [
         149,
@@ -472,6 +594,21 @@
         210,
         235,
         152
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "DepositEvent",
+      "discriminator": [
+        120,
+        248,
+        61,
+        83,
+        31,
+        142,
+        107,
+        144
       ]
     }
   ],
@@ -550,6 +687,21 @@
       "code": 6014,
       "name": "ProtocolPaused",
       "msg": "Protocol is paused; settle is disabled."
+    },
+    {
+      "code": 6015,
+      "name": "ZeroDepositAmount",
+      "msg": "Deposit amount must be non-zero."
+    },
+    {
+      "code": 6016,
+      "name": "InvalidDepositMint",
+      "msg": "Deposit mint does not match vault mint_a or mint_b."
+    },
+    {
+      "code": 6017,
+      "name": "ZeroDepositLeaf",
+      "msg": "Leaf commitment must be non-zero."
     }
   ],
   "types": [
@@ -580,6 +732,71 @@
                 32
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "DepositEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "leaf",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "depositor",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DepositLeafAccount",
+      "docs": [
+        "PDA seeds: `[\"deposit_leaf\", leaf]` — public leaf commitment after a deposit."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "leaf",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "depositor",
+            "type": "pubkey"
           }
         ]
       }
@@ -660,6 +877,14 @@
       "name": "CLEAN_FUNDS_ROOT_SEED_PREFIX",
       "type": "bytes",
       "value": "[99, 108, 101, 97, 110, 95, 102, 117, 110, 100, 115, 95, 114, 111, 111, 116]"
+    },
+    {
+      "name": "DEPOSIT_LEAF_SEED_PREFIX",
+      "docs": [
+        "PDA seeds: `[\"deposit_leaf\", leaf]` — one account per deposited leaf commitment."
+      ],
+      "type": "bytes",
+      "value": "[100, 101, 112, 111, 115, 105, 116, 95, 108, 101, 97, 102]"
     },
     {
       "name": "GLOBAL_CONFIG_SEED",

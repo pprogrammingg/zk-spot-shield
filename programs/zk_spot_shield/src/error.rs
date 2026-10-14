@@ -49,4 +49,13 @@ pub enum ErrorCode {
 
     #[msg("Protocol is paused; settle is disabled.")]
     ProtocolPaused,
+
+    #[msg("Deposit amount must be non-zero.")]
+    ZeroDepositAmount,
+
+    #[msg("Deposit mint does not match vault mint_a or mint_b.")]
+    InvalidDepositMint,
+
+    #[msg("Leaf commitment must be non-zero.")]
+    ZeroDepositLeaf,
 }

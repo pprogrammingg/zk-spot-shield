@@ -25,6 +25,12 @@ export {
 } from "./merkle.js";
 
 export {
+  DepositTree,
+  privateInputsFromDeposit,
+  type DepositNote,
+} from "./depositTree.js";
+
+export {
   HAPPY_FIXTURE_DIR,
   REPO_ROOT,
   getSettleProof,
@@ -39,11 +45,13 @@ export {
   SETTLE_CU_LIMIT,
   SETTLE_CU_PRICE_MICRO_LAMPORTS,
   SEEDS,
+  buildDepositIx,
   buildSettleIx,
   buildSettleTransaction,
   confirmSignature,
   createProgram,
   findCleanFundsRootPda,
+  findDepositLeafPda,
   findGlobalConfigPda,
   findNullifierPda,
   findVaultPda,
@@ -51,5 +59,6 @@ export {
   programIdFromIdl,
   settleAltStaticAddresses,
   settleComputeBudgetIxs,
+  type DepositAccounts,
   type SettleAccounts,
 } from "./instructions.js";

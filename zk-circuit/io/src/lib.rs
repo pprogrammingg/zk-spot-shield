@@ -1,8 +1,12 @@
 //! Shared circuit I/O and Poseidon helpers.
 //! Used by the SP1 guest and the native host. No `sp1-zkvm` — keep this crate zkVM-safe.
 
+pub mod deposit_tree;
 pub mod merkle_compute;
 
+pub use deposit_tree::{
+    private_inputs_from_deposit, DepositTree, DepositTreeError, MERKLE_DEPTH as DEPOSIT_TREE_DEPTH,
+};
 pub use merkle_compute::{
     compute_leaf, compute_nullifier, hash_nodes, index0_empty_path, verify_merkle_path,
 };

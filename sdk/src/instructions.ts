@@ -2,7 +2,7 @@
  * Day 35: compute-budget + settle instruction packaging (+ ALT key plan).
  */
 
-import { Program, type Idl, type AnchorProvider } from "@coral-xyz/anchor";
+import { BN, Program, type Idl, type AnchorProvider } from "@coral-xyz/anchor";
 import {
   ComputeBudgetProgram,
   PublicKey,
@@ -39,6 +39,7 @@ export const SEEDS = {
   spotVault: Buffer.from("spot_vault"),
   nullifier: Buffer.from("nullifier"),
   cleanFundsRoot: Buffer.from("clean_funds_root"),
+  depositLeaf: Buffer.from("deposit_leaf"),
 } as const;
 
 export function loadIdl(
@@ -171,6 +172,46 @@ export async function findCleanFundsRootPda(
     [SEEDS.cleanFundsRoot, Buffer.from(root)],
     programId,
   );
+}
+
+export async function findDepositLeafPda(
+  programId: PublicKey,
+  leaf: Buffer | Uint8Array,
+): Promise<[PublicKey, number]> {
+  return PublicKey.findProgramAddressSync(
+    [SEEDS.depositLeaf, Buffer.from(leaf)],
+    programId,
+  );
+}
+
+export type DepositAccounts = {
+  depositor: PublicKey;
+  vault: PublicKey;
+  depositLeaf: PublicKey;
+  vaultToken: PublicKey;
+  userToken: PublicKey;
+};
+
+/** Day 41: SPL → vault + record public leaf PDA. */
+export async function buildDepositIx(
+  program: Program,
+  accounts: DepositAccounts,
+  leaf: Buffer | Uint8Array,
+  amount: number | bigint,
+): Promise<TransactionInstruction> {
+  const amt = typeof amount === "bigint" ? amount : BigInt(amount);
+  return program.methods
+    .depositShielded([...Buffer.from(leaf)], new BN(amt.toString()))
+    .accountsPartial({
+      depositor: accounts.depositor,
+      vault: accounts.vault,
+      depositLeaf: accounts.depositLeaf,
+      vaultToken: accounts.vaultToken,
+      userToken: accounts.userToken,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+    })
+    .instruction();
 }
 
 /** Optional: wait for signature confirmation (Day 38 listener hook). */

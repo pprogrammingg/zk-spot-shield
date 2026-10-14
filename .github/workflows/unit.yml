@@ -43,3 +43,6 @@ jobs:
 
       - name: Client lib tests
         run: cargo test -p client --lib --locked
+
+      - name: Relayer lib tests
+        run: cargo test -p zk-spot-shield-relayer --lib --locked

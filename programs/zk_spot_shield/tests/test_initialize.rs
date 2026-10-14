@@ -14,16 +14,20 @@ use {
 };
 
 fn load_program(svm: &mut LiteSVM, program_id: Pubkey) {
-    let mut program_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    program_path.push("../../target/deploy/zk_spot_shield.so");
-
-    let bytes = std::fs::read(&program_path).unwrap_or_else(|_| {
-        panic!(
-            "Failed to read program binary at {:?}. Did you run `anchor build` first?",
-            program_path
-        )
-    });
-
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let candidates = [
+        root.join("target/deploy/zk_spot_shield.so"),
+        root.join("target/sbpf-solana-solana/release/zk_spot_shield.so"),
+    ];
+    let bytes = candidates
+        .iter()
+        .find_map(|p| std::fs::read(p).ok())
+        .unwrap_or_else(|| {
+            panic!(
+                "Failed to read program .so (tried {:?}). Run `anchor build` first.",
+                candidates
+            )
+        });
     svm.add_program(program_id, &bytes).unwrap();
 }
 

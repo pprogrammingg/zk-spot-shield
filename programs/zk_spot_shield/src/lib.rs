@@ -35,6 +35,15 @@ pub mod zk_spot_shield {
         instructions::register_clean_funds_root::handle_register_clean_funds_root(ctx, root)
     }
 
+    /// Day 41: transfer SPL into vault and record a public leaf commitment PDA.
+    pub fn deposit_shielded(
+        ctx: Context<DepositShielded>,
+        leaf: [u8; 32],
+        amount: u64,
+    ) -> Result<()> {
+        instructions::deposit_shielded::handle_deposit_shielded(ctx, leaf, amount)
+    }
+
     /// Settle: verify + root + vault reserves + SPL + nullifier (respects pause).
     pub fn settle_shielded_spot(
         ctx: Context<SettleShieldedSpot>,

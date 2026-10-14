@@ -41,7 +41,7 @@ jobs:
         run: cargo audit
 
   clippy:
-    name: clippy (program, io, client)
+    name: clippy (program, io, client, relayer)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -58,4 +58,4 @@ jobs:
 
       - name: Clippy
         run: |
-          cargo clippy -p zk_spot_shield -p zk-circuit-io -p client --locked --all-targets -- -D warnings
+          cargo clippy -p zk_spot_shield -p zk-circuit-io -p client -p zk-spot-shield-relayer --locked --all-targets -- -D warnings

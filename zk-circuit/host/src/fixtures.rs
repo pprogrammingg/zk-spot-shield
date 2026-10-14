@@ -9,9 +9,30 @@
 use std::path::{Path, PathBuf};
 
 use zk_circuit_io::{
-    compute_leaf, compute_nullifier, index0_empty_path, verify_merkle_path, PrivateInputs,
-    PublicOutputs,
+    compute_leaf, compute_nullifier, index0_empty_path, private_inputs_from_deposit,
+    verify_merkle_path, DepositTree, PrivateInputs, PublicOutputs,
 };
+
+/// Day 42: same happy note, but path/root come from a live [`DepositTree`] insert.
+pub fn deposit_backed_happy_inputs() -> PrivateInputs {
+    let secret = [1u8; 32];
+    let user_address = [2u8; 32];
+    let asset_id_mint = [3u8; 32];
+    let balance = 1_000;
+    let leaf = compute_leaf(&secret, &user_address, balance);
+    let mut tree = DepositTree::new();
+    let idx = tree.insert(leaf).expect("insert");
+    private_inputs_from_deposit(
+        secret,
+        user_address,
+        balance,
+        100,
+        asset_id_mint,
+        &tree,
+        idx,
+    )
+    .expect("path")
+}
 
 pub fn corrupt_merkle_path_inputs() -> PrivateInputs {
     let mut inputs = happy_path_inputs();
@@ -201,5 +222,22 @@ mod tests {
             rejected,
             "guest must reject bad inclusion (Err or empty journal after panic)"
         );
+    }
+
+    /// Day 42 Exit: after a deposit-tree insert, host execute accepts live path/root.
+    #[tokio::test]
+    async fn deposit_backed_path_execute_ok() {
+        let inputs = deposit_backed_happy_inputs();
+        assert_eq!(inputs.expected_root, happy_path_inputs().expected_root);
+        let mut stdin = SP1Stdin::new();
+        stdin.write(&inputs);
+        let client = ProverClient::from_env().await;
+        let (mut pv, _report) = client
+            .execute(GUEST_ELF, stdin)
+            .await
+            .expect("deposit-backed path must execute");
+        let public: PublicOutputs = pv.read();
+        assert_eq!(public.merkle_root, inputs.expected_root);
+        assert_eq!(public.requested_swap_amount, 100);
     }
 }

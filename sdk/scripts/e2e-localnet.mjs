@@ -11,6 +11,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+  copyFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -101,6 +102,17 @@ async function main() {
     { cwd: REPO_ROOT, stdio: "inherit", env: process.env },
   );
   if (r.status !== 0) process.exit(r.status ?? 1);
+  // Anchor 1.1 / SBPF may leave the binary under `target/sbpf-solana-solana/…`.
+  if (!existsSync(SO)) {
+    const sbpf = join(
+      REPO_ROOT,
+      "target/sbpf-solana-solana/release/zk_spot_shield.so",
+    );
+    if (existsSync(sbpf)) {
+      mkdirSync(dirname(SO), { recursive: true });
+      copyFileSync(sbpf, SO);
+    }
+  }
   if (!existsSync(SO)) {
     console.error("missing", SO);
     process.exit(1);

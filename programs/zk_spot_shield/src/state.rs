@@ -1,7 +1,8 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    error::ErrorCode, CLEAN_FUNDS_ROOT_SEED_PREFIX, NULLIFIER_SEED_PREFIX,
+    error::ErrorCode, CLEAN_FUNDS_ROOT_SEED_PREFIX, DEPOSIT_LEAF_SEED_PREFIX,
+    NULLIFIER_SEED_PREFIX,
 };
 
 
@@ -80,6 +81,47 @@ impl VaultState {
             return err!(ErrorCode::UnknownVaultMint);
         }
         Ok(())
+    }
+
+    /// Day 41: custody-side deposit — add `amount` of `mint` to the matching reserve.
+    pub fn apply_deposit(&mut self, amount: u64, mint: &Pubkey) -> Result<()> {
+        require!(amount > 0, ErrorCode::ZeroDepositAmount);
+        if mint == &self.mint_a {
+            self.reserve_a = self
+                .reserve_a
+                .checked_add(amount)
+                .ok_or(error!(ErrorCode::VaultReserveOverflow))?;
+        } else if mint == &self.mint_b {
+            self.reserve_b = self
+                .reserve_b
+                .checked_add(amount)
+                .ok_or(error!(ErrorCode::VaultReserveOverflow))?;
+        } else {
+            return err!(ErrorCode::InvalidDepositMint);
+        }
+        Ok(())
+    }
+}
+
+/// PDA seeds: `["deposit_leaf", leaf]` — public leaf commitment after a deposit.
+#[account(zero_copy)]
+#[repr(C)]
+#[derive(Debug, PartialEq)]
+pub struct DepositLeafAccount {
+    pub leaf: [u8; 32],
+    pub amount: u64,
+    pub mint: Pubkey,
+    pub depositor: Pubkey,
+}
+
+const _: () = {
+    assert!(size_of::<DepositLeafAccount>() == 104);
+    assert!(size_of::<DepositLeafAccount>().is_multiple_of(8));
+};
+
+impl DepositLeafAccount {
+    pub fn find_pda(program_id: &Pubkey, leaf: &[u8; 32]) -> (Pubkey, u8) {
+        Pubkey::find_program_address(&[DEPOSIT_LEAF_SEED_PREFIX, leaf], program_id)
     }
 }
 
@@ -197,6 +239,37 @@ mod tests {
             .apply_swap(1, &Pubkey::new_from_array([9u8; 32]))
             .unwrap_err();
         assert_eq!(err, error!(ErrorCode::UnknownVaultMint));
+    }
+
+    #[test]
+    fn apply_deposit_adds_reserve() {
+        let mut vault = sample_vault(100, 200);
+        let mint_a = vault.mint_a;
+        vault.apply_deposit(50, &mint_a).unwrap();
+        assert_eq!(vault.reserve_a, 150);
+        assert_eq!(vault.reserve_b, 200);
+    }
+
+    #[test]
+    fn apply_deposit_rejects_zero_and_unknown_mint() {
+        let mut vault = sample_vault(100, 200);
+        let mint_a = vault.mint_a;
+        assert_eq!(
+            vault.apply_deposit(0, &mint_a).unwrap_err(),
+            error!(ErrorCode::ZeroDepositAmount)
+        );
+        assert_eq!(
+            vault
+                .apply_deposit(1, &Pubkey::new_from_array([9u8; 32]))
+                .unwrap_err(),
+            error!(ErrorCode::InvalidDepositMint)
+        );
+        assert_eq!(vault.reserve_a, 100);
+    }
+
+    #[test]
+    fn deposit_leaf_account_size_is_104() {
+        assert_eq!(std::mem::size_of::<DepositLeafAccount>(), 104);
     }
 
     /// Day 39: arithmetic edges — success keeps `reserve_a + reserve_b` invariant;

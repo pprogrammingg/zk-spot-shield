@@ -23,7 +23,9 @@ pub const NULLIFIER_SEED_PREFIX: &[u8] = b"nullifier";
 #[constant]
 pub const CLEAN_FUNDS_ROOT_SEED_PREFIX: &[u8] = b"clean_funds_root";
 
-
+/// PDA seeds: `["deposit_leaf", leaf]` — one account per deposited leaf commitment.
+#[constant]
+pub const DEPOSIT_LEAF_SEED_PREFIX: &[u8] = b"deposit_leaf";
 
 #[cfg(test)]
 mod tests {
@@ -36,6 +38,7 @@ mod tests {
             SPOT_VAULT_SEED,
             NULLIFIER_SEED_PREFIX,
             CLEAN_FUNDS_ROOT_SEED_PREFIX,
+            DEPOSIT_LEAF_SEED_PREFIX,
         ];
 
         for i in 0..seeds.len() {
