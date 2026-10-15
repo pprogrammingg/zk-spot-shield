@@ -32,7 +32,7 @@ bytemuck = { version = "1.16", features = ["derive"] }
 # 3. SP1 v6 Groth16 on Solana (BN254 precompiles). crates.io `sp1-solana`
 # 0.1.0 only covers SP1 ≤ v5; we verify the v6.1.0 envelope in `verify_sp1`.
 groth16-solana = "0.2.0"
-sha2 = "0.10"
+sha2 = "0.11"
 ark-bn254 = "0.4.0"
 ark-ff = "0.4.2"
 ark-serialize = "0.4.2"
