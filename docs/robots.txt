@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://pprogrammingg.github.io/zk-spot-shield/sitemap.xml

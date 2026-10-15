@@ -1,8 +1,10 @@
 site_name: ZK Spot Shield
 site_description: Private spot settlement on Solana, verified with SP1 zero-knowledge proofs
+site_author: pprogrammingg
 site_url: https://pprogrammingg.github.io/zk-spot-shield/
 repo_url: https://github.com/pprogrammingg/zk-spot-shield
 repo_name: pprogrammingg/zk-spot-shield
+copyright: Copyright &copy; pprogrammingg
 docs_dir: docs
 
 nav:
@@ -17,12 +19,17 @@ nav:
 
 theme:
   name: material
+  custom_dir: overrides
+  favicon: assets/images/favicon.png
+  language: en
   features:
     - navigation.footer
     - navigation.sections
     - content.code.copy
     - toc.follow
     - navigation.top
+    - search.suggest
+    - search.highlight
   palette:
     - scheme: default
       primary: deep purple
@@ -34,6 +41,16 @@ theme:
       toggle:
         icon: material/weather-sunny
         name: Light mode
+
+plugins:
+  - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/pprogrammingg/zk-spot-shield
+      name: GitHub
+  generator: false
 
 extra_css:
   - stylesheets/extra.css

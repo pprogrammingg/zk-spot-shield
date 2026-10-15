@@ -9,6 +9,6 @@ alwaysApply: true
 - One **Day** per session (3×25). Do not pull the next Day mid-session unless the user asks
 - Mark checklist items `[x]` only when that item’s work is done; mark Day Exit only when Exit criteria pass
 - Prefer small commits at session end with a message that names the Day
-- **Commit messages:** descriptive subject ≤50 chars + ` - YES` suffix; no vague one-liners — see `07-commit-messages.mdc`
+- **Commit messages:** agent suggests a subject ≤50 chars + ` - YES`; user commits/pushes — see `07-commit-messages.mdc`
 - Prove the Day with **`--lib` tests and clippy** on every crate you edited (`05-tests-security.mdc`); do not skip security (`cargo audit` / clippy CI) to save time
 - If scaffolding conflicts with later Days (e.g. sample counter vs vault), keep the sample until the Day that replaces it — don’t rewrite Month 2 early

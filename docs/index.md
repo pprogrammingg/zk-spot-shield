@@ -1,3 +1,8 @@
+---
+title: Private spot settlement on Solana
+description: Private spot swaps on Solana with SP1 zero-knowledge proofs — Merkle inclusion, solvency, and nullifiers settled on-chain.
+---
+
 # ZK Spot Shield
 
 ZK Spot Shield is a Solana program for **private spot swaps**. A user proves they are allowed to trade, and that they have enough funds, without showing the chain who they are or how much they hold. The chain checks a short cryptographic proof and settles the trade.

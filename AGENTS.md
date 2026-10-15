@@ -17,7 +17,7 @@ Guidance for AI agents working in **zk-spot-shield**.
 | `02-sp1-circuit.mdc` | `zk-circuit/**` — guest/host SP1 constraints |
 | `03-session-roadmap.mdc` | Always — one Day per session, checklist hygiene |
 | `06-readme-toolchain.mdc` | Always — README Installation pins point at `rust-toolchain.toml` / `Anchor.toml` / `sdk/package.json`, not hardcoded versions |
-| `07-commit-messages.mdc` | Always — descriptive subjects ≤50 chars + ` - YES`; no Cursor Co-authored-by |
+| `07-commit-messages.mdc` | Always — suggest ≤50-char subjects + ` - YES`; user commits/pushes; no Cursor Co-authored-by |
 | `04-context-hygiene.mdc` | Always — skip `target/` and other generated trees |
 | `05-tests-security.mdc` | Always — after editing a crate, `--lib` + clippy on **that** crate; `cargo audit`; host execute is not a substitute |
 

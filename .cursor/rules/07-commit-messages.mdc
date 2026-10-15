@@ -1,11 +1,17 @@
 ---
-description: Descriptive git commit subjects ≤50 chars; no vague one-liners
+description: Suggest ≤50-char commit subjects; user commits and pushes
 alwaysApply: true
 ---
 
 # Commit messages
 
 Every commit subject must be **descriptive enough that a stranger can tell what changed without opening the diff**.
+
+## Agent behavior
+
+- **Do not** run `git commit` or `git push` unless the user explicitly asks
+- When work is ready to land, **suggest one subject line** that matches this rule; the user commits and pushes
+- Do **not** add `Co-authored-by: Cursor` (or any Cursor agent trailer)
 
 ## Required shape
 
@@ -14,9 +20,8 @@ Every commit subject must be **descriptive enough that a stranger can tell what 
 - Always end with ` - YES` (see `03-session-roadmap.mdc`)
 - Prefer why / outcome over file lists; name the Day when the work is a roadmap Day
 - Optional body (2–4 lines) when the subject cannot capture a multi-crate change
-- Do **not** add `Co-authored-by: Cursor` (or any Cursor agent trailer)
 
-## Reject (rewrite before committing)
+## Reject (rewrite before suggesting)
 
 Subjects that are only a label, number, or buzzword — even if they fit in 50 chars:
 
@@ -33,4 +38,4 @@ Also reject any subject longer than 50 characters; shorten outcome wording first
 - `docs: slim README, pin toolchain - YES`
 - `security: ignore RUSTSEC-2026-0344 - YES`
 
-If the draft subject could fit many unrelated diffs, rewrite it from the staged change summary before `git commit`.
+If the draft subject could fit many unrelated diffs, rewrite it from the change summary before suggesting it.

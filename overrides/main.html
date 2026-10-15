@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+  {{ super() }}
+  {% set og_image = config.site_url ~ "assets/images/og-card.jpg" %}
+  {% set page_title = page.meta.get("title", page.title) if page and page.meta else config.site_name %}
+  {% if page and not page.is_homepage %}
+    {% set page_title = page_title ~ " - " ~ config.site_name %}
+  {% endif %}
+  {% set page_desc = (page.meta.get("description") if page and page.meta else none) or config.site_description or "" %}
+  <meta name="theme-color" content="#1a1a2e" />
+  <meta name="keywords" content="Solana, zero-knowledge, ZK, SP1, Groth16, private swap, shielded trading, Anchor, Merkle, nullifier" />
+  <link rel="apple-touch-icon" href="{{ config.site_url }}assets/images/apple-touch-icon.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="{{ config.site_name }}" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:title" content="{{ page_title }}" />
+  <meta property="og:description" content="{{ page_desc }}" />
+  <meta property="og:url" content="{{ page.canonical_url if page else config.site_url }}" />
+  <meta property="og:image" content="{{ og_image }}" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="627" />
+  <meta property="og:image:alt" content="Tactical figure with a glowing holographic shield — ZK Spot Shield" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="{{ page_title }}" />
+  <meta name="twitter:description" content="{{ page_desc }}" />
+  <meta name="twitter:image" content="{{ og_image }}" />
+  <meta name="twitter:image:alt" content="Tactical figure with a glowing holographic shield — ZK Spot Shield" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "{{ config.site_name }}",
+    "description": {{ page_desc | tojson }},
+    "url": "{{ config.site_url }}",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Solana",
+    "image": "{{ og_image }}",
+    "codeRepository": "{{ config.repo_url }}",
+    "author": {
+      "@type": "Person",
+      "name": "pprogrammingg",
+      "url": "https://github.com/pprogrammingg"
+    }
+  }
+  </script>
+{% endblock %}
