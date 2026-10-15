@@ -22,12 +22,16 @@ updates:
         versions: [">=0.5.0"]
       - dependency-name: ark-serialize
         versions: [">=0.5.0"]
-      # Solana SDK 5.x needs an Agave/Anchor/LiteSVM stack bump, not a lone crate bump.
+      # Solana SDK 4+/5.x needs an Agave/Anchor/LiteSVM stack bump, not a lone crate bump.
       - dependency-name: solana-message
         versions: [">=4.0.0"]
       - dependency-name: solana-transaction
         versions: [">=4.0.0"]
       - dependency-name: solana-account
+        versions: [">=4.0.0"]
+      - dependency-name: solana-signer
+        versions: [">=4.0.0"]
+      - dependency-name: solana-keypair
         versions: [">=4.0.0"]
       # Host/guest SP1 pins; bump together with toolchain + audit.toml (ruzstd/object).
       - dependency-name: sp1-sdk
