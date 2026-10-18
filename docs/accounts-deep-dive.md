@@ -9,7 +9,7 @@ If a term is new, the [glossary](glossary.md) has a longer definition. The short
 | **Account** | An address on Solana that holds lamports and a blob of data. |
 | **Program-derived address (PDA)** | An address made from seeds + the program id. It has no private key; only our program can “sign” for it. |
 | **Program owner** | The program allowed to rewrite an account’s *data* bytes. After we create a PDA, that owner is `zk_spot_shield`. |
-| **Authority** | A public key stored *inside* the data (or on an SPL token account) that the code treats as admin or spender. Different job from program owner. |
+| **Protocol admin** | Admin pubkey on `GlobalConfig` (Rust field `authority`): may pause and register roots. Different from program owner and from an SPL token spender. |
 | **SPL token account** | A balance of one mint, owned by the SPL Token program. The token account’s `owner` field is who may spend those tokens. |
 | **Instruction data** | Bytes attached to a single transaction call (function args). They are **not** written into `VaultState` unless the handler copies something out into an account. |
 | **Associated token account (ATA)** | A **standard address** for “this owner pubkey holds this mint.” Still an SPL token account. “ATA of the vault PDA” means owner = vault address, plus the mint. |
@@ -91,16 +91,16 @@ One account for the whole deployment. Seeds: `["global-config"]`.
 | **Purpose** | Remember who is admin, which circuit fingerprint is trusted, and whether settlement is paused |
 | **Type** | Program-derived address |
 | **Program owner** | `zk_spot_shield` |
-| **Authority** | The `authority` public key stored in the account (must sign pause and root registration) |
+| **Protocol admin** | Pubkey in the account (Rust `authority`); must sign pause and root registration |
 | **How many** | Exactly one |
 | **Definition** | [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L18) |
 
 ```mermaid
 flowchart TB
-  subgraph GC["GlobalConfig · one account"]
-    A["authority — admin public key"]
-    V["vkey_hash — 32-byte circuit fingerprint"]
-    P["pause_flag — emergency stop"]
+  subgraph GC["GlobalConfig one account"]
+    A["protocol admin pubkey"]
+    V["vkey_hash circuit fingerprint"]
+    P["pause_flag emergency stop"]
   end
 ```
 
@@ -117,14 +117,14 @@ One hot-path account. Seeds: `["spot_vault"]`. Loaded zero-copy so settlement do
 | **Purpose** | Track two mints and their reserve counters; hold the bump so the program can sign as this address |
 | **Type** | Program-derived address |
 | **Program owner** | `zk_spot_shield` |
-| **Authority** | `authority` in data (set at init). For *moving tokens*, the vault address itself is the token authority (via the stored bump). |
+| **Protocol admin field** | `authority` in data at init (record only). For *moving tokens*, the vault PDA is the SPL spender via the stored bump. |
 | **How many** | Exactly one |
 | **Definition** | [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L27) |
 
 ```mermaid
 flowchart TB
   subgraph VS["VaultState · one account"]
-    AUTH["authority"]
+    AUTH["protocol admin field"]
     MA["mint_a"]
     MB["mint_b"]
     RA["reserve_a — u64 count for mint A"]
@@ -136,7 +136,7 @@ flowchart TB
 Reserves: [reserve_a](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L31) · [reserve_b](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L32)
 
 !!! note "What is not in this account"
-    Proof bytes, the full journal, Merkle paths, and user secrets never live here. Only mints, reserve counters, authority, and bump.
+    Proof bytes, the full journal, Merkle paths, and user secrets never live here. Only mints, reserve counters, protocol-admin field, and bump.
 
 ---
 
@@ -149,7 +149,7 @@ These are ordinary SPL balances. The Token program owns the account data; the **
 | **Purpose** | Hold the actual mint A and mint B tokens |
 | **Type** | SPL token account (often an associated token account) |
 | **Program owner** | SPL Token program |
-| **Authority (spender)** | Vault program-derived address |
+| **SPL spender** | Vault program-derived address |
 | **How many** | Two for the designed spot pair (one per mint) |
 | **Constraints in settle** | [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/instructions/settle_shielded_spot.rs#L68) |
 
@@ -172,7 +172,7 @@ Deposit wires the destination token account here: [Code](https://github.com/ppro
 | **Purpose** | Allow-list one Merkle root so a settle journal that cites it is accepted |
 | **Type** | Program-derived address · seeds `["clean_funds_root", root]` |
 | **Program owner** | `zk_spot_shield` |
-| **Who may create it** | `GlobalConfig.authority` |
+| **Who may create it** | Protocol admin (`GlobalConfig.authority`) |
 | **How many** | One account per registered root — grows over time; the program does not cap the count |
 | **Definition** | [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L165) |
 
@@ -194,7 +194,7 @@ Only one inner field. “Unbounded” means **many small accounts**, not infinit
 | **Purpose** | Double-spend lock: if this account exists, that nullifier already settled |
 | **Type** | Program-derived address · seeds `["nullifier", nullifier]` |
 | **Program owner** | `zk_spot_shield` |
-| **Authority in data** | None — existence is the lock |
+| **Admin field in data** | None — existence is the lock |
 | **How many** | One per successful spend — grows without a fixed program limit |
 | **Definition** | [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L136) |
 
@@ -290,7 +290,7 @@ Admin sets `pause_flag`. Settles must fail closed until unpaused.
 | --- | --- | --- | --- |
 | Replay the same spend | Same proof + journal again | Second settle sees a non-empty nullifier PDA → `NullifierAlreadyUsed` | Proof still only in the tx; the **nullifier account** is the durable lock |
 | Cite an unknown Merkle root | Journal root with no `CleanFundsRoot` | Account constraints / lookup fail (`MerkleRootNotFound` or missing PDA) | Root was never written on chain; vault is irrelevant |
-| Pause or register without admin | Wrong signer | `Unauthorized` via `has_one = authority` | Only `GlobalConfig.authority` matters |
+| Pause or register without protocol admin | Wrong signer | `Unauthorized` via `has_one = authority` | Only the protocol admin pubkey matters |
 | Point settle at the wrong token accounts | Mismatched mint or token owner | `InvalidTokenAccount` | Token accounts are separate from `VaultState` |
 | Garbage or wrong-circuit proof | Bad `proof` bytes | Verify fails → `InvalidProof` | Bytes never land in the vault; verification is ephemeral |
 

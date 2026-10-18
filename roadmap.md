@@ -306,7 +306,7 @@ Couples vault custody + Merkle leaf + `CleanFundsRoot` so settle is not fixture-
   - [x] *Exit:* After one deposit, host `execute` succeeds against the live path/root
 
 - [x] **Day 43 — Register root from deposit tip**
-  - [x] Authority (or deposit pipeline) registers tip as `CleanFundsRoot`
+  - [x] Protocol admin (or deposit pipeline) registers tip as `CleanFundsRoot`
   - [x] E2E: deposit → register → prove → settle (still may use recorded Groth16 if live prove is heavy)
   - [x] *Exit:* Settle succeeds against a root that came from a real deposit, not only the fixture tree. **Next: Phase 10 relayer.**
 
@@ -367,7 +367,7 @@ Aligned with Architecture **phase E** (upcoming) and remaining ranks 1–3.
 ### Phase 13: Security Audit Readiness (4 sessions)
 
 - [ ] **Day 54 — Threat model doc**
-  - [ ] Circuit soundness, replay, pause, authority, root registry, deposit unbacked-leaf (A18)
+  - [ ] Circuit soundness, replay, pause, protocol admin, root registry, deposit unbacked-leaf (A18)
   - [ ] *Exit:* A named doc (e.g. `notes/threat-model.md`) a reviewer can open; Day 65 README links it
 
 - [ ] **Day 55 — Layout + signer audit**
@@ -422,7 +422,7 @@ Assemble what already exists (execute, Groth16 or honest block, threat model, CU
 
 - [ ] **Day 65 — Public artifact (staff README)**
   - [ ] Root `README.md` a staff engineer respects: what the protocol does, trust model, crate map, how to **execute** the guest, how to **prove** (remote Groth16 command) **or** a dated honest “blocked on RAM / no Groth16 file” in `notes/proving.md` — never a fake proof
-  - [ ] Link Day 54 threat model (circuit, replay, pause, authority, root registry, deposit)
+  - [ ] Link Day 54 threat model (circuit, replay, pause, protocol admin, root registry, deposit)
   - [ ] Link CU notes (Days 18 / 29 / 52): verifier budget, measured settle CU if you have it
   - [ ] How to build program + run `--lib` tests; program id / Devnet pointers if Days 58–64 ran
   - [ ] *Exit:* A cold reader can follow README → execute → (Groth16 **or** documented block) → threat model → CU numbers. **No UI this Day.** Clone-and-read is the deliverable. **Next session is Write-3** (public-artifact article + LinkedIn), then Day 66 UI.
@@ -451,7 +451,7 @@ The stack from Days 58–66 (program + vault + UI) must be **exercised on Devnet
 - [ ] **Day 68 — Automated on-chain Devnet tests**
   - [ ] Integration tests (TS and/or Rust) with **cluster = Devnet** — `solana-test-validator` / LiteSVM do **not** count
   - [ ] Tests must **interact on-chain**: fetch `GlobalConfig` + `VaultState` (and ATAs) from Devnet; assert layout / reserves / vkey
-  - [ ] At least one **write** that lands on Devnet (authority no-op such as pause→unpause, or a real `settle_shielded_spot` if a Groth16 fixture exists)
+  - [ ] At least one **write** that lands on Devnet (protocol-admin no-op such as pause→unpause, or a real `settle_shielded_spot` if a Groth16 fixture exists)
   - [ ] One command documented (e.g. `ANCHOR_PROVIDER_URL=https://api.devnet.solana.com …`); skip-with-fail if key/SOL missing so CI-default stays localnet
   - [ ] *Exit:* That command passes against live Devnet; tx signatures or account pubkeys from the run are in the test output or `notes/devnet-tests.md`
 

@@ -240,7 +240,7 @@ cd sdk && npm install && npm run test:e2e</pre>
   <section class="slide">
     <h2>Pause (emergency)</h2>
     <p class="show">Terminal — LiteSVM (not in npm e2e)</p>
-    <p class="p">Authority pause blocks settle; unpause restores. Can’t revoke a registered root yet.</p>
+    <p class="p">Protocol admin pause blocks settle; unpause restores. Can’t revoke a registered root yet.</p>
     <pre class="cmd">export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
 anchor build --ignore-keys   # if target/deploy .so missing
 cargo test -p zk_spot_shield --test test_settle_scaffold -- \

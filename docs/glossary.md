@@ -1,7 +1,7 @@
 # Glossary
 
-!!! tip "Owner, payer, authority"
-    Three different jobs that are easy to mix up. **Owner** is the *program* allowed to write an account's data. **Payer** is who funds the rent when an account is created. **Authority** is a public key *stored in the data* that the program treats as admin. One wallet can fill all three, but they are separate roles.
+!!! tip "Owner, payer, protocol admin"
+    Three different jobs that are easy to mix up. **Owner** is the *program* allowed to write an account's data. **Payer** is who funds the rent when an account is created. **Protocol admin** is the public key stored in `GlobalConfig` (Rust field `authority`) that may pause settle and register Merkle tips. One wallet can fill several roles, but they are separate jobs. SPL also uses the word “authority” for token spenders — that is not the protocol admin.
 
 ## Solana
 
@@ -23,8 +23,8 @@
 **Anchor**
 :   A Rust framework for Solana programs. `#[program]` lists the instructions, `#[derive(Accounts)]` declares and validates each instruction's accounts, and `#[error_code]` defines error variants.
 
-**Authority**
-:   A public key stored inside an account's data that the program treats as the admin, for example the key allowed to pause settlement.
+**Protocol admin**
+:   The admin pubkey on `GlobalConfig` (code field `authority`). Signs `pause` / `unpause` and `register_clean_funds_root`. Not the vault PDA and not an SPL token-account spender.
 
 **Bump**
 :   One extra byte added to a PDA's seeds so the derived address has no private key. Stored on `VaultState` so the program can sign as the vault later.
@@ -72,7 +72,7 @@
 :   The program allowed to change an account's data. After `init`, this program owns its PDAs. Not the same as an SPL token account's owner, which is who may spend the tokens.
 
 **`pause_flag`**
-:   Field on `GlobalConfig`. When set by the authority, settlement is refused. An emergency stop.
+:   Field on `GlobalConfig`. When set by the protocol admin, settlement is refused. An emergency stop.
 
 **Payer**
 :   The signer that funds the rent deposit when an account is created.

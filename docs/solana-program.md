@@ -2,7 +2,7 @@
 
 The on-chain crate is `programs/zk_spot_shield/` (program name `zk_spot_shield`), written with the Anchor framework. It owns config, vault accounting, deposit leaves, approved Merkle roots, and spent nullifiers. Settlement verifies a Groth16 proof and moves tokens.
 
-For diagrams of **type / owner / authority / cardinality**, instruction data vs account fields, and scenario tables, see [Accounts deep dive](accounts-deep-dive.md). For the numbered user journey, see [Architecture](architecture.md).
+For diagrams of **type / owner / protocol admin / cardinality**, instruction data vs account fields, and scenario tables, see [Accounts deep dive](accounts-deep-dive.md). For the numbered user journey, see [Architecture](architecture.md).
 
 ## Accounts at a glance
 
@@ -25,10 +25,10 @@ Each instruction declares **only the accounts that call needs** in a `#[derive(A
 
 | Bucket | Instruction | Role |
 | --- | --- | --- |
-| Admin / setup | `initialize_global_config` | Create config PDA; freeze `vkey_hash`; set authority |
+| Admin / setup | `initialize_global_config` | Create config PDA; freeze `vkey_hash`; set protocol admin |
 | Admin / setup | `initialize_vault` | Create `VaultState` PDA (mints, zero reserves, bump) |
-| Admin / setup | `register_clean_funds_root` | Authority allow-lists a Merkle root PDA |
-| Admin / setup | `pause` / `unpause` | Authority toggles `pause_flag` |
+| Admin / setup | `register_clean_funds_root` | Protocol admin allow-lists a Merkle root PDA |
+| Admin / setup | `pause` / `unpause` | Protocol admin toggles `pause_flag` |
 | Deposit | `deposit_shielded` | CPI: user ATA → vault ATA; `init` leaf PDA; bump reserves |
 | Spend | `settle_shielded_spot` | Verify proof + journal; check root; update reserves; SPL legs; create nullifier |
 
@@ -56,11 +56,11 @@ So even after a deposit already moved tokens into the vault, **settle still pull
 
 ## Design notes
 
-**`GlobalConfig` pins which circuit the program trusts.** `authority`, `vkey_hash`, and `pause_flag`. Small and rarely written → ordinary `Account<T>`.
+**`GlobalConfig` pins which circuit the program trusts.** Protocol admin pubkey (Rust field `authority`), `vkey_hash`, and `pause_flag`. Small and rarely written → ordinary `Account<T>`.
 
 **`VaultState` is zero-copy** because settlement touches it every trade (`AccountLoader`, `#[repr(C)]`, explicit padding to 120 bytes). Compile-time size asserts catch layout breakage.
 
-**Bump vs authority.** The **bump** lets the program `invoke_signed` as the vault PDA for token payouts. The **`authority` pubkey** on config (and recorded on the vault at init) is an admin key for pause/register — not what signs SPL payouts. `has_one = authority` gates admin instructions on `GlobalConfig`.
+**Bump vs protocol admin.** The **bump** lets the program `invoke_signed` as the vault PDA for token payouts. The **protocol admin** pubkey on config (Rust `authority`, also recorded on the vault at init) signs pause/register — not SPL payouts. Anchor `has_one = authority` gates those admin instructions.
 
 **Deposit leaf PDA.** Seeds `["deposit_leaf", leaf]` make each commitment unique (`init` fails on replay). Account data stores the public leaf hash plus amount, mint, and **depositor** — useful for indexers and audits; deposit privacy is therefore imperfect today.
 
