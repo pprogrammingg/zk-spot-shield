@@ -1,10 +1,10 @@
-#!/usr/bin/env node
+#!/usr/bin/env npx tsx
 /**
  * Day 38: one command — build program, start local validator (program + preloaded
  * accounts), run happy + negative E2E, tear down.
  *
  * Usage (from repo root or sdk/):
- *   node sdk/scripts/e2e-localnet.mjs
+ *   npx tsx sdk/scripts/e2e-localnet.ts
  *   npm run test:e2e   # from sdk/
  */
 
@@ -21,6 +21,7 @@ import {
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { Keypair, PublicKey } from "@solana/web3.js";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const SDK_ROOT = join(SCRIPT_DIR, "..");
@@ -35,11 +36,11 @@ const VKEY_HASH = Buffer.from(
   "hex",
 );
 
-function disc(name) {
+function disc(name: string): Buffer {
   return createHash("sha256").update(`account:${name}`).digest().subarray(0, 8);
 }
 
-function packMint(supply) {
+function packMint(supply: bigint): Buffer {
   const data = Buffer.alloc(82);
   data.writeBigUInt64LE(supply, 36);
   data[44] = 0;
@@ -47,7 +48,7 @@ function packMint(supply) {
   return data;
 }
 
-function packToken(mintBuf, ownerBuf, amount) {
+function packToken(mintBuf: Buffer, ownerBuf: Buffer, amount: bigint): Buffer {
   const data = Buffer.alloc(165);
   mintBuf.copy(data, 0);
   ownerBuf.copy(data, 32);
@@ -56,7 +57,14 @@ function packToken(mintBuf, ownerBuf, amount) {
   return data;
 }
 
-function packVault(authorityBuf, mintA, mintB, ra, rb, bump) {
+function packVault(
+  authorityBuf: Buffer,
+  mintA: Buffer,
+  mintB: Buffer,
+  ra: bigint,
+  rb: bigint,
+  bump: number,
+): Buffer {
   const body = Buffer.alloc(120);
   authorityBuf.copy(body, 0);
   mintA.copy(body, 32);
@@ -67,7 +75,7 @@ function packVault(authorityBuf, mintA, mintB, ra, rb, bump) {
   return Buffer.concat([disc("VaultState"), body]);
 }
 
-function packGlobal(authorityBuf, vkey, pause) {
+function packGlobal(authorityBuf: Buffer, vkey: Buffer, pause: boolean): Buffer {
   const body = Buffer.alloc(65);
   authorityBuf.copy(body, 0);
   vkey.copy(body, 32);
@@ -75,12 +83,12 @@ function packGlobal(authorityBuf, vkey, pause) {
   return Buffer.concat([disc("GlobalConfig"), body]);
 }
 
-function accountJson(pubkey, owner, data) {
+function accountJson(pubkey: string, owner: string, data: Buffer) {
   return {
     pubkey,
     account: {
       lamports: 1_000_000_000,
-      data: [data.toString("base64"), "base64"],
+      data: [data.toString("base64"), "base64"] as [string, string],
       owner,
       executable: false,
       rentEpoch: 0,
@@ -89,20 +97,19 @@ function accountJson(pubkey, owner, data) {
   };
 }
 
-async function main() {
+async function main(): Promise<void> {
   const pathEnv = `${process.env.PATH ?? ""}:${homedir()}/.local/share/solana/install/active_release/bin`;
   process.env.PATH = pathEnv;
-  // Avoid sandbox / alternate target dirs so deploy .so lands in repo `target/deploy`.
   delete process.env.CARGO_TARGET_DIR;
 
   console.log("==> anchor build --ignore-keys");
-  let r = spawnSync(
-    "anchor",
-    ["build", "--ignore-keys"],
-    { cwd: REPO_ROOT, stdio: "inherit", env: process.env },
-  );
+  let r = spawnSync("anchor", ["build", "--ignore-keys"], {
+    cwd: REPO_ROOT,
+    stdio: "inherit",
+    env: process.env,
+  });
   if (r.status !== 0) process.exit(r.status ?? 1);
-  // Anchor 1.1 / SBPF may leave the binary under `target/sbpf-solana-solana/…`.
+
   if (!existsSync(SO)) {
     const sbpf = join(
       REPO_ROOT,
@@ -118,15 +125,10 @@ async function main() {
     process.exit(1);
   }
 
-  // Use web3 from sdk/node_modules
-  const { PublicKey, Keypair } = await import(
-    join(SDK_ROOT, "node_modules/@solana/web3.js/lib/index.cjs.js")
-  ).catch(async () => import("@solana/web3.js"));
-
   const walletPath =
     process.env.ANCHOR_WALLET ?? join(homedir(), ".config/solana/id.json");
   const authority = Keypair.fromSecretKey(
-    Uint8Array.from(JSON.parse(readFileSync(walletPath, "utf8"))),
+    Uint8Array.from(JSON.parse(readFileSync(walletPath, "utf8")) as number[]),
   );
   const programId = new PublicKey(PROGRAM_ID);
   const [globalConfig] = PublicKey.findProgramAddressSync(
@@ -153,7 +155,12 @@ async function main() {
   mkdirSync(ACCOUNTS_DIR, { recursive: true });
 
   const TOKEN = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
-  const write = (pk, owner, data, name) => {
+  const write = (
+    pk: PublicKey,
+    owner: string,
+    data: Buffer,
+    name: string,
+  ): string => {
     const p = join(ACCOUNTS_DIR, `${name}.json`);
     writeFileSync(
       p,
@@ -162,7 +169,7 @@ async function main() {
     return p;
   };
 
-  const authBuf = authority.publicKey.toBuffer();
+  const authBuf = Buffer.from(authority.publicKey.toBytes());
   const paths = [
     write(
       globalConfig,
@@ -175,8 +182,8 @@ async function main() {
       PROGRAM_ID,
       packVault(
         authBuf,
-        mintA.toBuffer(),
-        mintB.toBuffer(),
+        Buffer.from(mintA.toBytes()),
+        Buffer.from(mintB.toBytes()),
         reserveA,
         reserveB,
         vaultBump,
@@ -188,25 +195,33 @@ async function main() {
     write(
       vaultTokenA,
       TOKEN,
-      packToken(mintA.toBuffer(), vault.toBuffer(), reserveA),
+      packToken(
+        Buffer.from(mintA.toBytes()),
+        Buffer.from(vault.toBytes()),
+        reserveA,
+      ),
       "vault_token_a",
     ),
     write(
       vaultTokenB,
       TOKEN,
-      packToken(mintB.toBuffer(), vault.toBuffer(), reserveB),
+      packToken(
+        Buffer.from(mintB.toBytes()),
+        Buffer.from(vault.toBytes()),
+        reserveB,
+      ),
       "vault_token_b",
     ),
     write(
       userTokenA,
       TOKEN,
-      packToken(mintA.toBuffer(), authBuf, userA),
+      packToken(Buffer.from(mintA.toBytes()), authBuf, userA),
       "user_token_a",
     ),
     write(
       userTokenB,
       TOKEN,
-      packToken(mintB.toBuffer(), authBuf, userB),
+      packToken(Buffer.from(mintB.toBytes()), authBuf, userB),
       "user_token_b",
     ),
   ];
@@ -234,9 +249,9 @@ async function main() {
 
   rmSync(LEDGER, { recursive: true, force: true });
 
-  const accountArgs = [];
+  const accountArgs: string[] = [];
   for (const p of paths) {
-    const j = JSON.parse(readFileSync(p, "utf8"));
+    const j = JSON.parse(readFileSync(p, "utf8")) as { pubkey: string };
     accountArgs.push("--account", j.pubkey, p);
   }
 
@@ -260,7 +275,7 @@ async function main() {
     env: process.env,
   });
   let ready = false;
-  const onData = (buf) => {
+  const onData = (buf: Buffer) => {
     const s = buf.toString();
     process.stdout.write(s);
     if (s.includes("JSON RPC URL") || s.includes("Processing NodeReady")) {
@@ -272,8 +287,7 @@ async function main() {
 
   const deadline = Date.now() + 60_000;
   while (!ready && Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 500));
-    // also try RPC
+    await new Promise((resolve) => setTimeout(resolve, 500));
     const ping = spawnSync(
       "solana",
       ["cluster-version", "--url", "http://127.0.0.1:8899"],
@@ -290,7 +304,6 @@ async function main() {
     process.exit(1);
   }
 
-  // Fund authority
   spawnSync(
     "solana",
     [
@@ -304,7 +317,11 @@ async function main() {
   );
 
   console.log("==> npm test (unit) + vitest e2e");
-  r = spawnSync("npm", ["test"], { cwd: SDK_ROOT, stdio: "inherit", env: process.env });
+  r = spawnSync("npm", ["test"], {
+    cwd: SDK_ROOT,
+    stdio: "inherit",
+    env: process.env,
+  });
   if (r.status !== 0) {
     validator.kill("SIGTERM");
     process.exit(r.status ?? 1);
@@ -333,7 +350,7 @@ async function main() {
       "    Paste the `solana confirm -v …` line from happy-path stdout into another terminal.",
     );
     console.log("    Ctrl+C here when done.");
-    await new Promise((resolve) => {
+    await new Promise<void>((resolve) => {
       const stop = () => {
         validator.kill("SIGTERM");
         resolve();
@@ -354,7 +371,7 @@ async function main() {
   process.exit(r.status ?? 1);
 }
 
-main().catch((e) => {
+main().catch((e: unknown) => {
   console.error(e);
   process.exit(1);
 });

@@ -1,5 +1,5 @@
 /**
- * Days 36–37: localnet E2E (RUN_E2E=1 + validator preloads from e2e-localnet.mjs).
+ * Days 36–37: localnet E2E (RUN_E2E=1 + validator preloads from e2e-localnet.ts).
  *
  * Order matters: negative cases that need an unused nullifier run before happy settle.
  */
