@@ -8,19 +8,22 @@ Mark items `[x]` when done. A Day is **done** only when its *Exit* criteria pass
 
 ## Build priority calendar (do not reorder)
 
-Product north star: **private settlement rail** → **shielded HTTP 402 payer**. Core localnet E2E (Days 36–40) is done. Next engineering follows this order — not “whatever Day number looks fun.”
+Product north star: **private settlement rail** → **shielded HTTP 402 payer**. Core localnet E2E (Days 36–40) and **deposit → leaf → root (Days 41–43)** plus relayer scaffold (Days 44–45) are done. Docs architecture phases A–E spell the same story (built vs upcoming).
 
-| Rank | Priority | Calendar home | Approx window* | Why |
-| --- | --- | --- | --- | --- |
-| **1** | **Shielded 402 payer (P1)** | **Day 50** (+ Mondays P0 until then) | ~late Oct (before Nov 3 Stripe talk) | Highest demo / job / hackathon leverage |
-| **2** | **Real deposit → leaf → registered root** | **Days 41–43** | next 3 sessions after Write-2 | Without this, settle stays fixture theater |
-| **3** | **Relayer as fee payer** | **Days 44–49** | after deposit | Removes “my wallet pays the fee” privacy leak |
-| **4** | **Change notes** (spend 100, keep 900) | **Days 73–75** | after uncensorable UI | Needed for real wallets; heavier circuit — not before P1 |
-| — | Encrypted note backup / on-chain blob | Tech debt only | never steals a Day | UX nicety; not product-defining |
+Next engineering follows this order — not “whatever Day number looks fun.”
 
-\*One engineering Day ≈ one calendar workday at the current cadence. Adjust if you batch; do **not** skip rank 2 before rank 1’s Day 50.
+| Rank | Priority | Calendar home | Why |
+| --- | --- | --- | --- |
+| **1** | **Relayer fee payer + fee economics** | **Days 46–47** | Relayer pays Solana SOL (+ later prove credits); user fee tops up treasury — see Architecture phase E |
+| **2** | **Vault-only shielded settle** | **Day 48** | Today settle still pulls journal mint from the **payer wallet** even after deposit funded the vault. Product direction: spend the note → vault pays out the other mint **without** a second user→vault of A |
+| **3** | **SDK + optional hidden recipient hooks** | **Day 49** | Drive deposit-backed settle; prepare recipient unlink / relayer-submit (full unlink may land with UI) |
+| **4** | **Shielded 402 payer (P1)** | **Day 50** (+ Mondays P0) | Highest demo / job / hackathon leverage — needs ranks 1–3 Exit |
+| **5** | **Change notes** (spend 100, keep 900) | **Days 73–75** | After uncensorable UI; heavier circuit — not before P1 |
+| — | AMM curve (“100 A → 50 B”) | Not a Day | Stay **1:1 spot** unless product explicitly pivots |
+| — | Perfect deposit privacy (no depositor on leaf PDA) | Tech debt / later | Deposit still stores depositor pubkey today |
+| — | Encrypted note backup | Tech debt only | Never steals a ranked Day |
 
-**Hard rule:** Day 41 starts **deposit**, not relayer. P1 (Day 50) waits until deposit Exit passes. Change notes stay after Day 72.
+**Hard rule:** Finish Days **46–49** before Day **50** (P1). Change notes stay after Day 72. Do not invent AMM Days ahead of P1.
 
 ---
 
@@ -28,7 +31,7 @@ Product north star: **private settlement rail** → **shielded HTTP 402 payer**.
 
 **Why:** ZK Spot Shield becomes the private payer for machine payments — an AI agent pays an API over HTTP 402 (Stripe MPP / Coinbase x402 on Solana) from a shielded note, so the payment settles without exposing the agent's wallet or balance. This is the rail Stripe and Coinbase are building, which makes the project a hackathon entry, a job-loop talking point and, if traction shows up, a fundable startup.
 
-**Scope rule:** Core slice (verify → settle → localnet E2E) is **done**. P0 plain 402 continues on Mondays. **P1 shielded payer is Day 50** (after deposit Days 41–43 + relayer/SDK Days 44–49). Do not start P2 UI repo before Day 50 Exit.
+**Scope rule:** Core slice (verify → settle → localnet E2E) and deposit (41–43) are **done**. P0 plain 402 continues on Mondays. **P1 shielded payer is Day 50** (after relayer fee payer + vault-only settle + SDK Days 46–49). Do not start P2 UI repo before Day 50 Exit.
 
 ### Milestones
 
@@ -286,9 +289,9 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
 
 ## Month 3: Deposit, Relayer, P1 402, Benchmarks, Audit & Devnet (Sessions 41–64)
 
-Order is fixed by the [Build priority calendar](#build-priority-calendar-do-not-reorder): **deposit → relayer/SDK → P1 → bench → audit → Devnet**.
+Order is fixed by the [Build priority calendar](#build-priority-calendar-do-not-reorder): **deposit (done) → relayer fee payer → vault-only settle → SDK → P1 → bench → audit → Devnet**. Match [Architecture](docs/architecture.md) phases A–E.
 
-### Phase 9: Deposit → leaf → registered root (3 sessions) — priority 2
+### Phase 9: Deposit → leaf → registered root (3 sessions) — done
 
 Couples vault custody + Merkle leaf + `CleanFundsRoot` so settle is not fixture-only.
 
@@ -307,7 +310,9 @@ Couples vault custody + Merkle leaf + `CleanFundsRoot` so settle is not fixture-
   - [x] E2E: deposit → register → prove → settle (still may use recorded Groth16 if live prove is heavy)
   - [x] *Exit:* Settle succeeds against a root that came from a real deposit, not only the fixture tree. **Next: Phase 10 relayer.**
 
-### Phase 10: Relayer & Client SDK (6 sessions) — priority 3
+### Phase 10: Relayer, vault-only settle & Client SDK (6 sessions)
+
+Aligned with Architecture **phase E** (upcoming) and remaining ranks 1–3.
 
 - [x] **Day 44 — Relayer scaffold**
   - [x] `relayer/` Axum (or Actix) service skeleton + health endpoint
@@ -316,26 +321,34 @@ Couples vault custody + Merkle leaf + `CleanFundsRoot` so settle is not fixture-
   - [x] Accept private intent; Tokio queue for prove jobs
 
 - [ ] **Day 46 — Tx build + fee payer**
-  - [ ] Relayer wraps proof into Solana tx and signs as fee payer
+  - [ ] Relayer builds `settle_shielded_spot` tx (proof + journal + account metas) and **signs as fee payer** (user need not pay SOL for settle)
+  - [ ] Document: fee payer ≠ note owner; journal still binds amount/mint/nullifier/root
+  - [ ] *Exit:* Localnet settle lands with relayer key as fee payer; explorer shows relayer paying lamports
 
-- [ ] **Day 47 — Fees + RPC retry**
-  - [ ] bps fee from payout
+- [ ] **Day 47 — Fees + RPC retry + prove-treasury note**
+  - [ ] bps (or flat) fee from payout / deposit to refill **relayer SOL** (and, when wired, Succinct **prove credits**)
   - [ ] Exponential backoff on send/confirm
+  - [ ] Short `notes/relayer-economics.md`: user fee → treasury → SOL + $PROVE (Architecture phase E)
+  - [ ] *Exit:* Failed RPC retries; fee path sketched or stubbed with a test hook. **Next: Day 48 vault-only settle.**
 
-- [ ] **Day 48 — `@zk-shield/sdk` surface**
-  - [ ] `generateProofInputs`, `requestShieldedSwap`, `getVaultReserves`
+- [ ] **Day 48 — Vault-only shielded settle (product gap)**
+  - [ ] Today settle still **SPL-transfers journal mint from the payer’s ATA into the vault** even after deposit already funded custody — ZK gate + 1:1 wallet legs
+  - [ ] Change settle path so a **deposit-backed** spend: nullify note → update reserves → vault PDA pays the **other** mint out **without** requiring a second user→vault of the journal mint (still 1:1 spot; no AMM)
+  - [ ] Keep fail-closed: underfunded vault, bad proof, used nullifier, pause
+  - [ ] *Exit:* Localnet: deposit 300 A → prove spend 100 A for 100 B → user wallet is **not** debited another 100 A; vault ATA B decreases / user receives B; nullifier created. `--lib` + LiteSVM/settle tests green
 
-- [ ] **Day 49 — SDK sync + docs**
-  - [ ] WebSocket/`CleanFundsRoot` sync helper
-  - [ ] Usage examples in package README
-  - [ ] *Exit:* SDK can drive deposit-backed settle; relayer can be fee payer. **Next session is Day 50 (P1).**
+- [ ] **Day 49 — `@zk-shield/sdk` surface + recipient hooks**
+  - [ ] `generateProofInputs`, `requestShieldedSwap`, `getVaultReserves`; WebSocket/`CleanFundsRoot` sync helper as needed
+  - [ ] Optional: settle account metas for **recipient ATA ≠ depositor** (hidden-destination groundwork; full unlink may need fresh ATA + relayer submit)
+  - [ ] Usage examples in package README; point at Architecture phases C–E
+  - [ ] *Exit:* SDK drives deposit-backed **vault-only** settle; relayer can be fee payer. **Next session is Day 50 (P1).**
 
-### Phase 11: Shielded 402 payer (1 session) — priority 1
+### Phase 11: Shielded 402 payer (1 session) — priority 4 on calendar / demo rank 1
 
 - [ ] **Day 50 — P1 shielded payer on localnet**
   - [ ] Agent (or script) hits paid endpoint → `402` quote → pays via ZK Spot Shield settle (nullifier path), not a public wallet transfer as the privacy story
-  - [ ] Prefer relayer fee payer from Day 46 when available
-  - [ ] *Exit:* One paid request on localnet; chain sees amount + nullifier, not the payer identity. Milestone **P1** checked. Mondays may still polish P0.
+  - [ ] Prefer relayer fee payer (Day 46) + vault-only settle (Day 48) when available
+  - [ ] *Exit:* One paid request on localnet; chain sees amount + nullifier (+ token accounts still in tx until full unlink); not “agent paid from a doxxed hot wallet.” Milestone **P1** checked. Mondays may still polish P0.
 
 ### Phase 12: Benchmarking (3 sessions)
 
@@ -401,7 +414,7 @@ Program + relayer + SDK go live. **No browser UI yet** (that is Day 66). Day 65 
 
 ## Month 3+ buffer: Public artifact, UI, Devnet product tests, uncensorable UI, then change notes (Sessions 65–75)
 
-Days **58–64** put the **program + relayer + SDK** on Devnet. **Day 65** is the GitHub README a staff engineer respects (no UI required). Days **66–68** are the **product you can see and test on-chain**. Days **69–72** harden that UI so a seized website cannot stop settle. Days **73–75** add **change notes** (priority 4). Do **not** start IPFS/mirrors before the basic swap UI exists. Do **not** pull change notes before Day 72 Exit.
+Days **58–64** put the **program + relayer + SDK** on Devnet. **Day 65** is the GitHub README a staff engineer respects (no UI required). Days **66–68** are the **product you can see and test on-chain**. Days **69–72** harden that UI so a seized website cannot stop settle. Days **73–75** add **change notes** (calendar rank 5). Do **not** start IPFS/mirrors before the basic swap UI exists. Do **not** pull change notes before Day 72 Exit. Do **not** pull AMM work ahead of P1.
 
 ### Phase 15: Public shield artifact (1 session) — **before UI**
 
@@ -419,9 +432,10 @@ Assemble what already exists (execute, Groth16 or honest block, threat model, CU
 Ship a normal swap screen first. Relayer and a local HTTPS/static server are allowed. This is **not** the uncensorable phase.
 
 - [ ] **Day 66 — Basic swap UI**
-  - [ ] Minimal web UI: wallet connect, show vault reserves / clean root / pause, swap amount + asset, submit settle (via relayer **or** wallet as fee payer)
-  - [ ] Load or paste Groth16 + journal (in-browser prove is out of scope)
-  - [ ] Talks to the SDK from Day 48; works against **localnet** today
+  - [ ] Minimal web UI: wallet connect, show vault reserves / clean root / pause, swap amount + asset (1:1 spot — not AMM), submit settle (via relayer **or** wallet as fee payer)
+  - [ ] Load or paste Groth16 + journal (in-browser prove is out of scope; host execute + remote prove stay off the critical UI path)
+  - [ ] Talks to the SDK from Day 49; works against **localnet** today
+  - [ ] Optional UI copy: “shielded settle” vs clear note that deposit still shows depositor on-chain until a later privacy Day
   - [ ] *Exit:* You can click through a swap in the browser on localnet and see balances change in the UI (not only logs / explorer). No IPFS, no multi-RPC, no seizure runbook today.
 
 ### Phase 17: Finished product on Devnet — see it and test it (2 sessions)
@@ -467,9 +481,9 @@ The program on Solana already survives a seized website. The **basic UI** does n
 
 **Out of scope here:** fully trustless in-browser Groth16 on a phone. Prove can stay remote; uncensorable means **anyone can host the UI and submit the tx**, not that prove is free or local.
 
-### Phase 19: Change notes (3 sessions) — priority 4
+### Phase 19: Change notes (3 sessions) — calendar rank 5
 
-Partial spend without burning the whole note balance. UTXO-style: nullify old note, insert change leaf for remainder. Do **not** start before Day 72 Exit.
+Partial spend without burning the whole note balance. UTXO-style: nullify old note, insert change leaf for remainder. Assumes Day **48** vault-only settle already landed (no second wallet debit of the spend mint). Do **not** start before Day 72 Exit.
 
 - [ ] **Day 73 — Circuit: change output**
   - [ ] Guest: after solvency, commit change note leaf (`balance - amount`) under same or new secret; journal/public shape updated as needed
@@ -483,8 +497,8 @@ Partial spend without burning the whole note balance. UTXO-style: nullify old no
 
 - [ ] **Day 75 — Change-note E2E + docs**
   - [ ] Negative: replay old note → `NullifierAlreadyUsed`; spend change note succeeds once
-  - [ ] Docs/glossary: note vs change note; update threat model if journal fields grew
-  - [ ] *Exit:* Checklist + `--lib` / e2e green; roadmap priority 4 done
+  - [ ] Docs/glossary: note vs change note; update Architecture phase E + threat model if journal fields grew
+  - [ ] *Exit:* Checklist + `--lib` / e2e green; roadmap change-notes rank done
 
 ---
 
@@ -493,7 +507,9 @@ Partial spend without burning the whole note balance. UTXO-style: nullify old no
 Tasks outside the numbered Day sequence. Do when they unblock toolchain/CI; do not pull them into a session Mid-Day. Do **not** promote these over the [Build priority calendar](#build-priority-calendar-do-not-reorder).
 
 - [x] **Anchor `programs/*/` layout** — Move on-chain crate from `program/` → `programs/zk_spot_shield/` so AVM/Anchor discover `anchor-lang` under the standard path. Workspace + `Anchor.toml` members, LiteSVM `.so` path, docs/rules/CI updated. *Exit:* `cargo test -p zk_spot_shield --lib` and `anchor build --ignore-keys` succeed.
-- [ ] **Encrypted note backup** — Optional client export / encrypted blob so a wiped device can restore `{secret, balance, address, leaf_index}`. Not an NFT with plaintext balance. Never steals Days 41–50 or 73–75.
+- [ ] **Encrypted note backup** — Optional client export / encrypted blob so a wiped device can restore `{secret, balance, address, leaf_index}`. Not an NFT with plaintext balance. Never steals Days 46–50 or 73–75.
+- [ ] **Deposit privacy** — Stop storing raw `depositor` on `DepositLeafAccount` (or encrypt / omit); reduce deposit↔wallet linkability. Does not replace Day 48 vault-only settle or Days 73–75 change notes.
+- [ ] **Full recipient unlink** — Fresh receive ATA + relayer-only submit so settle metas do not dox the note owner. Builds on Days 46 + 49; may span UI Days 66+.
 
 ---
 

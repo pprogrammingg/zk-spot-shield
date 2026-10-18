@@ -229,9 +229,19 @@ flowchart TB
   end
 ```
 
-**Why store the leaf hash?** It is the public commitment to a private note (secret stays off-chain). The PDA address is keyed by that hash so the same leaf cannot be deposited twice (`init` fails). Indexers read leaf/amount/mint to grow the Merkle tree; settle later only needs a **registered root**, not every leaf account. The hash appears in both seeds and account data so the value is easy to read on explorers.
+**Why store the leaf hash?** The leaf hash is the **public commitment** to a private note. Storing it (and keying a PDA on it) does three jobs:
+
+1. **Prove this deposit happened once.** Address = `PDA(["deposit_leaf", leaf])`. Creating it with `init` means the same leaf can’t be deposited twice — account already exists → fail.
+2. **Give the off-chain tree something canonical to index.** Indexers / SDK see: “leaf X was deposited for amount Y / mint Z.” They insert X into the Merkle tree and later serve paths for proofs. Settle never re-reads every leaf PDA; it only checks a **registered root** + nullifier. The leaf PDAs are the public deposit log that feeds that tree.
+3. **Bind public facts to the commitment.** Account data holds `leaf`, `amount`, `mint`, `depositor` so anyone can audit “this commitment was funded with this mint/amount” without seeing the **secret**.
+
+**Why a hash, not the secret?** The leaf is `Poseidon(secret, …)` (commitment). On-chain you need a handle for the note that doesn’t reveal the secret. The hash is that handle.
+
+**Redundancy note:** the leaf appears in both **seeds** and **account data**. Seeds make the address unique; the field makes the value easy to read from the account without reverse-engineering the address. Settle still doesn’t need to load this PDA to swap — it’s for deposit uniqueness + public record + tree sync, not for holding the Groth16 proof.
 
 **Privacy caveat:** `depositor` is the **user’s wallet**. Deposit txs also show their token account. Shielding the spend secret ≠ hiding who funded the leaf. Unlinking deposit from withdraw is **(upcoming)** — see [Architecture](architecture.md) phase E.
+
+**How the user spends later:** they keep the note (secret + balance + leaf) client-side; Thursday’s swap proves knowledge of that secret under a Merkle path — they do not “sign Monday’s deposit again.” See [Architecture](architecture.md).
 
 Instruction: [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/instructions/deposit_shielded.rs#L27).
 

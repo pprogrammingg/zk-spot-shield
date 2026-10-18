@@ -19,16 +19,18 @@ Every Anchor account also carries an 8-byte type tag in front of the data, so al
 
 ## Instructions
 
+Roughly three jobs: **admin / setup** (pause, circuit pin, vault init, register roots), **deposit** (create leaf + custody), and **spend** (`settle_shielded_spot`, which includes verify — change notes later extend this path). Relayer and SDK are off-chain; they call these same instructions.
+
 Each instruction declares **only the accounts that call needs** in a `#[derive(Accounts)]` struct (`ctx.accounts`). That list is not “every account the program ever created” — Solana only passes the working set named in the transaction.
 
-| Instruction | Role |
-| --- | --- |
-| `initialize_global_config` | Create config PDA; freeze `vkey_hash`; set authority |
-| `initialize_vault` | Create `VaultState` PDA (mints, zero reserves, bump) |
-| `deposit_shielded` | CPI: user ATA → vault ATA; `init` leaf PDA; bump reserves |
-| `register_clean_funds_root` | Authority allow-lists a Merkle root PDA |
-| `pause` / `unpause` | Authority toggles `pause_flag` |
-| `settle_shielded_spot` | Verify proof + journal; check root; update reserves; SPL legs; create nullifier |
+| Bucket | Instruction | Role |
+| --- | --- | --- |
+| Admin / setup | `initialize_global_config` | Create config PDA; freeze `vkey_hash`; set authority |
+| Admin / setup | `initialize_vault` | Create `VaultState` PDA (mints, zero reserves, bump) |
+| Admin / setup | `register_clean_funds_root` | Authority allow-lists a Merkle root PDA |
+| Admin / setup | `pause` / `unpause` | Authority toggles `pause_flag` |
+| Deposit | `deposit_shielded` | CPI: user ATA → vault ATA; `init` leaf PDA; bump reserves |
+| Spend | `settle_shielded_spot` | Verify proof + journal; check root; update reserves; SPL legs; create nullifier |
 
 The TypeScript SDK under `sdk/` builds an Anchor provider and mirrors Poseidon Merkle helpers against `zk-circuit/fixtures/happy.json`.
 
