@@ -8,6 +8,12 @@
 **Account**
 :   An address holding lamports (SOL), an owner program, and a byte array of data. Wallets, token balances, program state, and programs themselves are all accounts.
 
+**Associated token account (ATA)**
+:   The usual SPL token account address for a given owner pubkey and mint, derived by the Associated Token program. “ATA of the vault PDA” means that owner is the vault address. Still an SPL token account — ATA is the address recipe, not a separate asset type.
+
+**Instruction data**
+:   Bytes attached to one program call (Anchor function arguments such as `proof` and `journal`). Ephemeral unless the handler writes something into an account. Not the same as fields on `VaultState`.
+
 **`Account<'info, T>`**
 :   Anchor wrapper that copies an account's bytes into a Rust struct `T` on every instruction. Fine for small, rarely used state such as `GlobalConfig`.
 

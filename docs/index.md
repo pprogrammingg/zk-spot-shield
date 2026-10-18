@@ -36,8 +36,10 @@ The chain learns the trade amount, the token, and the one-time tag. It never lea
 | Circuit: Merkle inclusion, solvency check, nullifier | Done |
 | Remote Groth16 proof of the happy-path example | Done, stored as test fixtures |
 | Negative test: a forged Merkle path is rejected | Done |
-| Solana program: config and vault accounts, nullifier and root accounts | Done (account layer) |
-| On-chain proof verification and settlement | Next |
-| Client SDK and token transfers | Planned |
+| Solana program: config, vault, roots, nullifiers, deposit leaves | Done |
+| On-chain verify + 1:1 settle + SPL legs | Done |
+| Relayer scaffold | Done (economics upcoming) |
+| Hidden recipient, change notes, vault-only shielded spend | Planned |
+| Trading UI polish | Planned |
 
-Start with [Architecture](architecture.md) for the full picture, or jump to [Tests](tests.md) to see real inputs and outputs.
+Start with [Architecture](architecture.md) for the numbered flow, [Accounts deep dive](accounts-deep-dive.md) for PDA/ATA vocabulary, or [Tests](tests.md) for fixtures.

@@ -1,268 +1,312 @@
 # Solana / Anchor components deep dive
 
-How ZK Spot Shield’s on-chain pieces fit together: **what each account is for**, **type (PDA vs ATA)**, **who owns it vs who has authority**, **how many exist**, and **what lives inside** (fields / custody “vaults”).
+This page walks through the on-chain pieces of ZK Spot Shield: what each account is for, how it is addressed, who can change it, how many of them exist, and what sits *inside* versus what only rides along in a transaction.
 
-!!! tip "Two kinds of “owner”"
-    - **Program owner** — the Solana program allowed to *write* the account’s data bytes (after `init`, our PDAs are owned by `zk_spot_shield`).
-    - **Authority** — a pubkey *stored in the data* (or an SPL token account’s `owner` field) that the program / Token program treats as allowed to act (pause, register roots, spend tokens).
+If a term is new, the [glossary](glossary.md) has a longer definition. The short versions you need here:
 
-    See also [Glossary: Owner, payer, authority](glossary.md).
-
-**Legend for the diagrams**
-
-| Label | Meaning |
+| Term | Plain meaning |
 | --- | --- |
-| **Type** | `PDA` = Program Derived Address (no private key). `ATA` / SPL `TokenAccount` = token balance account (not our program’s data layout). |
-| **Program owner** | Who may mutate data (our program, or the SPL Token program). |
-| **Authority** | Who the *logic* treats as admin / spender. |
-| **How many** | Cardinality on a live deployment. |
-| **Code** | Markdown link labeled `Code` → first line of the Rust definition on `main`. |
+| **Account** | An address on Solana that holds lamports and a blob of data. |
+| **Program-derived address (PDA)** | An address made from seeds + the program id. It has no private key; only our program can “sign” for it. |
+| **Program owner** | The program allowed to rewrite an account’s *data* bytes. After we create a PDA, that owner is `zk_spot_shield`. |
+| **Authority** | A public key stored *inside* the data (or on an SPL token account) that the code treats as admin or spender. Different job from program owner. |
+| **SPL token account** | A balance of one mint, owned by the SPL Token program. The token account’s `owner` field is who may spend those tokens. |
+| **Instruction data** | Bytes attached to a single transaction call (function args). They are **not** written into `VaultState` unless the handler copies something out into an account. |
+| **Associated token account (ATA)** | A **standard address** for “this owner pubkey holds this mint.” Still an SPL token account. “ATA of the vault PDA” means owner = vault address, plus the mint. |
+| **`ctx` / accounts list** | Only the accounts **this instruction** declared — not every PDA the program has ever created. |
+
+SPL Token is a **program** (executable account), not “a kind of PDA.” Token balances live in token accounts owned by that program.
+
+Numbered deposit → prove → settle journey: [Architecture](architecture.md).
 
 ---
 
-## Map of program accounts
+## Where proofs and journals live (important)
+
+Settle takes two big blobs as **instruction arguments**: `proof` and `journal`. They travel in the transaction. They are **not** fields on the vault.
+
+```mermaid
+flowchart LR
+  TX["Settle transaction"]
+  PROOF["proof bytes<br/>instruction data only"]
+  JOURNAL["journal bytes<br/>instruction data only"]
+  GC["GlobalConfig<br/>stores vkey_hash"]
+  CFR["CleanFundsRoot PDA<br/>must already exist"]
+  VS["VaultState<br/>reserves only"]
+  NF["NullifierAccount<br/>created on success"]
+
+  TX --> PROOF
+  TX --> JOURNAL
+  PROOF -->|"checked against"| GC
+  JOURNAL -->|"merkle_root must match"| CFR
+  JOURNAL -->|"nullifier becomes"| NF
+  JOURNAL -->|"amount + mint drive"| VS
+```
+
+| Blob | Stored on chain permanently? | Readable later from the vault? | What actually happens |
+| --- | --- | --- | --- |
+| **Groth16 proof bytes** | No. Only in the settle instruction for that one transaction. | No. `VaultState` never holds proofs. | Verifier runs in the handler; on success nothing copies the proof into an account. |
+| **Journal (public values)** | Not as a whole blob. | No. | Parsed in-memory: amount, mint, nullifier, Merkle root. Root must match an existing `CleanFundsRoot`. Nullifier is then **written** into a new `NullifierAccount`. Amount/mint update vault **reserves** and drive token transfers. |
+| **Verifying-key hash** | Yes — in `GlobalConfig.vkey_hash`. | N/A (not in the vault). | Proof must verify against this frozen fingerprint. |
+| **Approved Merkle root** | Yes — one `CleanFundsRoot` account per root. | No (separate PDA). | Admin registers it before settle. |
+| **Spent nullifier** | Yes — one `NullifierAccount` after a successful settle. | No (separate PDA). | Second settle with the same nullifier fails because the account already exists. |
+| **Token balances** | Yes — in SPL token accounts. Accounting mirrors in `VaultState.reserve_a` / `reserve_b`. | Reserves are on the vault account; tokens are on the token accounts. | Both move together on deposit and settle. |
+
+Handler signature: [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/lib.rs#L48)
+
+---
+
+## Map of durable accounts
 
 ```mermaid
 flowchart TB
-  subgraph PROG["zk_spot_shield program"]
-    GC["GlobalConfig<br/>PDA · exactly 1"]
-    VS["VaultState<br/>PDA · exactly 1"]
-    CFR["CleanFundsRoot<br/>PDA · 0…N"]
-    NF["NullifierAccount<br/>PDA · 0…N"]
-    DL["DepositLeafAccount<br/>PDA · 0…N"]
+  subgraph OUR["Owned by zk_spot_shield (data)"]
+    GC["GlobalConfig<br/>exactly 1"]
+    VS["VaultState<br/>exactly 1"]
+    CFR["CleanFundsRoot<br/>many over time"]
+    NF["NullifierAccount<br/>many over time"]
+    DL["DepositLeafAccount<br/>many over time"]
   end
 
-  subgraph SPL["SPL Token program"]
-    VTA["vault_token_a / vault_token_b<br/>TokenAccount · 2"]
-    UT["user token ATAs<br/>TokenAccount · many"]
+  subgraph TOKEN["Owned by the SPL Token program"]
+    VTA["Vault token accounts<br/>two for the spot pair"]
+    UT["User token accounts<br/>many"]
   end
 
-  VS -.->|"token owner = vault PDA"| VTA
-  DL -.->|"deposit CPI into"| VTA
-  VS -.->|"settle CPI"| UT
+  VS -.->|"token owner = vault address"| VTA
 ```
 
 ---
 
-## Account cards (nested vaults / fields)
+## Account cards
 
-Each outer box is an **account**. Inner boxes are **what it holds** (state fields or related custody). Links jump to the definition on GitHub.
+Each outer box is one account. Inner boxes are the **fields or custody pieces** it holds. **Code** links go to the first line of the Rust definition on `main`.
 
-### `GlobalConfig` — admin / circuit pin / pause
+### GlobalConfig — admin, circuit pin, pause
+
+One account for the whole deployment. Seeds: `["global-config"]`.
 
 | | |
 | --- | --- |
-| **For** | Trusted circuit fingerprint, pause switch, admin key |
-| **Type** | PDA · seeds `["global-config"]` |
+| **Purpose** | Remember who is admin, which circuit fingerprint is trusted, and whether settlement is paused |
+| **Type** | Program-derived address |
 | **Program owner** | `zk_spot_shield` |
-| **Authority** | `authority` pubkey in data (`has_one = authority` on pause / register root) |
-| **How many** | **Exactly 1** |
-| **Account** | [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L18) |
+| **Authority** | The `authority` public key stored in the account (must sign pause and root registration) |
+| **How many** | Exactly one |
+| **Definition** | [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L18) |
 
 ```mermaid
 flowchart TB
-  subgraph GC["Account: GlobalConfig · PDA · count = 1"]
-    direction TB
-    A["vault: authority<br/>holds: admin Pubkey<br/>Code → state.rs"]
-    V["vault: vkey_hash<br/>holds: [u8; 32] circuit fingerprint"]
-    P["vault: pause_flag<br/>holds: bool emergency stop"]
+  subgraph GC["GlobalConfig · one account"]
+    A["authority — admin public key"]
+    V["vkey_hash — 32-byte circuit fingerprint"]
+    P["pause_flag — emergency stop"]
   end
 ```
 
-Field defs: [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L19) · Init: [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/instructions/initialize_global_config.rs#L9)
+Created by [initialize_global_config](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/instructions/initialize_global_config.rs#L9).
 
 ---
 
-### `VaultState` — spot reserves (hot path, zero-copy)
+### VaultState — spot accounting (not the proof store)
+
+One hot-path account. Seeds: `["spot_vault"]`. Loaded zero-copy so settlement does not copy the whole struct on every trade.
 
 | | |
 | --- | --- |
-| **For** | 1:1 spot accounting for two mints; PDA signs payouts |
-| **Type** | PDA · seeds `["spot_vault"]` · `AccountLoader` / zero-copy |
+| **Purpose** | Track two mints and their reserve counters; hold the bump so the program can sign as this address |
+| **Type** | Program-derived address |
 | **Program owner** | `zk_spot_shield` |
-| **Authority** | `authority` in data (set at init); **signing authority for SPL** is the vault PDA itself (`bump`) |
-| **How many** | **Exactly 1** |
-| **Account** | [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L27) |
+| **Authority** | `authority` in data (set at init). For *moving tokens*, the vault address itself is the token authority (via the stored bump). |
+| **How many** | Exactly one |
+| **Definition** | [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L27) |
 
 ```mermaid
 flowchart TB
-  subgraph VS["Account: VaultState · PDA · count = 1"]
-    direction TB
-    AUTH["vault: authority<br/>holds: Pubkey"]
-    MA["vault: mint_a<br/>holds: mint Pubkey"]
-    MB["vault: mint_b<br/>holds: mint Pubkey"]
-    RA["vault: reserve_a<br/>holds: u64 balance of mint_a<br/>Code → reserve_a"]
-    RB["vault: reserve_b<br/>holds: u64 balance of mint_b<br/>Code → reserve_b"]
-    BUMP["vault: bump + padding<br/>holds: PDA signer bump"]
+  subgraph VS["VaultState · one account"]
+    AUTH["authority"]
+    MA["mint_a"]
+    MB["mint_b"]
+    RA["reserve_a — u64 count for mint A"]
+    RB["reserve_b — u64 count for mint B"]
+    BUMP["bump + padding — for PDA signing"]
   end
 ```
 
-Reserves: [reserve_a](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L31) · [reserve_b](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L32) · Init: [initialize_vault](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/instructions/initialize_vault.rs#L8)
+Reserves: [reserve_a](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L31) · [reserve_b](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L32)
 
-!!! note "Accounting vs custody"
-    `reserve_a` / `reserve_b` are **u64 counters inside** `VaultState`. The **tokens** sit in separate SPL accounts whose **token owner** is the vault PDA (next card). Settle updates both.
+!!! note "What is not in this account"
+    Proof bytes, the full journal, Merkle paths, and user secrets never live here. Only mints, reserve counters, authority, and bump.
 
 ---
 
-### Vault SPL token accounts — real token custody
+### Vault token accounts — real token custody
+
+These are ordinary SPL balances. The Token program owns the account data; the **spender** is the vault program-derived address.
 
 | | |
 | --- | --- |
-| **For** | Hold mint A / B tokens the program moves on deposit & settle |
-| **Type** | SPL `TokenAccount` (often an ATA); **not** a zk_spot_shield PDA layout |
+| **Purpose** | Hold the actual mint A and mint B tokens |
+| **Type** | SPL token account (often an associated token account) |
 | **Program owner** | SPL Token program |
-| **Authority (spender)** | `owner` field = **vault PDA** (constraint in settle / deposit) |
-| **How many** | **2** in the designed spot pair (one per mint); not unbounded |
-| **Account (constraints)** | [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/instructions/settle_shielded_spot.rs#L68) |
+| **Authority (spender)** | Vault program-derived address |
+| **How many** | Two for the designed spot pair (one per mint) |
+| **Constraints in settle** | [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/instructions/settle_shielded_spot.rs#L68) |
 
 ```mermaid
 flowchart TB
-  subgraph SPLV["SPL custody beside VaultState"]
-    VA["vault_token_a<br/>holds: mint_a tokens<br/>token owner = VaultState PDA"]
-    VB["vault_token_b<br/>holds: mint_b tokens<br/>token owner = VaultState PDA"]
+  subgraph SPLV["Beside VaultState"]
+    VA["vault token A — holds mint A tokens"]
+    VB["vault token B — holds mint B tokens"]
   end
 ```
 
-Deposit path: [vault_token](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/instructions/deposit_shielded.rs#L51)
+Deposit wires the destination token account here: [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/instructions/deposit_shielded.rs#L51).
 
 ---
 
-### `CleanFundsRoot` — approved Merkle tip
+### CleanFundsRoot — “this Merkle root is approved”
 
 | | |
 | --- | --- |
-| **For** | Allow-list a Merkle root so settle’s journal root is recognized |
-| **Type** | PDA · seeds `["clean_funds_root", root]` |
+| **Purpose** | Allow-list one Merkle root so a settle journal that cites it is accepted |
+| **Type** | Program-derived address · seeds `["clean_funds_root", root]` |
 | **Program owner** | `zk_spot_shield` |
-| **Authority** | Created only by `GlobalConfig.authority` (register ix) |
-| **How many** | **0…N** — one per registered root; grows with tree updates (no fixed cap in program) |
-| **Account** | [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L165) |
+| **Who may create it** | `GlobalConfig.authority` |
+| **How many** | One account per registered root — grows over time; the program does not cap the count |
+| **Definition** | [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L165) |
 
 ```mermaid
 flowchart TB
-  subgraph CFR["Account: CleanFundsRoot · PDA · count = 0…N"]
-    R["vault: root<br/>holds: [u8; 32] approved Merkle root"]
+  subgraph CFR["CleanFundsRoot · many accounts over time"]
+    R["root — 32-byte approved Merkle root"]
   end
 ```
 
-!!! quote "Unbounded “vaults”"
-    There is only **one field vault** per account (`root`). Cardinality is **many accounts**, not many vaults inside one account — one account per approved tip forever (until you stop registering).
-
-Register: [register_clean_funds_root](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/instructions/register_clean_funds_root.rs#L13)
+Only one inner field. “Unbounded” means **many small accounts**, not infinite fields inside one account. Register: [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/instructions/register_clean_funds_root.rs#L13).
 
 ---
 
-### `NullifierAccount` — spent-note tag
+### NullifierAccount — spent-note tag
 
 | | |
 | --- | --- |
-| **For** | Double-spend lock: existence ⇒ this nullifier already settled |
-| **Type** | PDA · seeds `["nullifier", nullifier]` |
+| **Purpose** | Double-spend lock: if this account exists, that nullifier already settled |
+| **Type** | Program-derived address · seeds `["nullifier", nullifier]` |
 | **Program owner** | `zk_spot_shield` |
-| **Authority** | None in data; created on successful settle (payer funds rent) |
-| **How many** | **0…N** — one per successful spend (unbounded over protocol life) |
-| **Account** | [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L136) |
+| **Authority in data** | None — existence is the lock |
+| **How many** | One per successful spend — grows without a fixed program limit |
+| **Definition** | [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L136) |
 
 ```mermaid
 flowchart TB
-  subgraph NF["Account: NullifierAccount · PDA · count = 0…N"]
-    N["vault: nullifier<br/>holds: [u8; 32] one-time spend tag"]
+  subgraph NF["NullifierAccount · many accounts over time"]
+    N["nullifier — 32-byte one-time spend tag"]
   end
 ```
 
-Settle creates it after verify + transfers: [settle nullifier init](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/instructions/settle_shielded_spot.rs#L61)
+Created after verify and transfers succeed: [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/instructions/settle_shielded_spot.rs#L61).
 
 ---
 
-### `DepositLeafAccount` — public deposit commitment
+### DepositLeafAccount — public deposit commitment
 
 | | |
 | --- | --- |
-| **For** | Record a deposited leaf so the off-chain tree / proofs can use it |
-| **Type** | PDA · seeds `["deposit_leaf", leaf]` |
+| **Purpose** | Record a leaf commitment after tokens are deposited, for the off-chain tree and later proofs |
+| **Type** | Program-derived address · seeds `["deposit_leaf", leaf]` |
 | **Program owner** | `zk_spot_shield` |
-| **Authority** | Depositor is recorded; creation signed by depositor as payer |
-| **How many** | **0…N** — one per unique leaf (unbounded with deposits) |
-| **Account** | [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L110) |
+| **How many** | One per unique leaf — grows with deposits |
+| **Definition** | [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L110) |
 
 ```mermaid
 flowchart TB
-  subgraph DL["Account: DepositLeafAccount · PDA · count = 0…N"]
-    L["vault: leaf<br/>holds: [u8; 32] commitment"]
-    AM["vault: amount<br/>holds: u64 deposited"]
-    MI["vault: mint<br/>holds: mint Pubkey"]
-    DEP["vault: depositor<br/>holds: depositor Pubkey"]
+  subgraph DL["DepositLeafAccount · many accounts over time"]
+    L["leaf — 32-byte commitment"]
+    AM["amount"]
+    MI["mint"]
+    DEP["depositor — user wallet pubkey today"]
   end
 ```
 
-Ix: [deposit_shielded](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/instructions/deposit_shielded.rs#L27)
+**Why store the leaf hash?** It is the public commitment to a private note (secret stays off-chain). The PDA address is keyed by that hash so the same leaf cannot be deposited twice (`init` fails). Indexers read leaf/amount/mint to grow the Merkle tree; settle later only needs a **registered root**, not every leaf account. The hash appears in both seeds and account data so the value is easy to read on explorers.
+
+**Privacy caveat:** `depositor` is the **user’s wallet**. Deposit txs also show their token account. Shielding the spend secret ≠ hiding who funded the leaf. Unlinking deposit from withdraw is **(upcoming)** — see [Architecture](architecture.md) phase E.
+
+Instruction: [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/instructions/deposit_shielded.rs#L27).
 
 ---
 
-### `Counter` — leftover sample (not settlement path)
+### Counter — leftover sample
 
-| | |
-| --- | --- |
-| **For** | Early scaffold counter; not used by deposit/settle flows |
-| **Type** | Ordinary Anchor account (if initialized) |
-| **How many** | Optional / sample |
-| **Account** | [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L11) |
+Early scaffold only. It is **not** on the deposit or settle path. Definition: [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L11).
 
 ---
 
-## Flow tables by scenario
+## Scenarios
+
+Each table lists the durable accounts involved, and a short note on **where the flow-specific blobs sit**.
 
 ### Happy path
 
-| Account | Brief use case | Flows involved in |
-| --- | --- | --- |
-| `GlobalConfig` | Pin `vkey_hash`; pause off | `initialize_global_config` → later `settle_*` reads pause |
-| `VaultState` | Move `reserve_*` 1:1 | `initialize_vault` → `deposit_shielded` → `settle_shielded_spot` |
-| Vault SPL tokens | Custody mint A/B | deposit CPI in · settle CPI in/out |
-| `CleanFundsRoot` | Prove journal root is approved | `register_clean_funds_root` → settle checks PDA exists |
-| `DepositLeafAccount` | Publish leaf after deposit | `deposit_shielded` |
-| `NullifierAccount` | Mark note spent | created at end of successful settle |
-| User ATAs | User pays / receives | settle transfer legs |
+Someone deposits, an admin registers the tree tip, then a settle with a valid proof succeeds.
 
-### Pause / chaos (ops stop)
-
-| Account | Brief use case | Flows involved in |
+| Account | Role in this flow | Where the sensitive blobs are |
 | --- | --- | --- |
-| `GlobalConfig` | `pause_flag = true` | `pause` / `unpause` by authority |
-| `VaultState` | Unchanged while paused | settle **refused** (`ProtocolPaused`) |
-| `CleanFundsRoot` / nullifiers | Still readable | no new settles; register root still authority-gated |
+| `GlobalConfig` | Pause off; `vkey_hash` used to verify | Proof is only in the settle instruction; checked against this hash, then discarded |
+| `VaultState` | Reserves updated 1:1 for the trade | Journal amount/mint are instruction bytes; only the resulting reserve numbers are written here |
+| Vault token accounts | Deposit already moved custody in; settle moves again on today’s wallet legs | Balances via Token program; not proof storage |
+| `CleanFundsRoot` | Must already exist for the journal’s Merkle root | Root value lives in this PDA (registered earlier), not copied from the vault |
+| `DepositLeafAccount` | Created at deposit time | Leaf/amount/mint/**depositor** stored here after deposit |
+| `NullifierAccount` | Created at the end of settle | Nullifier taken from the journal and written into this new PDA |
+| User token accounts | **Today:** settle still pulls journal mint from payer ATAs and pays the other mint out | Ordinary SPL balances |
+
+!!! warning "Deposit vs settle custody today"
+    After deposit, mint A already sits in the **vault’s token ATA**. Product intuition says settle should only spend that shielded claim. **Current** `settle_shielded_spot` still does user→vault for the journal mint plus vault→user for the other mint (ZK gate + 1:1 swap). Vault-only shielded spend is **(upcoming)**.
+
+### Pause / ops stop
+
+Admin sets `pause_flag`. Settles must fail closed until unpaused.
+
+| Account | Role in this flow | Where the blobs are |
+| --- | --- | --- |
+| `GlobalConfig` | `pause_flag = true` | No proof is stored; settle reads this flag and returns `ProtocolPaused` before useful work |
+| `VaultState` | Left unchanged | A paused settle does not rewrite reserves |
+| `CleanFundsRoot` / nullifiers | Still readable on chain | Registering a new root still needs the admin; new settles do not run |
 
 ### Bad actor
 
-| Account | Brief use case | Flows involved in |
-| --- | --- | --- |
-| `NullifierAccount` | Replay same proof / nullifier | second settle → `NullifierAlreadyUsed` |
-| `CleanFundsRoot` | Forge unregistered root | settle → `MerkleRootNotFound` (PDA missing) |
-| `GlobalConfig` | Non-authority pause / register | `Unauthorized` via `has_one = authority` |
-| Vault SPL | Wrong mint / wrong token owner | `InvalidTokenAccount` |
-| Proof bytes | Garbage / wrong vkey | `InvalidProof` / verify fail |
+| Attack idea | What they send | What the chain does | Where data lives |
+| --- | --- | --- | --- |
+| Replay the same spend | Same proof + journal again | Second settle sees a non-empty nullifier PDA → `NullifierAlreadyUsed` | Proof still only in the tx; the **nullifier account** is the durable lock |
+| Cite an unknown Merkle root | Journal root with no `CleanFundsRoot` | Account constraints / lookup fail (`MerkleRootNotFound` or missing PDA) | Root was never written on chain; vault is irrelevant |
+| Pause or register without admin | Wrong signer | `Unauthorized` via `has_one = authority` | Only `GlobalConfig.authority` matters |
+| Point settle at the wrong token accounts | Mismatched mint or token owner | `InvalidTokenAccount` | Token accounts are separate from `VaultState` |
+| Garbage or wrong-circuit proof | Bad `proof` bytes | Verify fails → `InvalidProof` | Bytes never land in the vault; verification is ephemeral |
 
 ### Not enough balance
 
-| Account | Brief use case | Flows involved in |
-| --- | --- | --- |
-| `VaultState` | Pay leg larger than `reserve_*` | `apply_swap` → `VaultReserveUnderflow` |
-| Vault SPL tokens | Token account empty vs accounting | SPL transfer fails / constraint fail |
-| User ATA | User cannot fund deposit / pay leg | Token program insufficient funds |
-| Circuit / journal | Prove spend above note balance | guest fail-closed (no valid proof) |
+| Failure mode | What runs out | Durable state | Blobs |
+| --- | --- | --- | --- |
+| Vault cannot pay the other mint | `reserve_*` too small | `apply_swap` fails with `VaultReserveUnderflow`; no nullifier account created | Journal still only in the instruction |
+| Vault token account empty vs reserves | SPL transfer fails | Accounting should match custody; a mismatch fails the transfer | No proof storage |
+| User cannot fund a deposit or pay leg | User token account balance | Token program rejects the transfer | Deposit leaf is not created if deposit fails |
+| Note balance too low in the circuit | Private inputs invalid | Guest fails closed → **no proof** to submit | Nothing reaches the vault |
 
 ---
 
-## Quick reference: seeds & sizes
+## Quick reference: seeds and sizes
 
-| Account | Seeds | Data size (excl. 8-byte discriminator) |
+Data sizes below exclude Anchor’s 8-byte account type tag.
+
+| Account | Seeds | Data size |
 | --- | --- | --- |
-| `GlobalConfig` | `global-config` | 65 (`INIT_SPACE`) |
-| `VaultState` | `spot_vault` | 120 |
-| `DepositLeafAccount` | `deposit_leaf` + leaf | 104 |
-| `NullifierAccount` | `nullifier` + nullifier | 32 |
-| `CleanFundsRoot` | `clean_funds_root` + root | 32 |
+| `GlobalConfig` | `global-config` | 65 bytes |
+| `VaultState` | `spot_vault` | 120 bytes |
+| `DepositLeafAccount` | `deposit_leaf` + leaf | 104 bytes |
+| `NullifierAccount` | `nullifier` + nullifier | 32 bytes |
+| `CleanFundsRoot` | `clean_funds_root` + root | 32 bytes |
 
-Constants: [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/constants.rs#L3)
+Seed constants: [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/constants.rs#L3)
 
-For instruction-level narrative, see [Solana Program](solana-program.md).
+For the instruction-by-instruction story, see [Solana Program](solana-program.md). For the numbered end-to-end journey, see [Architecture](architecture.md).
