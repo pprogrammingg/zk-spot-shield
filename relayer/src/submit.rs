@@ -295,4 +295,48 @@ mod tests {
         assert_eq!(res.relayer_fee, 30);
         assert_eq!(*rpc.sent.lock().unwrap(), 1);
     }
+
+    fn sample_intent() -> SettleIntent {
+        SettleIntent {
+            proof_base64: base64::Engine::encode(
+                &base64::engine::general_purpose::STANDARD,
+                vec![1u8; 356],
+            ),
+            journal_base64: base64::Engine::encode(
+                &base64::engine::general_purpose::STANDARD,
+                vec![2u8; 104],
+            ),
+            global_config: Pubkey::new_unique().to_string(),
+            vault: Pubkey::new_unique().to_string(),
+            clean_funds_root: Pubkey::new_unique().to_string(),
+            nullifier_account: Pubkey::new_unique().to_string(),
+            vault_token_a: Pubkey::new_unique().to_string(),
+            vault_token_b: Pubkey::new_unique().to_string(),
+            user_token_a: Pubkey::new_unique().to_string(),
+            user_token_b: Pubkey::new_unique().to_string(),
+            amount: 100,
+        }
+    }
+
+    #[tokio::test]
+    async fn concurrent_dry_run_sixteen() {
+        let bytes = serde_json::to_vec(&sample_intent()).unwrap();
+        let t0 = std::time::Instant::now();
+        let mut handles = Vec::new();
+        for _ in 0..16 {
+            let bytes = bytes.clone();
+            handles.push(tokio::spawn(async move {
+                let kp = Keypair::new();
+                process_intent_dry_run(&kp, &bytes, FeeConfig::default())
+            }));
+        }
+        for h in handles {
+            let res = h.await.unwrap().unwrap();
+            assert!(res.dry_run);
+            assert!(res.signature.is_none());
+        }
+        let elapsed = t0.elapsed();
+        eprintln!("Day 53 concurrent 16 dry-run wall={elapsed:?}");
+        assert!(elapsed.as_secs() < 5);
+    }
 }

@@ -1,19 +1,19 @@
-# Proving log (Day 12 + Day 15)
+# Proving log
 
-Remote Succinct Groth16 for the **happy-path fixture** (`zk_circuit_host::fixtures::happy_path_inputs`). Not a mock. Local Docker wrap OOMs this 16 GB Mac.
+Remote Succinct Groth16 for the **happy-path fixture** (`zk_circuit_host::fixtures::happy_path_inputs`). This is a real wrap, not a mock. Local Docker wrapping runs out of memory on a 16 GB Mac.
 
 ## Re-run
 
-From repo root (needs deposited network `$PROVE` + gitignored `.env`):
+From repo root. Needs network `$PROVE` and a gitignored `.env`:
 
 ```bash
 SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info \
   cargo run -p zk-circuit-host --features network --release
 ```
 
-Guest/io unchanged → skip `cargo prove build`. Guest changed → rebuild ELF, then recompile host (it `include_bytes!` the ELF). Re-prove updates fixtures + this note + `programs/zk_spot_shield` `VKEY_HASH`.
+If guest/io are unchanged, skip `cargo prove build`. If the guest changed, rebuild the ELF, then recompile the host (it `include_bytes!` the ELF). Re-prove updates fixtures, this note, and `constants::VKEY_HASH`.
 
-## Day 15 — print vkey without proving
+## Print verifying key without proving
 
 Frozen fixture only (offline, free):
 
@@ -21,7 +21,7 @@ Frozen fixture only (offline, free):
 cargo run -p zk-circuit-host -- --print-vkey
 ```
 
-Prints `vk.bytes32()` hex and a Rust `[u8; 32]` for `GlobalConfig` / `constants::VKEY_HASH`.
+Prints `vk.bytes32()` hex and a Rust `[u8; 32]` for `GlobalConfig` / `VKEY_HASH`.
 
 ## This wrap
 
@@ -29,29 +29,20 @@ Prints `vk.bytes32()` hex and a Rust `[u8; 32]` for `GlobalConfig` / `constants:
 | --- | --- |
 | Date (UTC) | 2026-09-14T02:36Z |
 | Circuit version | v6.1.0 (SP1 6.5 host) |
-| Execute cycles | 11_093_598 |
+| Execute cycles | 11,093,598 |
 | Groth16 wall time | 30.7 s |
-| `proof.bytes().len()` | 356 |
-| Journal | 104 bytes (LE `u64` amount + mint + nullifier + root) |
+| Proof length | 356 bytes |
+| Journal | 104 bytes (little-endian `u64` amount + mint + nullifier + root) |
 | Quoted base fee | 0.4168 `$PROVE` |
-| Max price per bPGU | 0.7900 `$PROVE` |
+| Max price per proving unit | 0.7900 `$PROVE` |
 | Request | [0x6af4…d4a8](https://explorer.succinct.xyz/request/0x6af4b9d854a22672c20045c61d23c6a5193a6cbea4cb5ecdfa6c8e37c51ad4a8) |
 
-**vkey** (`vk.bytes32()`):
+**Verifying key** (`vk.bytes32()`):
 
 ```text
 0x00b3a15ce4c0ea94e3b0267473c6b7543a80c72d209b2c947f71886c6a5735d7
 ```
 
-**vkey** as Rust (`programs/zk_spot_shield/src/constants.rs` `VKEY_HASH`):
+Same key as Rust `VKEY_HASH` in `programs/zk_spot_shield/src/constants.rs`.
 
-```rust
-[
-    0x00, 0xb3, 0xa1, 0x5c, 0xe4, 0xc0, 0xea, 0x94,
-    0xe3, 0xb0, 0x26, 0x74, 0x73, 0xc6, 0xb7, 0x54,
-    0x3a, 0x80, 0xc7, 0x2d, 0x20, 0x9b, 0x2c, 0x94,
-    0x7f, 0x71, 0x88, 0x6c, 0x6a, 0x57, 0x35, 0xd7,
-]
-```
-
-Public bytes (commit these, not `sp1-datas/`): `zk-circuit/fixtures/happy/{groth16,journal}.bin` + `vkey.bytes32.txt`. On-chain packing still uses `groth16.bin` (`proof.bytes()`), not the SDK suitcase `proof.bin`.
+Public bytes (commit these, not `sp1-datas/`): `zk-circuit/fixtures/happy/{groth16,journal}.bin` and `vkey.bytes32.txt`. On-chain packing uses `groth16.bin` (`proof.bytes()`), not the SDK suitcase `proof.bin`.

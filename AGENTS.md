@@ -31,6 +31,7 @@ zk-circuit/host/      # SP1 host prover driver
 client/               # Rust helpers (CU budget, ALT sizing)
 relayer/              # Axum fee-payer + HTTP 402 (/health, /submit-intent, /402/*)
 sdk/                  # TypeScript SDK: Anchor provider, Merkle, prove, settle E2E
+ui/                   # React + TypeScript + Vite swap UI (self-submit default)
 Anchor.toml           # localnet + program id
 Cargo.toml            # workspace
 docs/ # public docs site (MkDocs) incl. glossary

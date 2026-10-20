@@ -38,8 +38,10 @@ The chain learns the trade amount, the token, and the one-time tag. It never lea
 | Negative test: a forged Merkle path is rejected | Done |
 | Solana program: config, vault, roots, nullifiers, deposit leaves | Done |
 | On-chain verify + 1:1 settle + SPL legs | Done |
-| Relayer scaffold | Done (economics upcoming) |
-| Hidden recipient, change notes, vault-only shielded spend | Planned |
-| Trading UI polish | Planned |
+| Relayer scaffold + fee stub | Done |
+| Vault-only shielded spend | Done |
+| Hidden recipient hooks | Partial (SDK; full unlink later) |
+| Change notes + encrypted note backup | Next (Days 73–76) |
+| Trading UI polish / extra RPC / IPFS | Later |
 
 Start with [Architecture](architecture.md) for the numbered flow, [Accounts deep dive](accounts-deep-dive.md) for PDA/ATA vocabulary, or [Tests](tests.md) for fixtures.

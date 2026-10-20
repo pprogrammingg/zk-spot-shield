@@ -216,6 +216,14 @@ mod tests {
         assert!(std::mem::size_of::<VaultState>().is_multiple_of(8));
     }
 
+    #[test]
+    fn day55_vault_padding_sits_after_bump() {
+        assert_eq!(core::mem::offset_of!(VaultState, bump), 112);
+        assert_eq!(core::mem::offset_of!(VaultState, _padding), 113);
+        assert_eq!(std::mem::size_of_val(&[0u8; 7]), 7);
+        assert_eq!(32 + 32 + 32 + 8 + 8 + 1 + 7, 120);
+    }
+
     fn sample_vault(reserve_a: u64, reserve_b: u64) -> VaultState {
         let mint_a = Pubkey::new_from_array([3u8; 32]);
         let mint_b = Pubkey::new_from_array([4u8; 32]);

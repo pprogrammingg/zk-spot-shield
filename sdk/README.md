@@ -1,12 +1,8 @@
 # `@zk-spot-shield/sdk`
 
-TypeScript client for deposit-backed **vault-only** settle (Architecture phases **C–E**).
+TypeScript client for deposit-backed, vault-only settle. The vault pays the other mint 1:1. The Solana fee payer may be a relayer, not the note owner.
 
-- **C** Prove: Merkle path + fixture Groth16 (no `$PROVE` by default)
-- **D** Settle: vault pays the other mint; fee payer may be a **relayer**
-- **E** Relayer: encode `SettleIntent` for `POST /submit-intent`
-
-Package name on npm-style imports stays `@zk-spot-shield/sdk` (roadmap alias `@zk-shield/sdk`).
+By default, settle uses committed Groth16 fixtures (no `$PROVE`).
 
 ## Usage
 
@@ -38,12 +34,12 @@ const inputs = await generateProofInputs(
 const program = createProgram(createLocalhostProvider({ setGlobal: false }));
 const plan = await requestShieldedSwap({
   program,
-  feePayer: relayerPubkey, // ≠ note owner
+  feePayer: relayerPubkey, // not the note owner
   vaultTokenA,
   vaultTokenB,
   userTokenA: depositorAtaA,
   userTokenB: depositorAtaB,
-  recipientTokenA: recipientAtaA, // optional: recipient ≠ depositor
+  recipientTokenA: recipientAtaA, // optional: payout ≠ depositor
   recipientTokenB: recipientAtaB,
 });
 
@@ -59,9 +55,9 @@ await fetch("http://127.0.0.1:8787/submit-intent", {
 const reserves = await getVaultReserves(connection, plan.accounts.vault);
 ```
 
-Recipient ATAs in `plan.accounts.userTokenA/B` are the **payout** accounts. Full unlink (fresh ATA + relayer-only submit so metas do not dox the note owner) may land with UI Days 66+.
+`plan.accounts.userTokenA` / `userTokenB` are the **payout** token accounts. Hiding the recipient still needs a fresh token account and relayer-only submit.
 
-## HTTP 402 (Day 50)
+## HTTP 402
 
 ```ts
 import { journalToPayBody, quoteUrl, resourceUrl } from "@zk-spot-shield/sdk";
@@ -77,4 +73,4 @@ const { nullifier_hex } = await ack.json();
 const paid = await fetch(resourceUrl(base, nullifier_hex)); // 200
 ```
 
-Unlock is the settle **nullifier**, not a wallet pubkey.
+Unlock is the settle **nullifier**, not a wallet address.

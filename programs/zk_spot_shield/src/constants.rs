@@ -61,6 +61,26 @@ mod tests {
         assert_eq!(NULLIFIER_SEED_PREFIX, b"nullifier");
     }
 
+    /// Day 55: ix signer surface (must match `notes/layout-signer-audit.md`).
+    #[test]
+    fn day55_instruction_signer_inventory() {
+        let ixs: &[(&str, &str)] = &[
+            ("initialize_global_config", "payer"),
+            ("initialize_vault", "payer"),
+            ("register_clean_funds_root", "authority"),
+            ("deposit_shielded", "depositor"),
+            ("settle_shielded_spot", "payer"),
+            ("pause", "authority"),
+            ("unpause", "authority"),
+        ];
+        assert_eq!(ixs.len(), 7);
+        assert!(ixs.iter().all(|(n, s)| !n.is_empty() && !s.is_empty()));
+        assert_eq!(
+            ixs.iter().find(|(n, _)| *n == "settle_shielded_spot").map(|(_, s)| *s),
+            Some("payer")
+        );
+    }
+
     #[test]
     fn vkey_hash_matches_day12_happy_fixture() {
         assert_ne!(VKEY_HASH, [0u8; 32]);

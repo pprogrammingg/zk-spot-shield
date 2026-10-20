@@ -1,9 +1,10 @@
 //! HTTP routes: health + submit-intent (Days 44–45) + HTTP 402 payer (Day 50).
 
 use axum::extract::{Path, Query, State};
-use axum::http::StatusCode;
+use axum::http::{Method, StatusCode};
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use tower_http::cors::{Any, CorsLayer};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -53,6 +54,12 @@ pub fn app_router(state: AppState) -> Router {
         .route("/jobs/{id}", get(get_job))
         .route("/402/resource", get(paid_resource))
         .route("/402/pay", post(pay_402))
+        .layer(
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+                .allow_headers(Any),
+        )
         .with_state(state)
 }
 
@@ -216,6 +223,25 @@ mod tests {
             queue,
             pay: crate::pay402::PayLedger::default(),
         })
+    }
+
+    #[tokio::test]
+    async fn cors_allows_browser_origin() {
+        let app = test_app().await;
+        let res = app
+            .oneshot(
+                Request::builder()
+                    .method("OPTIONS")
+                    .uri("/health")
+                    .header("origin", "http://localhost:5173")
+                    .header("access-control-request-method", "GET")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let allow = res.headers().get("access-control-allow-origin");
+        assert!(allow.is_some(), "expected CORS header, status={}", res.status());
     }
 
     #[tokio::test]

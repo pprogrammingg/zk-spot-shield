@@ -7,6 +7,11 @@ use solana_instruction::Instruction;
 /// Leave headroom under the ~1.4M tx cap (`notes/budgets.md`).
 pub const SETTLE_CU_LIMIT: u32 = 1_400_000;
 
+/// LiteSVM full settle (Day 51/52). Groth16 dominates; remainder is SPL + nullifier.
+pub const SETTLE_CU_MEASURED: u32 = 285_947;
+/// Verifier-class target from Month 2 (~280k).
+pub const SETTLE_VERIFY_CU_TARGET: u32 = 280_000;
+
 /// Optional priority fee (micro-lamports per CU). `0` = no price ix.
 pub const SETTLE_CU_PRICE_MICRO_LAMPORTS: u64 = 0;
 
@@ -53,6 +58,12 @@ mod tests {
         assert_eq!(ixs.len(), 1);
         assert_eq!(ixs[0], settle_cu_limit_ix());
         assert_eq!(SETTLE_CU_LIMIT, 1_400_000);
+        const {
+            assert!(SETTLE_CU_MEASURED > SETTLE_VERIFY_CU_TARGET);
+            assert!(SETTLE_CU_MEASURED < SETTLE_CU_LIMIT);
+        }
+        let non_verify = SETTLE_CU_MEASURED.saturating_sub(SETTLE_VERIFY_CU_TARGET);
+        assert!(non_verify < 40_000, "non-verify CU band {non_verify}");
     }
 
     #[test]

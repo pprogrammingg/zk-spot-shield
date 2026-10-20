@@ -30,12 +30,15 @@
 !sdk/idl/*.json
 !zk-circuit/fixtures/**/*.json
 !vitest.config.ts
+!**/vitest.config.ts
+!**/tsconfig*.json
 
 # Day 38 localnet scratch
 sdk/.e2e-accounts/
 /test-ledger-e2e/
 /**/test-ledger-e2e/
 sdk/dist/
+ui/dist/
 
 # Exclude specific wallet keypair filenames if JSON rule is relaxed later
 id.json

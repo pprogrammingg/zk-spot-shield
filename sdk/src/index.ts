@@ -64,14 +64,17 @@ export {
 } from "./instructions.js";
 
 export {
+  decodeGlobalConfig,
   decodeVaultState,
   encodeSettleIntent,
   generateProofInputs,
+  getGlobalConfig,
   getVaultReserves,
   proofInputsToHex,
   requestShieldedSwap,
   subscribeCleanFundsRoot,
   vaultStateDiscriminator,
+  type GlobalConfigView,
   type ProofInputs,
   type RelayerSettleIntent,
   type ShieldedSwapPlan,
@@ -79,6 +82,12 @@ export {
   type SubscribeCleanFundsRootOpts,
   type VaultReserves,
 } from "./client.js";
+
+export {
+  firstHealthyRpc,
+  parseRpcList,
+  type RpcHealthFetch,
+} from "./rpcFallback.js";
 
 export {
   journalToPayBody,

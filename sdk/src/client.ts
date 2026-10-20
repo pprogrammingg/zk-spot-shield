@@ -104,6 +104,35 @@ export async function getVaultReserves(
   return decodeVaultState(acc.data);
 }
 
+/** Anchor `GlobalConfig` body after 8-byte discriminator (65 bytes). */
+export type GlobalConfigView = {
+  authority: PublicKey;
+  vkeyHash: Uint8Array;
+  pauseFlag: boolean;
+};
+
+export function decodeGlobalConfig(data: Buffer | Uint8Array): GlobalConfigView {
+  const buf = Buffer.from(data);
+  if (buf.length < 8 + 65) {
+    throw new Error(`global config too small: ${buf.length}`);
+  }
+  const body = buf.subarray(8);
+  return {
+    authority: new PublicKey(body.subarray(0, 32)),
+    vkeyHash: body.subarray(32, 64),
+    pauseFlag: body[64] !== 0,
+  };
+}
+
+export async function getGlobalConfig(
+  connection: Connection,
+  globalConfig: PublicKey,
+): Promise<GlobalConfigView> {
+  const acc = await connection.getAccountInfo(globalConfig);
+  if (!acc) throw new Error(`global config not found: ${globalConfig.toBase58()}`);
+  return decodeGlobalConfig(acc.data);
+}
+
 export type SubscribeCleanFundsRootOpts = {
   connection: Connection;
   programId: PublicKey;

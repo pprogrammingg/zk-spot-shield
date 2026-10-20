@@ -47,9 +47,12 @@ Rustc comes from `rust-toolchain.toml` (`rustup show` after checkout). Do not pi
 cargo test -p zk_spot_shield --lib --locked
 cargo test -p zk-circuit-io --lib --locked
 cargo test -p client --lib --locked
+cargo test -p zk-spot-shield-relayer --lib --locked
 cargo clippy -p zk_spot_shield -p zk-circuit-io -p client --locked --all-targets -- -D warnings
 cargo audit
 ```
+
+TypeScript (fixtures, no cluster): `cd sdk && npm test`. UI: `cd ui && npm test`. Live Devnet is opt-in (`DEVNET_ONCHAIN=1`, [`notes/devnet-tests.md`](./notes/devnet-tests.md)).
 
 After editing a crate, run `--lib` + clippy for **that** crate first (see `.cursor/rules/05-tests-security.mdc`).
 
@@ -73,6 +76,7 @@ rustup show   # installs channel from rust-toolchain.toml if needed
 cargo test -p zk_spot_shield --lib --locked
 cargo test -p zk-circuit-io --lib --locked
 cargo test -p client --lib --locked
+cargo test -p zk-spot-shield-relayer --lib --locked
 cargo clippy -p zk_spot_shield -p zk-circuit-io -p client --locked --all-targets -- -D warnings
 cargo audit
 ```

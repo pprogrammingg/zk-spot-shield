@@ -388,6 +388,9 @@ fn settle_cu_profile_within_budget() {
     // Keep the measured value visible in test output / CI logs.
     eprintln!("Day 29 settle compute_units_consumed={cu}");
     eprintln!("Day 51 LiteSVM settle wall={confirm_ms:?}");
+    let verify_band = 270_000u64;
+    let non_verify = cu.saturating_sub(verify_band);
+    eprintln!("Day 52 CU split verify~{verify_band} non_verify~{non_verify} total={cu}");
 }
 
 #[test]

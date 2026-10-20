@@ -8,6 +8,7 @@ import { createLocalhostProvider } from "../src/provider.js";
 import {
   DepositTree,
   createProgram,
+  decodeGlobalConfig,
   decodeVaultState,
   encodeSettleIntent,
   generateProofInputs,
@@ -101,5 +102,18 @@ describe("Day 49 SDK surface", () => {
     expect(decoded.reserveB).toBe(900n);
     expect(decoded.mintA.equals(mintA)).toBe(true);
     expect(decoded.bump).toBe(255);
+  });
+
+  it("decodeGlobalConfig reads authority, vkey, pause", () => {
+    const disc = Buffer.alloc(8, 7);
+    const body = Buffer.alloc(65);
+    const authority = Keypair.generate().publicKey;
+    authority.toBuffer().copy(body, 0);
+    body.fill(0xb3, 32, 64);
+    body[64] = 1;
+    const decoded = decodeGlobalConfig(Buffer.concat([disc, body]));
+    expect(decoded.authority.equals(authority)).toBe(true);
+    expect(Buffer.from(decoded.vkeyHash)[0]).toBe(0xb3);
+    expect(decoded.pauseFlag).toBe(true);
   });
 });

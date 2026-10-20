@@ -1,4 +1,6 @@
 [advisories]
 # Transitive via sp1-sdk → object 0.37 → ruzstd 0.8; object pins ^0.8.1 until SP1 bumps to object≥0.40.
 # Host only; we do not decode untrusted zstd. Revisit when upgrading sp1-sdk.
-ignore = ["RUSTSEC-2026-0344"]
+# tonic 0.12 (sp1-prover) pins webpki-roots 0.26; 1.0.10 is already in the reqwest path.
+# Host TLS to Succinct only. Program/relayer do not use the 0.26 copy. Revisit on SP1/tonic bump.
+ignore = ["RUSTSEC-2026-0344", "RUSTSEC-2026-0381"]

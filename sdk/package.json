@@ -10,7 +10,8 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run --exclude 'test/e2e/**'",
     "test:watch": "vitest",
-    "test:e2e": "tsx scripts/e2e-localnet.ts"
+    "test:e2e": "tsx scripts/e2e-localnet.ts",
+    "test:devnet": "DEVNET_ONCHAIN=1 vitest run test/devnet/onchain.devnet.test.ts"
   },
   "engines": {
     "node": ">=20"

@@ -38,6 +38,17 @@ mod tests {
     use std::path::Path;
 
     #[test]
+    fn journal_is_packed_104_bytes() {
+        assert_eq!(JOURNAL_BYTE_LEN, 104);
+        let mut bytes = [0u8; JOURNAL_BYTE_LEN];
+        bytes[0..8].copy_from_slice(&100u64.to_le_bytes());
+        let public = JournalPublic::from_journal_bytes(&bytes).expect("packed");
+        assert_eq!(public.requested_swap_amount, 100);
+        assert!(JournalPublic::from_journal_bytes(&bytes[..103]).is_none());
+        assert!(JournalPublic::from_journal_bytes(&[0u8; 105]).is_none());
+    }
+
+    #[test]
     fn happy_journal_parses() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../zk-circuit/fixtures/happy/journal.bin");
