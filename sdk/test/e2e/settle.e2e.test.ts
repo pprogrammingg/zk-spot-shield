@@ -221,7 +221,8 @@ describe.skipIf(!run)("Day 36–37 localnet E2E", () => {
       provider.connection,
       new PublicKey(bundle.userTokenB),
     );
-    expect(userAAfter.amount).toBe(userABefore.amount - amount);
+    // Day 48 vault-only: no second debit of journal mint A.
+    expect(userAAfter.amount).toBe(userABefore.amount);
     expect(userBAfter.amount).toBe(userBBefore.amount + amount);
 
     const nf = await provider.connection.getAccountInfo(nullifierAccount);

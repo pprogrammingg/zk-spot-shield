@@ -11104,16 +11104,29 @@ dependencies = [
 name = "zk-spot-shield-relayer"
 version = "0.1.0"
 dependencies = [
+ "anchor-lang",
+ "anchor-spl",
  "axum 0.8.9",
+ "base64 0.22.1",
+ "client",
  "http-body-util",
  "serde",
  "serde_json",
+ "solana-compute-budget-interface",
+ "solana-hash 3.1.0",
+ "solana-instruction",
+ "solana-keypair",
+ "solana-message",
+ "solana-pubkey 3.0.0",
+ "solana-signer",
+ "solana-transaction",
  "tokio",
  "tower 0.5.3",
  "tower-http",
  "tracing",
  "tracing-subscriber",
  "uuid",
+ "zk_spot_shield",
 ]
 
 [[package]]

@@ -366,12 +366,14 @@ fn settle_cu_profile_within_budget() {
     let (proof, journal, _public, accounts) =
         prepare_happy_settle(&mut svm, program_id, &payer, 1_000);
 
+    let wall = std::time::Instant::now();
     let cu = send_ix_cu(
         &mut svm,
         &payer,
         settle_ix(program_id, &accounts, proof, journal),
     )
     .expect("settle for CU profile");
+    let confirm_ms = wall.elapsed();
 
     // Day 29: Groth16 dominates; full settle should land near ~280–400k, well under 1.4M.
     // Exact number is recorded in `notes/budgets.md` after this test is green.
@@ -385,6 +387,7 @@ fn settle_cu_profile_within_budget() {
     );
     // Keep the measured value visible in test output / CI logs.
     eprintln!("Day 29 settle compute_units_consumed={cu}");
+    eprintln!("Day 51 LiteSVM settle wall={confirm_ms:?}");
 }
 
 #[test]
@@ -432,11 +435,12 @@ fn settle_moves_vault_reserves_and_token_balances() {
     .expect("settle must move reserves + SPL");
 
     let vault = read_vault(&svm, program_id);
-    assert_eq!(vault.reserve_a, 1_000 + amount);
+    // Day 48 vault-only: journal mint reserve/ATA unchanged; pay other mint only.
+    assert_eq!(vault.reserve_a, 1_000);
     assert_eq!(vault.reserve_b, 1_000 - amount);
 
-    assert_eq!(token_amount(&svm, accounts.user_token_a), 1_000 - amount);
-    assert_eq!(token_amount(&svm, accounts.vault_token_a), 1_000 + amount);
+    assert_eq!(token_amount(&svm, accounts.user_token_a), 1_000);
+    assert_eq!(token_amount(&svm, accounts.vault_token_a), 1_000);
     assert_eq!(token_amount(&svm, accounts.vault_token_b), 1_000 - amount);
     assert_eq!(token_amount(&svm, accounts.user_token_b), amount);
 }
@@ -488,14 +492,7 @@ fn settle_rejects_replay_same_nullifier() {
 
     svm.expire_blockhash();
 
-    // Re-fund user A so SPL is not the failure mode on replay.
-    set_token_account(
-        &mut svm,
-        accounts.user_token_a,
-        Pubkey::new_from_array([3u8; 32]),
-        payer.pubkey(),
-        1_000,
-    );
+    // Restore vault B liquidity so replay is not masked by ATA underfund.
     set_token_account(
         &mut svm,
         accounts.vault_token_b,
@@ -796,4 +793,155 @@ fn settle_random_proof_bytes_fail_closed() {
     let vault_after = read_vault(&svm, program_id);
     assert_eq!(vault_after.reserve_a, vault_before.reserve_a);
     assert_eq!(vault_after.reserve_b, vault_before.reserve_b);
+}
+
+/// Day 46: fee payer (relayer) may differ from recipient ATA owner.
+#[test]
+fn settle_fee_payer_differs_from_token_owner() {
+    let program_id = zk_spot_shield::id();
+    let authority = Keypair::new();
+    let fee_payer = Keypair::new();
+    let user = Keypair::new();
+    let mut svm = LiteSVM::new();
+    load_program(&mut svm, program_id);
+    svm.airdrop(&authority.pubkey(), 10_000_000_000).unwrap();
+    svm.airdrop(&fee_payer.pubkey(), 10_000_000_000).unwrap();
+
+    init_config_and_vault(&mut svm, program_id, &authority);
+    let (proof, journal) = happy_fixture();
+    let public = JournalPublic::from_journal_bytes(&journal).expect("journal");
+    let (vta, vtb, uta, utb) = seed_vault_and_tokens(
+        &mut svm,
+        program_id,
+        user.pubkey(),
+        public.asset_id_mint,
+        1_000,
+        1_000,
+        1_000,
+        0,
+    );
+    register_root(&mut svm, program_id, &authority, public.merkle_root);
+    let (clean_pda, _) =
+        zk_spot_shield::state::CleanFundsRoot::find_pda(&program_id, &public.merkle_root);
+    let accounts = settle_accounts(
+        program_id,
+        fee_payer.pubkey(),
+        clean_pda,
+        &public.nullifier,
+        vta,
+        vtb,
+        uta,
+        utb,
+    );
+
+    let lamports_before = svm
+        .get_account(&fee_payer.pubkey())
+        .map(|a| a.lamports)
+        .unwrap_or(0);
+
+    send_ix(
+        &mut svm,
+        &fee_payer,
+        settle_ix(program_id, &accounts, proof, journal),
+    )
+    .expect("relayer fee payer must settle for user ATAs");
+
+    let lamports_after = svm
+        .get_account(&fee_payer.pubkey())
+        .map(|a| a.lamports)
+        .unwrap_or(0);
+    assert!(
+        lamports_after < lamports_before,
+        "fee payer must spend lamports (fees + nullifier rent)"
+    );
+    assert_eq!(token_amount(&svm, uta), 1_000);
+    assert_eq!(token_amount(&svm, utb), public.requested_swap_amount);
+}
+
+/// Day 48 Exit: deposit 300 A → settle spend 100 A for 100 B — no second debit of A.
+#[test]
+fn deposit_300_vault_only_settle_100() {
+    let program_id = zk_spot_shield::id();
+    let payer = Keypair::new();
+    let mut svm = LiteSVM::new();
+    load_program(&mut svm, program_id);
+    svm.airdrop(&payer.pubkey(), 10_000_000_000).unwrap();
+
+    let (proof, journal) = happy_fixture();
+    let public = JournalPublic::from_journal_bytes(&journal).expect("journal");
+    // Happy leaf tip (same as fixture merkle) — deposit amount 300 for Exit narrative.
+    const HAPPY_LEAF: [u8; 32] = [
+        0x26, 0x3f, 0xf1, 0x74, 0x37, 0xc6, 0x65, 0xe4, 0xa4, 0x78, 0x62, 0x85, 0x99, 0x42, 0xf8,
+        0x35, 0xfc, 0xf6, 0x8c, 0x55, 0x64, 0x22, 0x38, 0xcc, 0x4a, 0x2d, 0x3f, 0x82, 0xd0, 0x9d,
+        0x6a, 0x76,
+    ];
+
+    init_config_and_vault(&mut svm, program_id, &payer);
+    let (vta, vtb, uta, utb) = seed_vault_and_tokens(
+        &mut svm,
+        program_id,
+        payer.pubkey(),
+        public.asset_id_mint,
+        0,
+        1_000,
+        300,
+        0,
+    );
+
+    let (leaf_pda, _) =
+        zk_spot_shield::state::DepositLeafAccount::find_pda(&program_id, &HAPPY_LEAF);
+    let (vault, _) = VaultState::find_pda(&program_id);
+    send_ix(
+        &mut svm,
+        &payer,
+        Instruction::new_with_bytes(
+            program_id,
+            &zk_spot_shield::instruction::DepositShielded {
+                leaf: HAPPY_LEAF,
+                amount: 300,
+            }
+            .data(),
+            zk_spot_shield::accounts::DepositShielded {
+                depositor: payer.pubkey(),
+                vault,
+                deposit_leaf: leaf_pda,
+                vault_token: vta,
+                user_token: uta,
+                token_program: TOKEN_PROGRAM_ID,
+                system_program: anchor_lang::system_program::ID,
+            }
+            .to_account_metas(None),
+        ),
+    )
+    .expect("deposit 300 A");
+    assert_eq!(read_vault(&svm, program_id).reserve_a, 300);
+    assert_eq!(token_amount(&svm, uta), 0);
+
+    register_root(&mut svm, program_id, &payer, public.merkle_root);
+    let (clean_pda, _) =
+        zk_spot_shield::state::CleanFundsRoot::find_pda(&program_id, &public.merkle_root);
+    let accounts = settle_accounts(
+        program_id,
+        payer.pubkey(),
+        clean_pda,
+        &public.nullifier,
+        vta,
+        vtb,
+        uta,
+        utb,
+    );
+    send_ix(
+        &mut svm,
+        &payer,
+        settle_ix(program_id, &accounts, proof, journal),
+    )
+    .expect("vault-only settle 100");
+
+    let amount = public.requested_swap_amount;
+    assert_eq!(amount, 100);
+    assert_eq!(read_vault(&svm, program_id).reserve_a, 300);
+    assert_eq!(read_vault(&svm, program_id).reserve_b, 1_000 - amount);
+    assert_eq!(token_amount(&svm, uta), 0, "no second debit of A");
+    assert_eq!(token_amount(&svm, vta), 300);
+    assert_eq!(token_amount(&svm, utb), amount);
 }

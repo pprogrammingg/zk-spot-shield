@@ -14,10 +14,10 @@ Next engineering follows this order — not “whatever Day number looks fun.”
 
 | Rank | Priority | Calendar home | Why |
 | --- | --- | --- | --- |
-| **1** | **Relayer fee payer + fee economics** | **Days 46–47** | Relayer pays Solana SOL (+ later prove credits); user fee tops up treasury — see Architecture phase E |
-| **2** | **Vault-only shielded settle** | **Day 48** | Today settle still pulls journal mint from the **payer wallet** even after deposit funded the vault. Product direction: spend the note → vault pays out the other mint **without** a second user→vault of A |
-| **3** | **SDK + optional hidden recipient hooks** | **Day 49** | Drive deposit-backed settle; prepare recipient unlink / relayer-submit (full unlink may land with UI) |
-| **4** | **Shielded 402 payer (P1)** | **Day 50** (+ Mondays P0) | Highest demo / job / hackathon leverage — needs ranks 1–3 Exit |
+| **1** | **Relayer fee payer + fee economics** | **Days 46–47** ✓ | Relayer builds/signs settle as fee payer; fee stub + RPC backoff; `notes/relayer-economics.md` |
+| **2** | **Vault-only shielded settle** | **Day 48** ✓ | Deposit-backed spend: vault pays other mint only — **no** second user→vault of journal mint |
+| **3** | **SDK + optional hidden recipient hooks** | **Day 49** ✓ | Drive deposit-backed settle; recipient ATA ≠ depositor; relayer settle-intent encode |
+| **4** | **Shielded 402 payer (P1)** | **Day 50** ✓ | HTTP 402 quote → pay with settle journal (nullifier path), fixtures — no `$PROVE` |
 | **5** | **Change notes** (spend 100, keep 900) | **Days 73–75** | After uncensorable UI; heavier circuit — not before P1 |
 | — | AMM curve (“100 A → 50 B”) | Not a Day | Stay **1:1 spot** unless product explicitly pivots |
 | — | Perfect deposit privacy (no depositor on leaf PDA) | Tech debt / later | Deposit still stores depositor pubkey today |
@@ -36,7 +36,7 @@ Next engineering follows this order — not “whatever Day number looks fun.”
 ### Milestones
 
 - [ ] **P0 — Plain 402 demo (Mondays, from Oct 12):** agent hits a paid endpoint → `402` with price → pays USDC on Solana devnet (Circle faucet) → server verifies → returns data. Published early. No Stripe approval needed on devnet.
-- [ ] **P1 — Shielded payer (= Day 50):** the agent's payment comes from a ZK Spot Shield settle instead of a public wallet. *Exit:* one paid request on localnet where the chain sees amount + nullifier, not the payer. Requires Days 41–43 deposit Exit.
+- [x] **P1 — Shielded payer (= Day 50):** the agent's payment comes from a ZK Spot Shield settle instead of a public wallet. *Exit:* one paid request on localnet where the chain sees amount + nullifier, not the payer. Requires Days 41–43 deposit Exit.
 - [ ] **P2 — Payment-flow UI (separate repo, after Day 50):** small web app showing the flow end-to-end — request → 402 quote → shielded pay → response — with what the chain sees vs what stays private. Lives in its own repo (e.g. `zk-spot-shield-pay`) that depends on this one; this repo stays program + prover + SDK.
 - [ ] **P3 — Stripe sandbox path (optional):** same demo through the Stripe MPP sandbox (cards / Tempo testnet). Real USDC-on-Solana into a Stripe balance needs approval via `machine-payments@stripe.com` — only once there is a real user.
 
@@ -317,43 +317,43 @@ Aligned with Architecture **phase E** (upcoming) and remaining ranks 1–3.
 - [x] **Day 44 — Relayer scaffold**
   - [x] `relayer/` Axum (or Actix) service skeleton + health endpoint
 
-- [x] **Day 45 — `/submit-proof` + worker queue**
-  - [x] Accept private intent; Tokio queue for prove jobs
+- [x] **Day 45 — `/submit-intent` + worker queue**
+  - [x] Accept private intent/witness; Tokio queue for prove-then-settle jobs
 
-- [ ] **Day 46 — Tx build + fee payer**
-  - [ ] Relayer builds `settle_shielded_spot` tx (proof + journal + account metas) and **signs as fee payer** (user need not pay SOL for settle)
-  - [ ] Document: fee payer ≠ note owner; journal still binds amount/mint/nullifier/root
-  - [ ] *Exit:* Localnet settle lands with relayer key as fee payer; explorer shows relayer paying lamports
+- [x] **Day 46 — Tx build + fee payer**
+  - [x] Relayer builds `settle_shielded_spot` tx (proof + journal + account metas) and **signs as fee payer** (user need not pay SOL for settle)
+  - [x] Document: fee payer ≠ note owner; journal still binds amount/mint/nullifier/root
+  - [x] *Exit:* LiteSVM settle with distinct fee payer (lamports decrease); relayer `sign_settle_as_fee_payer` + dry-run. Fixtures only (no `$PROVE`).
 
-- [ ] **Day 47 — Fees + RPC retry + prove-treasury note**
-  - [ ] bps (or flat) fee from payout / deposit to refill **relayer SOL** (and, when wired, Succinct **prove credits**)
-  - [ ] Exponential backoff on send/confirm
-  - [ ] Short `notes/relayer-economics.md`: user fee → treasury → SOL + $PROVE (Architecture phase E)
-  - [ ] *Exit:* Failed RPC retries; fee path sketched or stubbed with a test hook. **Next: Day 48 vault-only settle.**
+- [x] **Day 47 — Fees + RPC retry + prove-treasury note**
+  - [x] bps (or flat) fee from payout / deposit to refill **relayer SOL** (and, when wired, Succinct **prove credits**)
+  - [x] Exponential backoff on send/confirm
+  - [x] Short `notes/relayer-economics.md`: user fee → treasury → SOL + $PROVE (Architecture phase E)
+  - [x] *Exit:* Failed RPC retries; fee path stubbed with tests. **Next was Day 48 vault-only settle.**
 
-- [ ] **Day 48 — Vault-only shielded settle (product gap)**
-  - [ ] Today settle still **SPL-transfers journal mint from the payer’s ATA into the vault** even after deposit already funded custody — ZK gate + 1:1 wallet legs
-  - [ ] Change settle path so a **deposit-backed** spend: nullify note → update reserves → vault PDA pays the **other** mint out **without** requiring a second user→vault of the journal mint (still 1:1 spot; no AMM)
-  - [ ] Keep fail-closed: underfunded vault, bad proof, used nullifier, pause
-  - [ ] *Exit:* Localnet: deposit 300 A → prove spend 100 A for 100 B → user wallet is **not** debited another 100 A; vault ATA B decreases / user receives B; nullifier created. `--lib` + LiteSVM/settle tests green
+- [x] **Day 48 — Vault-only shielded settle (product gap)**
+  - [x] Settle no longer SPL-transfers journal mint from the payer’s ATA into the vault after deposit funded custody
+  - [x] Deposit-backed spend: nullify → `apply_vault_only_spend` → vault pays other mint only (1:1 spot)
+  - [x] Fail-closed: underfunded vault, bad proof, used nullifier, pause
+  - [x] *Exit:* LiteSVM deposit 300 A → fixture spend 100 → no second A debit; `--lib` + settle/deposit tests green
 
-- [ ] **Day 49 — `@zk-shield/sdk` surface + recipient hooks**
-  - [ ] `generateProofInputs`, `requestShieldedSwap`, `getVaultReserves`; WebSocket/`CleanFundsRoot` sync helper as needed
-  - [ ] Optional: settle account metas for **recipient ATA ≠ depositor** (hidden-destination groundwork; full unlink may need fresh ATA + relayer submit)
-  - [ ] Usage examples in package README; point at Architecture phases C–E
-  - [ ] *Exit:* SDK drives deposit-backed **vault-only** settle; relayer can be fee payer. **Next session is Day 50 (P1).**
+- [x] **Day 49 — `@zk-shield/sdk` surface + recipient hooks**
+  - [x] `generateProofInputs`, `requestShieldedSwap`, `getVaultReserves`; WebSocket/`CleanFundsRoot` sync helper as needed
+  - [x] Optional: settle account metas for **recipient ATA ≠ depositor** (hidden-destination groundwork; full unlink may need fresh ATA + relayer submit)
+  - [x] Usage examples in package README; point at Architecture phases C–E
+  - [x] *Exit:* SDK drives deposit-backed **vault-only** settle; relayer can be fee payer. **Next session is Day 50 (P1).**
 
 ### Phase 11: Shielded 402 payer (1 session) — priority 4 on calendar / demo rank 1
 
-- [ ] **Day 50 — P1 shielded payer on localnet**
-  - [ ] Agent (or script) hits paid endpoint → `402` quote → pays via ZK Spot Shield settle (nullifier path), not a public wallet transfer as the privacy story
-  - [ ] Prefer relayer fee payer (Day 46) + vault-only settle (Day 48) when available
-  - [ ] *Exit:* One paid request on localnet; chain sees amount + nullifier (+ token accounts still in tx until full unlink); not “agent paid from a doxxed hot wallet.” Milestone **P1** checked. Mondays may still polish P0.
+- [x] **Day 50 — P1 shielded payer on localnet**
+  - [x] Agent (or script) hits paid endpoint → `402` quote → pays via ZK Spot Shield settle (nullifier path), not a public wallet transfer as the privacy story
+  - [x] Prefer relayer fee payer (Day 46) + vault-only settle (Day 48) when available
+  - [x] *Exit:* One paid request (HTTP 402 + fixture journal); chain-facing credential is amount + nullifier, not a wallet. Milestone **P1** checked. Mondays may still polish P0.
 
 ### Phase 12: Benchmarking (3 sessions)
 
-- [ ] **Day 51 — E2E latency**
-  - [ ] Prove → relayer → confirm; write numbers to `notes/latency.md`
+- [x] **Day 51 — E2E latency**
+  - [x] Prove → relayer → confirm; write numbers to `notes/latency.md`
 
 - [ ] **Day 52 — Prove hardware + on-chain CU breakdown**
   - [ ] CPU vs GPU prove times

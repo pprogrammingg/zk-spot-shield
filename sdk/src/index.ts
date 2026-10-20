@@ -62,3 +62,30 @@ export {
   type DepositAccounts,
   type SettleAccounts,
 } from "./instructions.js";
+
+export {
+  decodeVaultState,
+  encodeSettleIntent,
+  generateProofInputs,
+  getVaultReserves,
+  proofInputsToHex,
+  requestShieldedSwap,
+  subscribeCleanFundsRoot,
+  vaultStateDiscriminator,
+  type ProofInputs,
+  type RelayerSettleIntent,
+  type ShieldedSwapPlan,
+  type ShieldedSwapRequest,
+  type SubscribeCleanFundsRootOpts,
+  type VaultReserves,
+} from "./client.js";
+
+export {
+  journalToPayBody,
+  payUrl,
+  quoteUrl,
+  resourceUrl,
+  type PaidResource,
+  type PayAck,
+  type PaymentQuote,
+} from "./pay402.js";

@@ -29,7 +29,7 @@ zk-circuit/io/        # shared I/O + Poseidon Merkle + deposit tree (no sp1-zkvm
 zk-circuit/guest/     # SP1 guest circuit
 zk-circuit/host/      # SP1 host prover driver
 client/               # Rust helpers (CU budget, ALT sizing)
-relayer/              # Axum fee-payer scaffold (/health, /submit-proof queue)
+relayer/              # Axum fee-payer + HTTP 402 (/health, /submit-intent, /402/*)
 sdk/                  # TypeScript SDK: Anchor provider, Merkle, prove, settle E2E
 Anchor.toml           # localnet + program id
 Cargo.toml            # workspace

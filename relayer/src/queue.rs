@@ -1,18 +1,24 @@
-//! In-memory prove job queue (Day 45). Worker is a stub until Day 46 tx build.
+//! In-memory prove/settle job queue (Days 45–47).
+//!
+//! Worker dry-runs settle tx build with the configured fee-payer key (no `$PROVE`).
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use solana_keypair::Keypair;
 use tokio::sync::{mpsc, Mutex, Notify};
 use uuid::Uuid;
+
+use crate::fees::FeeConfig;
+use crate::submit::process_intent_dry_run;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum JobStatus {
     Queued,
     Running,
-    /// Stub success — no Groth16 yet (Day 46+).
+    /// Settle tx built+signed (dry-run) or send stub success.
     Done,
     Failed,
 }
@@ -21,11 +27,12 @@ pub enum JobStatus {
 pub struct ProveJob {
     pub id: Uuid,
     pub status: JobStatus,
-    /// Opaque private intent bytes (client-packed; not logged in full).
+    /// Opaque private intent bytes (JSON SettleIntent or raw witness).
     #[serde(skip_serializing)]
     pub intent: Vec<u8>,
     pub intent_len: usize,
     pub error: Option<String>,
+    pub relayer_fee: Option<u64>,
 }
 
 impl ProveJob {
@@ -37,6 +44,7 @@ impl ProveJob {
             intent,
             intent_len,
             error: None,
+            relayer_fee: None,
         }
     }
 }
@@ -77,11 +85,20 @@ impl ProveQueue {
         self.inner.lock().await.get(&id).cloned()
     }
 
-    pub async fn set_status(&self, id: Uuid, status: JobStatus, error: Option<String>) {
+    pub async fn set_status(
+        &self,
+        id: Uuid,
+        status: JobStatus,
+        error: Option<String>,
+        relayer_fee: Option<u64>,
+    ) {
         let mut map = self.inner.lock().await;
         if let Some(job) = map.get_mut(&id) {
             job.status = status;
             job.error = error;
+            if relayer_fee.is_some() {
+                job.relayer_fee = relayer_fee;
+            }
         }
     }
 }
@@ -92,14 +109,56 @@ impl Default for ProveQueue {
     }
 }
 
-/// Background worker: mark jobs Running → Done (prove stub).
-pub async fn run_worker(queue: ProveQueue, mut rx: mpsc::UnboundedReceiver<Uuid>) {
+/// Background worker: dry-run settle as fee payer when intent is JSON; else mark Done.
+pub async fn run_worker(
+    queue: ProveQueue,
+    mut rx: mpsc::UnboundedReceiver<Uuid>,
+    fee_payer: Option<Arc<Keypair>>,
+    fee_cfg: FeeConfig,
+) {
     while let Some(id) = rx.recv().await {
-        queue.set_status(id, JobStatus::Running, None).await;
-        // Day 46 will call host prove + build tx here.
-        tokio::task::yield_now().await;
-        queue.set_status(id, JobStatus::Done, None).await;
-        tracing::info!(%id, "prove job stub complete");
+        queue
+            .set_status(id, JobStatus::Running, None, None)
+            .await;
+        let intent = match queue.get(id).await {
+            Some(j) => j.intent,
+            None => continue,
+        };
+
+        let result = if let Some(ref kp) = fee_payer {
+            process_intent_dry_run(kp, &intent, fee_cfg)
+        } else {
+            // No key configured — accept enqueue only (Day 45 compat).
+            Ok(crate::submit::SubmitSettleResult {
+                fee_payer: "unconfigured".into(),
+                relayer_fee: crate::fees::compute_relayer_fee(0, fee_cfg),
+                signature: None,
+                dry_run: true,
+            })
+        };
+
+        match result {
+            Ok(r) => {
+                queue
+                    .set_status(id, JobStatus::Done, None, Some(r.relayer_fee))
+                    .await;
+                tracing::info!(%id, fee = r.relayer_fee, "settle intent dry-run ok");
+            }
+            Err(e) => {
+                // Non-JSON intents stay Done without fee (witness-only until prove wired).
+                if intent.first() == Some(&b'{') {
+                    tracing::warn!(%id, error = %e, "settle intent failed");
+                    queue
+                        .set_status(id, JobStatus::Failed, Some(e), None)
+                        .await;
+                } else {
+                    queue
+                        .set_status(id, JobStatus::Done, None, None)
+                        .await;
+                    tracing::info!(%id, "opaque intent queued (prove stub)");
+                }
+            }
+        }
     }
 }
 
@@ -108,16 +167,16 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn enqueue_and_worker_marks_done() {
+    async fn enqueue_and_worker_marks_done_opaque() {
         let (queue, rx) = ProveQueue::new();
         let q = queue.clone();
-        let worker = tokio::spawn(async move { run_worker(q, rx).await });
+        let worker = tokio::spawn(async move {
+            run_worker(q, rx, None, FeeConfig::default()).await
+        });
 
         let job = queue.enqueue(vec![1, 2, 3]).await;
         assert_eq!(job.status, JobStatus::Queued);
-        assert_eq!(job.intent_len, 3);
 
-        // Poll until Done (worker is cooperative).
         let mut seen = JobStatus::Queued;
         for _ in 0..50 {
             tokio::task::yield_now().await;

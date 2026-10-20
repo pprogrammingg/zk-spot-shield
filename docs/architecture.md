@@ -69,8 +69,8 @@ Step numbers **continue across phases**. Each phase is a **separate** Mermaid di
 | **A** Connect | 1 to 3 | UI polish upcoming |
 | **B** Deposit | 4 to 12 | Built on-chain; hosted indexer upcoming |
 | **C** Prove | 13 to 19 | Built |
-| **D** Settle today | 20 to 29 | Built; wallet legs for journal mint |
-| **E** Upcoming | 30 to 34 | Upcoming |
+| **D** Settle today | 20 to 28 | Built; vault-only spend (Day 48); fee payer ≠ note owner (Day 46) |
+| **E** Relayer ops | 30 to 34 | Scaffold + fee stub (44–47); prove treasury / unlink / change notes upcoming |
 
 ---
 
@@ -133,7 +133,9 @@ sequenceDiagram
 
 ---
 
-### Phase D — Settle today (steps 20 to 29)
+### Phase D — Settle today (steps 20 to 28)
+
+Days **46–48**: fee payer may be a relayer (≠ note owner); settle is **vault-only** (no second user→vault of the journal mint).
 
 ```mermaid
 sequenceDiagram
@@ -148,11 +150,10 @@ sequenceDiagram
   Prog->>Prog: 23 Verify Groth16 vs vkey_hash
   Prog->>Prog: 24 Root must match CleanFundsRoot
   Prog->>Prog: 25 Nullifier PDA must be empty
-  Prog->>Prog: 26 apply_swap reserves 1 to 1
-  Prog->>Spl: 27 User pays journal mint to vault
-  Prog->>Spl: 28 Vault pays other mint to user
-  Prog->>Prog: 29 Create nullifier PDA
-  Note over Prog: Step 27 still debits payer wallet after deposit
+  Prog->>Prog: 26 apply_vault_only_spend pay other mint
+  Prog->>Spl: 27 Vault pays other mint to user
+  Prog->>Prog: 28 Create nullifier PDA
+  Note over Prog: Fee payer pays SOL rent; no second debit of journal mint
 ```
 
 ---

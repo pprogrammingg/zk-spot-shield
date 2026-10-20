@@ -74,7 +74,9 @@ export function settleComputeBudgetIxs(
   return ixs;
 }
 
+/** Settle metas. `payer` = SOL fee payer (relayer OK); ≠ note owner (Day 46). */
 export type SettleAccounts = {
+  /** Fee payer: SOL + nullifier rent. May be a relayer key. */
   payer: PublicKey;
   globalConfig: PublicKey;
   vault: PublicKey;
@@ -82,7 +84,9 @@ export type SettleAccounts = {
   nullifierAccount: PublicKey;
   vaultTokenA: PublicKey;
   vaultTokenB: PublicKey;
+  /** Recipient ATA mint A (vault-only settle does not debit journal mint). */
   userTokenA: PublicKey;
+  /** Recipient ATA mint B. */
   userTokenB: PublicKey;
 };
 

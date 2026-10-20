@@ -438,9 +438,9 @@ fn deposit_then_register_tip_then_settle() {
 
     let amount = public.requested_swap_amount;
     let vault_state = read_vault(&svm, program_id);
-    // deposit 1000 + settle take 100 on A; pay 100 B from pre-seeded reserve.
-    assert_eq!(vault_state.reserve_a, 1_000 + amount);
+    // Day 48: deposit funded A; settle pays B only — no second user→vault of A.
+    assert_eq!(vault_state.reserve_a, 1_000);
     assert_eq!(vault_state.reserve_b, 1_000 - amount);
-    assert_eq!(token_amount(&svm, uta), 2_000 - 1_000 - amount);
+    assert_eq!(token_amount(&svm, uta), 2_000 - 1_000);
     assert_eq!(token_amount(&svm, utb), amount);
 }

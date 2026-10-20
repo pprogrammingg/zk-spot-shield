@@ -49,9 +49,8 @@ impl VaultState {
         )
     }
 
-    /// Day 26: 1:1 spot accounting on zero-copy reserves.
-    /// Vault takes `asset_mint` (`checked_add`) and pays the other mint (`checked_sub`).
-    /// Both sides are computed before any write so a failed edge leaves reserves unchanged.
+    /// Day 26 legacy wallet-leg swap: vault takes `asset_mint` and pays the other.
+    /// Prefer [`Self::apply_vault_only_spend`] after deposit-backed custody (Day 48).
     pub fn apply_swap(&mut self, amount: u64, asset_mint: &Pubkey) -> Result<()> {
         require!(amount > 0, ErrorCode::ZeroSwapAmount);
 
@@ -77,6 +76,30 @@ impl VaultState {
                 .ok_or(error!(ErrorCode::VaultReserveUnderflow))?;
             self.reserve_a = new_a;
             self.reserve_b = new_b;
+        } else {
+            return err!(ErrorCode::UnknownVaultMint);
+        }
+        Ok(())
+    }
+
+    /// Day 48: deposit-backed 1:1 spend — journal mint already sits in vault reserves/ATA.
+    /// Only subtract the **payout** mint; leave journal-mint reserve unchanged.
+    /// Fail-closed on zero amount, unknown mint, or payout underflow.
+    pub fn apply_vault_only_spend(&mut self, amount: u64, asset_mint: &Pubkey) -> Result<()> {
+        require!(amount > 0, ErrorCode::ZeroSwapAmount);
+
+        if asset_mint == &self.mint_a {
+            // Spend custodied A → pay B.
+            self.reserve_b = self
+                .reserve_b
+                .checked_sub(amount)
+                .ok_or(error!(ErrorCode::VaultReserveUnderflow))?;
+        } else if asset_mint == &self.mint_b {
+            // Spend custodied B → pay A.
+            self.reserve_a = self
+                .reserve_a
+                .checked_sub(amount)
+                .ok_or(error!(ErrorCode::VaultReserveUnderflow))?;
         } else {
             return err!(ErrorCode::UnknownVaultMint);
         }
@@ -239,6 +262,59 @@ mod tests {
             .apply_swap(1, &Pubkey::new_from_array([9u8; 32]))
             .unwrap_err();
         assert_eq!(err, error!(ErrorCode::UnknownVaultMint));
+    }
+
+    #[test]
+    fn apply_vault_only_spend_pays_other_mint_only() {
+        let mut vault = sample_vault(1_000, 1_000);
+        let mint_a = vault.mint_a;
+        vault.apply_vault_only_spend(100, &mint_a).unwrap();
+        assert_eq!(vault.reserve_a, 1_000);
+        assert_eq!(vault.reserve_b, 900);
+    }
+
+    #[test]
+    fn apply_vault_only_spend_rejects_underflow_and_unknown() {
+        let mut vault = sample_vault(1_000, 50);
+        let mint_a = vault.mint_a;
+        assert_eq!(
+            vault.apply_vault_only_spend(100, &mint_a).unwrap_err(),
+            error!(ErrorCode::VaultReserveUnderflow)
+        );
+        assert_eq!(vault.reserve_b, 50);
+        assert_eq!(
+            vault
+                .apply_vault_only_spend(1, &Pubkey::new_from_array([9u8; 32]))
+                .unwrap_err(),
+            error!(ErrorCode::UnknownVaultMint)
+        );
+    }
+
+    #[test]
+    fn apply_vault_only_spend_edge_harness() {
+        // (reserve_a, reserve_b, amount, expect_ok) when spending mint_a (pay B).
+        let edges: &[(u64, u64, u64, bool)] = &[
+            (1_000, 1_000, 0, false),
+            (1_000, 0, 1, false),
+            (1_000, 1, 1, true),
+            (1_000, 1, 2, false),
+            (0, 500, 100, true),
+            (500, 500, 500, true),
+        ];
+        for &(ra, rb, amount, expect_ok) in edges {
+            let mut vault = sample_vault(ra, rb);
+            let mint_a = vault.mint_a;
+            let result = vault.apply_vault_only_spend(amount, &mint_a);
+            if expect_ok {
+                assert!(result.is_ok(), "ra={ra} rb={rb} amt={amount}");
+                assert_eq!(vault.reserve_a, ra);
+                assert_eq!(vault.reserve_b, rb - amount);
+            } else {
+                assert!(result.is_err(), "ra={ra} rb={rb} amt={amount}");
+                assert_eq!(vault.reserve_a, ra);
+                assert_eq!(vault.reserve_b, rb);
+            }
+        }
     }
 
     #[test]
