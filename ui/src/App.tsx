@@ -110,7 +110,7 @@ export default function App() {
     const cfgAcc = await connection.getAccountInfo(config);
     const vaultAcc = await connection.getAccountInfo(vault);
     if (!cfgAcc || !vaultAcc) {
-      throw new Error("Config or vault missing on this cluster. Init first (Days 60–61).");
+      throw new Error("Config or vault missing on this cluster. Init first.");
     }
     const cfg = decodeGlobalConfig(cfgAcc.data);
     const v = decodeVaultState(vaultAcc.data);

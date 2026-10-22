@@ -1,4 +1,4 @@
-//! Append-only depth-20 Poseidon Merkle tree for deposit leaves (Days 42–43).
+//! Append-only depth-20 Poseidon Merkle tree for deposit leaves.
 //!
 //! Indexer / client helper — not used inside the SP1 guest. Empty missing
 //! subtrees use the same `empty[h]` hashes as `index0_empty_path`.

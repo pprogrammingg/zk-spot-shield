@@ -53,8 +53,8 @@ impl VaultState {
         Pubkey::find_program_address(&[crate::SPOT_VAULT_SEED], program_id)
     }
 
-    /// Day 26 legacy wallet-leg swap: vault takes `asset_mint` and pays the other.
-    /// Prefer [`Self::apply_vault_only_spend`] after deposit-backed custody (Day 48).
+    /// Legacy wallet-leg swap: vault takes `asset_mint` and pays the other.
+    /// Prefer [`Self::apply_vault_only_spend`] after deposit-backed custody.
     pub fn apply_swap(&mut self, amount: u64, asset_mint: &Pubkey) -> Result<()> {
         require!(amount > 0, ErrorCode::ZeroSwapAmount);
 
@@ -86,7 +86,7 @@ impl VaultState {
         Ok(())
     }
 
-    /// Day 48: deposit-backed 1:1 spend — journal mint already sits in vault reserves/ATA.
+    /// Deposit-backed 1:1 spend — journal mint already sits in vault reserves/ATA.
     /// Only subtract the **payout** mint; leave journal-mint reserve unchanged.
     /// Fail-closed on zero amount, unknown mint, or payout underflow.
     pub fn apply_vault_only_spend(&mut self, amount: u64, asset_mint: &Pubkey) -> Result<()> {
@@ -110,7 +110,7 @@ impl VaultState {
         Ok(())
     }
 
-    /// Day 41: custody-side deposit — add `amount` of `mint` to the matching reserve.
+    /// Custody-side deposit — add `amount` of `mint` to the matching reserve.
     pub fn apply_deposit(&mut self, amount: u64, mint: &Pubkey) -> Result<()> {
         require!(amount > 0, ErrorCode::ZeroDepositAmount);
         if mint == &self.mint_a {
@@ -129,7 +129,7 @@ impl VaultState {
         Ok(())
     }
 
-    /// Day 61: write the two pair mints once. Fail closed if already set, equal, or default.
+    /// Write the two pair mints once. Fail closed if already set, equal, or default.
     pub fn set_mints(&mut self, mint_a: &Pubkey, mint_b: &Pubkey) -> Result<()> {
         require!(
             self.mint_a == Pubkey::default() && self.mint_b == Pubkey::default(),
@@ -225,7 +225,7 @@ mod tests {
     }
 
     #[test]
-    fn day55_vault_padding_sits_after_bump() {
+    fn vault_padding_sits_after_bump() {
         assert_eq!(core::mem::offset_of!(VaultState, bump), 112);
         assert_eq!(core::mem::offset_of!(VaultState, _padding), 113);
         assert_eq!(std::mem::size_of_val(&[0u8; 7]), 7);
@@ -423,7 +423,7 @@ mod tests {
         assert_eq!(std::mem::size_of::<DepositLeafAccount>(), 104);
     }
 
-    /// Day 39: arithmetic edges — success keeps `reserve_a + reserve_b` invariant;
+    /// Arithmetic edges — success keeps `reserve_a + reserve_b` invariant;
     /// overflow / underflow / zero / unknown mint fail closed (no panic).
     #[test]
     fn apply_swap_arithmetic_edge_harness() {

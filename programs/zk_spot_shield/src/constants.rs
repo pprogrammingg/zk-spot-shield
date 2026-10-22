@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 #[constant]
 pub const GLOBAL_CONFIG_SEED: &[u8] = b"global-config";
 
-/// SP1 `vk.bytes32()` for the frozen happy-path guest ELF (Day 15).
+/// SP1 `vk.bytes32()` for the frozen happy-path guest ELF.
 /// Source: `zk-circuit/fixtures/happy/vkey.bytes32.txt` / `notes/proving.md`.
 /// Rebuild guest → re-prove → update this array, the fixture, and the notes.
 #[constant]
@@ -48,9 +48,9 @@ mod tests {
         }
     }
 
-    /// Day 40 constraint audit checklist (seeds/bump/has_one surface).
+    /// Constraint audit checklist (seeds/bump/has_one surface).
     #[test]
-    fn day40_pda_constraint_surface_documented() {
+    fn pda_constraint_surface_documented() {
         // Init: global_config + vault — seeds + bump on init.
         assert_eq!(GLOBAL_CONFIG_SEED, b"global-config");
         assert_eq!(SPOT_VAULT_SEED, b"spot_vault");
@@ -62,9 +62,9 @@ mod tests {
         assert_eq!(NULLIFIER_SEED_PREFIX, b"nullifier");
     }
 
-    /// Day 55: ix signer surface (must match `notes/layout-signer-audit.md`).
+    /// Ix signer surface (must match `notes/layout-signer-audit.md`).
     #[test]
-    fn day55_instruction_signer_inventory() {
+    fn instruction_signer_inventory() {
         let ixs: &[(&str, &str)] = &[
             ("initialize_global_config", "payer"),
             ("initialize_vault", "payer"),
@@ -87,7 +87,7 @@ mod tests {
     }
 
     #[test]
-    fn vkey_hash_matches_day12_happy_fixture() {
+    fn vkey_hash_matches_happy_fixture() {
         assert_ne!(VKEY_HASH, [0u8; 32]);
         assert_eq!(VKEY_HASH[0], 0x00);
         assert_eq!(VKEY_HASH[31], 0xd7);

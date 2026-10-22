@@ -1,5 +1,5 @@
 /**
- * Day 68: live Devnet reads (+ optional pause→unpause write).
+ * Live Devnet reads (+ optional pause→unpause write).
  *
  * CI-default does not set DEVNET_ONCHAIN, so this file is skipped.
  *
@@ -28,7 +28,7 @@ const run = process.env.DEVNET_ONCHAIN === "1";
 const url =
   process.env.ANCHOR_PROVIDER_URL ?? "https://api.devnet.solana.com";
 
-describe.skipIf(!run)("Day 68 Devnet on-chain", () => {
+describe.skipIf(!run)("Devnet on-chain", () => {
   it("fetches GlobalConfig + VaultState from Devnet", async () => {
     if (!url.includes("devnet")) {
       throw new Error(`ANCHOR_PROVIDER_URL must be a Devnet RPC, got ${url}`);
@@ -43,11 +43,11 @@ describe.skipIf(!run)("Day 68 Devnet on-chain", () => {
     const vaultAcc = await connection.getAccountInfo(vault);
     if (!cfgAcc) {
       throw new Error(
-        `GlobalConfig missing at ${globalConfig.toBase58()} — finish Days 58–60`,
+        `GlobalConfig missing at ${globalConfig.toBase58()} — run init-config first`,
       );
     }
     if (!vaultAcc) {
-      throw new Error(`VaultState missing at ${vault.toBase58()} — finish Day 61`);
+      throw new Error(`VaultState missing at ${vault.toBase58()} — run set-mints first`);
     }
     const cfg = decodeGlobalConfig(cfgAcc.data);
     const vaultState = decodeVaultState(vaultAcc.data);

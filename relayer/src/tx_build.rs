@@ -1,4 +1,4 @@
-//! Day 46: build `settle_shielded_spot` with relayer as fee payer.
+//! Build `settle_shielded_spot` with relayer as fee payer.
 //!
 //! Fee payer ≠ note owner: `payer` pays SOL / nullifier rent. Recipient ATAs are
 //! separate. Journal still binds amount / mint / nullifier / merkle_root.

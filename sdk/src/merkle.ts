@@ -1,5 +1,5 @@
 /**
- * Day 33: Poseidon Merkle helpers matching `zk-circuit-io` / guest
+ * Poseidon Merkle helpers matching `zk-circuit-io` / guest
  * (`light_poseidon` circom BN254, big-endian 32-byte field encoding).
  *
  * Depth-20 tree; path entries are `(sibling, is_right)` as in Rust.

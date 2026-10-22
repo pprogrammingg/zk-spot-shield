@@ -18,7 +18,7 @@ import {
   settleComputeBudgetIxs,
 } from "../src/instructions.js";
 
-describe("Day 35 instruction wrappers", () => {
+describe("instruction wrappers", () => {
   it("compute budget ix uses settle CU limit", () => {
     const ixs = settleComputeBudgetIxs();
     expect(ixs).toHaveLength(1);

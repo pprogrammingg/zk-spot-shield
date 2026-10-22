@@ -1,4 +1,4 @@
-//! Authority registers an approved Merkle root PDA for settle (Day 24).
+//! Authority registers an approved Merkle root PDA for settle.
 
 use anchor_lang::prelude::*;
 

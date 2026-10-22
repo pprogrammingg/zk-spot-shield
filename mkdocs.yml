@@ -12,7 +12,6 @@ nav:
   - Architecture: architecture.md
   - Security: security.md
   - Solana Program: solana-program.md
-  - Accounts deep dive: accounts-deep-dive.md
   - Guest and Host: circuit.md
   - Tests: tests.md
   - Glossary: glossary.md

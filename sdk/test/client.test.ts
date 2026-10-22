@@ -29,7 +29,7 @@ const happy = JSON.parse(
   requested_swap_amount: number;
 };
 
-describe("Day 49 SDK surface", () => {
+describe("SDK surface", () => {
   it("generateProofInputs matches happy fixture root", async () => {
     const tree = await DepositTree.create();
     const inputs = await generateProofInputs(

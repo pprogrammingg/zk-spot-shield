@@ -8,7 +8,7 @@ From repo root. Needs network `$PROVE` and a gitignored `.env`:
 
 ```bash
 SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info \
-  cargo run -p zk-circuit-host --features network --release
+ cargo run -p zk-circuit-host --features network --release
 ```
 
 If guest/io are unchanged, skip `cargo prove build`. If the guest changed, rebuild the ELF, then recompile the host (it `include_bytes!` the ELF). Re-prove updates fixtures, this note, and `constants::VKEY_HASH`. Devnet settle can rotate the **on-chain** hash with `set_vkey_hash` without rewriting the happy fixture.
@@ -29,15 +29,15 @@ cargo run -p zk-circuit-host --release -- --print-live-vkey
 
 Prints `vk.bytes32()` hex and a Rust `[u8; 32]` for `GlobalConfig` / `VKEY_HASH`.
 
-## Devnet witness (Day 63)
+## Devnet witness
 
 Gitignored `.devnet-witness.json` + `WITNESS_JSON` / `ARTIFACT_DIR`. Do **not** copy that wrap into `zk-circuit/fixtures/happy/`.
 
 ```bash
 WITNESS_JSON=.devnet-witness.json cargo run -p zk-circuit-host --release
 WITNESS_JSON=.devnet-witness.json ARTIFACT_DIR=sp1-artifacts/devnet-settle \
-  SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info \
-  cargo run -p zk-circuit-host --features network --release
+ SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info \
+ cargo run -p zk-circuit-host --features network --release
 ```
 
 ## Devnet wrap (2026-10-22)

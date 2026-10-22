@@ -1,4 +1,4 @@
-//! Day 21: LiteSVM inits create `GlobalConfig` + zero-copy `VaultState` at expected sizes.
+//! LiteSVM inits create `GlobalConfig` + zero-copy `VaultState` at expected sizes.
 
 use {
     anchor_lang::{
@@ -136,9 +136,9 @@ fn test_vault_initialize() {
     assert_eq!(vault_state._padding, [0u8; 7]);
 }
 
-/// Day 21 Exit: both PDAs exist after init with correct sizes and admin fields.
+/// Exit: both PDAs exist after init with correct sizes and admin fields.
 #[test]
-fn test_day21_init_global_config_and_vault() {
+fn test_init_global_config_and_vault() {
     let program_id = zk_spot_shield::id();
     let payer = Keypair::new();
 
@@ -213,7 +213,7 @@ fn send_ix_err(svm: &mut LiteSVM, payer: &Keypair, instruction: Instruction) {
         .expect_err("expected instruction to fail");
 }
 
-/// Day 61: protocol admin sets pair mints once on the existing vault PDA.
+/// Protocol admin sets pair mints once on the existing vault PDA.
 #[test]
 fn test_set_vault_mints_once() {
     let program_id = zk_spot_shield::id();

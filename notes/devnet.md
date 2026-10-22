@@ -1,18 +1,14 @@
-# Devnet operator steps (Days 58–64)
+# Devnet
 
-This is the deploy guide the README calls **Operator steps**. Fill the tables as you go. Until they have values, localnet and LiteSVM stay the default.
+Operator record. Until these tables are filled, localnet and LiteSVM stay the default.
 
-Env template: [`scripts/devnet.env.example`](../scripts/devnet.env.example). Copy it to a gitignored repo-root `.env` or export in the shell. Never commit keypairs.
+Env template: [`scripts/devnet.env.example`](../scripts/devnet.env.example). Copy to a gitignored repo-root `.env` or export in the shell. Never commit keypairs.
 
-`npm run test:e2e` / `sdk/scripts/e2e-localnet.ts` is **local validator only**. It preloads accounts and does not talk to Devnet. Do not point it at `api.devnet.solana.com`.
+`npm run test:e2e` / `sdk/scripts/e2e-localnet.ts` is **local validator only**. Do not point it at `api.devnet.solana.com`.
 
-Do these days in order. **58–63 done.** Day 62 health-checked (skip send). **Day 63 settle landed.** Next: Day 64 tag after you commit. Paste Explorer URLs with `?cluster=devnet`.
+Tag `v1.0.0-devnet` is on `30c35d7`. Paste Explorer URLs with `?cluster=devnet`.
 
----
-
-## Day 57 recap (hash procedure)
-
-You already have this. Freeze the binary **before** Day 59 so the Devnet `.so` hash is the one you recorded.
+## Hash the binary
 
 ```bash
 export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
@@ -21,46 +17,30 @@ anchor build --ignore-keys
 ./scripts/program-hash.sh
 ```
 
-Record the SHA-256 in the Day 59 table below (and [`reproducible-build.md`](./reproducible-build.md)). Hash on the machine that built. **Deploy this file:** `target/deploy/zk_spot_shield.so`. The SBPF path can hash differently; do not treat it as the freeze unless that is what `anchor deploy` uploads.
+Hash on the machine that built. **Deploy this file:** `target/deploy/zk_spot_shield.so`. The SBPF path can hash differently — see [`budgets.md`](./budgets.md).
 
----
-
-## Day 58 — Keys + SOL
-
-1. Point the Solana CLI at Devnet and print the deploy wallet (this pubkey becomes protocol admin if it pays init):
+## Keys and SOL
 
 ```bash
 solana config set --url https://api.devnet.solana.com
 solana address
 solana balance
-```
-
-2. Fund it. Public faucet (2 SOL at a time; may rate-limit):
-
-```bash
 solana airdrop 2
-solana balance
 ```
 
-If that fails, use [faucet.solana.com](https://faucet.solana.com/) or a second wallet. You want **at least ~3 SOL** for program deploy rent plus later PDAs.
+Need **at least ~3 SOL** for program deploy rent plus later PDAs. If the faucet rate-limits, use [faucet.solana.com](https://faucet.solana.com/). Optional: set `ANCHOR_WALLET` if you are not using `~/.config/solana/id.json`.
 
-3. Optional: copy [`scripts/devnet.env.example`](../scripts/devnet.env.example) and set `ANCHOR_WALLET` if you are not using `~/.config/solana/id.json`.
-
-| Field                 | Value                                          |
-| --------------------- | ---------------------------------------------- |
-| Cluster               | `https://api.devnet.solana.com`                |
+| Field | Value |
+| --- | --- |
+| Cluster | `https://api.devnet.solana.com` |
 | Deploy / admin pubkey | `9sLGgVEotwD8gJgL5HhJdP7w61zeCrJ25NNkJPM3BAaX` |
-| Balance after airdrop | 2.5                                            |
+| Balance after airdrop | 2.5 |
 
-**Paste back:** admin pubkey.
-
----
-
-## Day 59 — Deploy program
+## Deploy / upgrade
 
 Pinned program id (source + cluster): `74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G`.
 
-**Every deploy:** if the printed program id **equals** the pin, only the `.so` bytes changed — **upgrade** that same address (do not `anchor deploy` a second id). If the printed id **differs**, stop. The `.so` embeds `declare_id!`; a mismatch fails at runtime (`DeclaredProgramIdMismatch`). Align source to the **on-chain** id, rebuild, then **upgrade** that account:
+If the printed program id **equals** the pin, **upgrade** that address. If it **differs**, stop — the `.so` embeds `declare_id!` and a mismatch fails at runtime (`DeclaredProgramIdMismatch`). Align source to the **on-chain** id, rebuild, then upgrade:
 
 1. `programs/zk_spot_shield/src/lib.rs` — `declare_id!("…")`
 2. `Anchor.toml` — `[programs.localnet]` and `[programs.devnet]`
@@ -69,7 +49,7 @@ Pinned program id (source + cluster): `74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCm
 5. `sdk/scripts/e2e-localnet.ts` — `PROGRAM_ID`
 6. `scripts/devnet.env.example`, this note, README
 
-Keep `target/deploy/zk_spot_shield-keypair.json` (gitignored). Its pubkey **is** the program id. Prefer upgrade over a new keypair so PDAs stay put. Init (Day 60) only after dump SHA-256 matches the local freeze.
+Keep `target/deploy/zk_spot_shield-keypair.json` (gitignored). Its pubkey **is** the program id. Prefer upgrade so PDAs stay put. Init only after dump SHA-256 matches the local freeze.
 
 ```bash
 export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
@@ -77,47 +57,41 @@ unset CARGO_TARGET_DIR
 anchor build --ignore-keys
 ./scripts/program-hash.sh
 
-# First time only (creates the program account). After that, upgrade.
+# First time only:
 anchor deploy --provider.cluster devnet
 
-# Same program id, new bytecode (including after a declare_id! pin):
+# Same program id, new bytecode:
 anchor upgrade target/deploy/zk_spot_shield.so \
-  --program-id 74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G \
-  --provider.cluster devnet
+ --Program-id 74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G \
+ --Provider.cluster devnet
 
 solana program show 74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G --url devnet
 solana program dump 74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G dumped.so --url devnet
 shasum -a 256 dumped.so target/deploy/zk_spot_shield.so
 ```
 
-First Devnet deploy used a new keypair (`74UW…`). Source is synced and the **upgrade landed** (2026-10-21): dump SHA-256 matches the local freeze. Day 60 init is unblocked.
-
-Explorer: `https://explorer.solana.com/address/74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G?cluster=devnet`
+First deploy used a new keypair (`74UW…`). Source is synced; dump SHA-256 matches the local freeze.
 
 | Field | Value |
 | --- | --- |
-| Program id (on-chain + source) | `74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G` |
+| Program id | `74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G` |
 | `.so` SHA-256 (first pin upgrade) | `f9030f956eb2e2d967254c99355f2c49bd47215401aae8b3b082ca11ec473277` |
 | Upgrade tx (pin) | `5bwFz3PfNHzBHNHmTznvLtt1ySvJLHZdrkR6wvyPN76ENMVN7JZxfno61jvGz6MN5vKPb5vLPxoDVY53Q3fbMAfn` |
-| Current `.so` SHA-256 | `b14e59e6cd0ecd67de4cc46c912f123749d81ee02046e7956945384be74c8c9e` (local `target/deploy`; Day 63 `set_vkey_hash`) |
-| Upgrade tx (Day 61) | `3dDJRMHZxD7YcwnaH62J2Tk98kKToeXRoYGPk36ggtE5GNdXnJH5aRy6LXCkoSE6yqy1Lw67gb2uQfiodR3wQtak` |
-| Upgrade tx (Day 63) | `3rAxUJn5QLvajNuvEu8rVvXvN5cz4R5CSGC4kfuq3j8mEnhmwC9nXVWVetkYoPhhtfXj1fjFcHc2wKsXUMG9qsh9` |
+| Current `.so` SHA-256 | `b14e59e6cd0ecd67de4cc46c912f123749d81ee02046e7956945384be74c8c9e` |
+| Upgrade tx (mints) | `3dDJRMHZxD7YcwnaH62J2Tk98kKToeXRoYGPk36ggtE5GNdXnJH5aRy6LXCkoSE6yqy1Lw67gb2uQfiodR3wQtak` |
+| Upgrade tx (vkey) | `3rAxUJn5QLvajNuvEu8rVvXvN5cz4R5CSGC4kfuq3j8mEnhmwC9nXVWVetkYoPhhtfXj1fjFcHc2wKsXUMG9qsh9` |
 | Upgrade authority | `9sLGgVEotwD8gJgL5HhJdP7w61zeCrJ25NNkJPM3BAaX` |
 | ProgramData | `9t5Z4LnoQxpnwb11g8hqDnhMrVzmH77oaLofSCQVgQr2` |
 | IDL metadata | `HkAVd4rm1uHtKo1VSXS9wcF1MzsBbzDNtU83gZKZGajv` |
-| Last deployed slot | Day 63 upgrade (extend +10 KB then resume buffer `H1gP…`) |
+| Last deployed slot | extend +10 KB then resume buffer `H1gP…` |
 | Explorer (program) | https://explorer.solana.com/address/74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G?cluster=devnet |
 | Explorer (upgrade tx) | https://explorer.solana.com/tx/3rAxUJn5QLvajNuvEu8rVvXvN5cz4R5CSGC4kfuq3j8mEnhmwC9nXVWVetkYoPhhtfXj1fjFcHc2wKsXUMG9qsh9?cluster=devnet |
 
-**Paste back:** program id + `.so` SHA-256.
+## Init config and roots
 
----
+Creates `GlobalConfig` (payer becomes `authority`; init writes program `VKEY_HASH`) and registers the happy-path Merkle root from `zk-circuit/fixtures/happy.json`. After a guest rebuild, protocol admin rotates the on-chain hash with `set_vkey_hash` (`NEW_VKEY_HASH=0x… npm run devnet:set-vkey`).
 
-## Day 60 — Init config, vkey, root
-
-Creates `GlobalConfig` (payer becomes `authority`; init writes program `VKEY_HASH`) and registers the happy-path Merkle root from `zk-circuit/fixtures/happy.json` (`expected_root`). After a guest rebuild, protocol admin rotates the on-chain hash with `set_vkey_hash` (`NEW_VKEY_HASH=0x… npm run devnet:set-vkey`).
-
-From `sdk/` (wallet must be the Day 58 key; needs SOL for PDA rent). Script: [`sdk/scripts/devnet-init.ts`](../sdk/scripts/devnet-init.ts).
+From `sdk/` (wallet must be the admin key; needs SOL for PDA rent). Script: [`sdk/scripts/devnet-init.ts`](../sdk/scripts/devnet-init.ts).
 
 ```bash
 cd sdk && npm install
@@ -126,24 +100,18 @@ export ANCHOR_WALLET=$HOME/.config/solana/id.json
 npm run devnet:init-config
 ```
 
-Explorer (config): `https://explorer.solana.com/address/BQbrv7CVnh571XjvGv4SMfo5beUcrgF3wtsHrzWAU3CY?cluster=devnet`
-
 | Field | Value |
 | --- | --- |
 | `GlobalConfig` | `BQbrv7CVnh571XjvGv4SMfo5beUcrgF3wtsHrzWAU3CY` |
-| Explorer (config) | https://explorer.solana.com/address/BQbrv7CVnh571XjvGv4SMfo5beUcrgF3wtsHrzWAU3CY?cluster=devnet |
 | Init config tx | `3beD7cUyN7SuqK629UVEW1bknb9Tcnijhwj8zKUU2V29ri5b14waMLxdaa8ZfzdLxjAyEGBMEAAWiYHNK2sn3dQe` |
 | First `CleanFundsRoot` (toy happy `expected_root`) | `6CvBuqnxswcq8g7QJcybGRtGragupRzNdmW37fD7NMLA` |
 | Register root tx | `vmXeNCSVYzBPRzkTonRHUaxQJpft48U5LDAVcSgv9pC71h6rQQgLNJ3cv3FMRzyiUisaCdEcJw2VcU8d1xPtvSx` |
+| Explorer (config) | https://explorer.solana.com/address/BQbrv7CVnh571XjvGv4SMfo5beUcrgF3wtsHrzWAU3CY?cluster=devnet |
 | Explorer (root) | https://explorer.solana.com/address/6CvBuqnxswcq8g7QJcybGRtGragupRzNdmW37fD7NMLA?cluster=devnet |
 
-**Paste back:** GlobalConfig pubkey + Explorer URL.
+## Vault mints and ATAs
 
----
-
-## Day 61 — Set vault mints + ATAs (done)
-
-`set_vault_mints` (protocol admin, once) + two toy Devnet mints we control (so Day 63 can `mintTo`) + vault ATAs. Not Circle USDC.
+`set_vault_mints` (protocol admin, once) + two toy Devnet mints we control (so settle can `mintTo`) + vault ATAs. Not Circle USDC.
 
 ```bash
 cd sdk
@@ -151,8 +119,6 @@ export ANCHOR_PROVIDER_URL=https://api.devnet.solana.com
 export ANCHOR_WALLET=$HOME/.config/solana/id.json
 npm run devnet:set-mints
 ```
-
-Explorer (vault): `https://explorer.solana.com/address/A3h8dhmMipthngLSS5AmhsxYvt9sbgLmuUf1wfpJDqmd?cluster=devnet`
 
 | Field | Value |
 | --- | --- |
@@ -165,20 +131,12 @@ Explorer (vault): `https://explorer.solana.com/address/A3h8dhmMipthngLSS5AmhsxYv
 | `set_vault_mints` tx | `2oadPEEozV4ZXK824MuGqhS6ev43sB8Aj78wsvvfFmmV8MEeZzsFrXSFbXqhcj8VXsHNKFTnVxWrt5PscqNjaQnm` |
 | Create ATAs tx | `2VZzevEVyEcPuY8jfx9EAs8hNuajfu6M5dve5E4QZLF6ETzngKp6vWHKZJzDcoHrEboSv7FkUdhm5bEpi35oEgYU` |
 | Explorer (vault) | https://explorer.solana.com/address/A3h8dhmMipthngLSS5AmhsxYvt9sbgLmuUf1wfpJDqmd?cluster=devnet |
-| Explorer (mint A) | https://explorer.solana.com/address/DNNkZidPWCHxoyuaQ3h5N8FUCWaJZddEYvF7JyHHKbVE?cluster=devnet |
-| Explorer (mint B) | https://explorer.solana.com/address/HfgizYEd9aVxk6hAXjEtoac1jcVHA7KyrqyJYdm5wqzg?cluster=devnet |
 
----
+## Relayer
 
-## Day 62 — Relayer on Devnet RPC (skip send)
+Local process only. `/health` returned `{"status":"ok","service":"zk-spot-shield-relayer"}` on `127.0.0.1:8787` (dry-run; `RELAYER_RPC` unused). Not required for live settle — self-submit as fee payer.
 
-Local process only. `/health` returned `{"status":"ok","service":"zk-spot-shield-relayer"}` on `127.0.0.1:8787` (dry-run; `RELAYER_RPC` unused). Not required for Day 63 — self-submit as fee payer.
-
----
-
-## Day 63 — One live swap (SDK, not UI)
-
-**Not** `npm run test:e2e`. That script is localnet.
+## Live settle
 
 Custody is on-chain (1.0 of each mint, 6 decimals, into vault ATAs). Live settle used a network Groth16 whose journal mint is vault `mint_a` (`DNNk…`), amount `100000`. Guest ELF rebuilt (Poseidon reduces 32-byte keys into BN254 Fr); on-chain `vkey_hash` rotated with `set_vkey_hash`. Happy fixture (`0x0303…03`) was not overwritten.
 
@@ -189,7 +147,7 @@ export ANCHOR_WALLET=$HOME/.config/solana/id.json
 npm run devnet:deposit
 ```
 
-**Manual (you):** network prove whose journal `asset_id_mint` is vault `mint_a` or `mint_b`, amount ≤ deposited note, Merkle root registered. Then SDK settle as wallet fee payer. Do not commit note secrets. Command: [`notes/proving.md`](./proving.md).
+Network prove whose journal `asset_id_mint` is vault `mint_a` or `mint_b`, amount ≤ deposited note, Merkle root registered. Then SDK settle as wallet fee payer. Do not commit note secrets. Command: [`proving.md`](./proving.md).
 
 | Field | Value |
 | --- | --- |
@@ -209,12 +167,22 @@ npm run devnet:deposit
 | Settle signature | `3V7YF2ULaHULbnSJinSTahDw5gJSMGkvB2GuQyLevnzh9A15d4yoEcXNbCMfvbkzAcdDBHStYpzkECMrbYGz5NyF` |
 | Explorer (tx) | https://explorer.solana.com/tx/3V7YF2ULaHULbnSJinSTahDw5gJSMGkvB2GuQyLevnzh9A15d4yoEcXNbCMfvbkzAcdDBHStYpzkECMrbYGz5NyF?cluster=devnet |
 
----
+## UI click-through
 
-## Day 64 — Docs and tag (after a Day 63 settle signature)
+```bash
+cd ui && npm install && npm run dev
+```
 
-1. Program id + current hash are in this note, README, and [`reproducible-build.md`](./reproducible-build.md).
-2. Keep the `anchor build` log, `./scripts/program-hash.sh` output, `VKEY_HASH`, and fixture paths.
-3. Tag `v1.0.0-devnet` **after** you commit (Day 63 settle signature is already in the table above).
+Set RPC to `https://api.devnet.solana.com`. Confirm the program id matches this note. Connect Phantom on Devnet (or skip wallet and only refresh). Click **Refresh on-chain**. Relayer can stay off; self-submit is the default. After a settle, one reserve drops and the other rises 1:1.
 
-Related: UI click-through [`manual-devnet.md`](./manual-devnet.md) (Days 66–67). Automated reads [`devnet-tests.md`](./devnet-tests.md) (`DEVNET_ONCHAIN=1`, Day 68).
+## Live-cluster tests
+
+CI stays on localnet. From `sdk/`:
+
+```bash
+DEVNET_ONCHAIN=1 \
+ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
+npx vitest run test/devnet/onchain.devnet.test.ts
+```
+
+Optional write (pause then unpause) needs `GlobalConfig.authority` + SOL: add `DEVNET_WRITE=1` and `ANCHOR_WALLET`. Leave `DEVNET_ONCHAIN` unset so CI skips.

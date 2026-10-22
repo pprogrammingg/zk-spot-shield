@@ -1,4 +1,4 @@
-//! Days 44–50: Axum `/health` + `/submit-intent` queue, settle tx as fee payer,
+//! Axum `/health` + `/submit-intent` queue, settle tx as fee payer,
 //! fee stub + RPC backoff, HTTP 402 payer (fixtures — no `$PROVE`).
 
 pub mod fees;

@@ -1,13 +1,13 @@
 //! SP1 **v6.1.0** Groth16 verify on Solana (`alt_bn128` via `groth16-solana`).
 //!
 //! crates.io `sp1-solana` 0.1.0 only ships VKs through SP1 v5 and a 2-input
-//! `verify_proof`. Our Day 12 fixture is v6 (`proof.bytes()` = 356 B envelope).
+//! `verify_proof`. Our fixture is v6 (`proof.bytes()` = 356 B envelope).
 //! This module mirrors the v6 path used by Succinct's Ethereum verifier / the
 //! community `verify_proof_v6` patch: 5 public inputs + Solana BN254 precompiles.
 
 use ark_bn254::{Fq, G1Affine};
-use ark_ff::PrimeField;
-use ark_serialize::CanonicalSerialize;
+use ark_ff_04::PrimeField;
+use ark_serialize_04::CanonicalSerialize;
 use groth16_solana::groth16::{Groth16Verifier, Groth16Verifyingkey};
 use sha2::{Digest, Sha256};
 
@@ -278,7 +278,7 @@ mod tests {
         let journal = std::fs::read(happy_dir().join("journal.bin")).expect("journal.bin");
         assert_eq!(proof.len(), SP1_V6_PROOF_BYTE_LEN);
         verify_sp1_groth16_v6(&proof, &journal, &crate::constants::VKEY_HASH)
-            .expect("Day 12 fixture must verify on SP1 v6.1.0 path");
+            .expect("happy fixture must verify on SP1 v6.1.0 path");
     }
 
     #[test]
@@ -298,7 +298,7 @@ mod tests {
         assert!(verify_sp1_groth16_v6(&proof, &journal, &bad).is_err());
     }
 
-    /// Day 39: deterministic mutations of proof bytes must fail closed (never panic).
+    /// Deterministic mutations of proof bytes must fail closed (never panic).
     #[test]
     fn random_proof_bytes_fail_closed_no_panic() {
         let journal = std::fs::read(happy_dir().join("journal.bin")).expect("journal.bin");

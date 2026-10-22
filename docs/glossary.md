@@ -1,158 +1,158 @@
 # Glossary
 
 !!! tip "Owner, payer, protocol admin"
-    Three different jobs that are easy to mix up. **Owner** is the *program* allowed to write an account's data. **Payer** is who funds the rent when an account is created. **Protocol admin** is the public key stored in `GlobalConfig` (Rust field `authority`) that may pause settle, register Merkle tips, and rotate `vkey_hash`. One wallet can fill several roles, but they are separate jobs. SPL also uses the word “authority” for token spenders — that is not the protocol admin.
+ Three different jobs that are easy to mix up. **Owner** is the *program* allowed to write an account's data. **Payer** is who funds the rent when an account is created. **Protocol admin** is the public key stored in `GlobalConfig` (Rust field `authority`) that may pause settle, register Merkle tips, and rotate `vkey_hash`. One wallet can fill several roles, but they are separate jobs. SPL also uses the word “authority” for token spenders — that is not the protocol admin.
 
 ## Solana
 
 **Account**
-:   An address holding lamports (SOL), an owner program, and a byte array of data. Wallets, token balances, program state, and programs themselves are all accounts.
+: An address holding lamports (SOL), an owner program, and a byte array of data. Wallets, token balances, program state, and programs themselves are all accounts.
 
 **Associated token account (ATA)**
-:   The usual SPL token account address for a given owner pubkey and mint, derived by the Associated Token program. “ATA of the vault PDA” means that owner is the vault address. Still an SPL token account — ATA is the address recipe, not a separate asset type.
+: The usual SPL token account address for a given owner pubkey and mint, derived by the Associated Token program. “ATA of the vault PDA” means that owner is the vault address. Still an SPL token account — ATA is the address recipe, not a separate asset type.
 
 **Instruction data**
-:   Bytes attached to one program call (Anchor function arguments such as `proof` and `journal`). Ephemeral unless the handler writes something into an account. Not the same as fields on `VaultState`.
+: Bytes attached to one program call (Anchor function arguments such as `proof` and `journal`). Ephemeral unless the handler writes something into an account. Not the same as fields on `VaultState`.
 
 **`Account<'info, T>`**
-:   Anchor wrapper that copies an account's bytes into a Rust struct `T` on every instruction. Fine for small, rarely used state such as `GlobalConfig`.
+: Anchor wrapper that copies an account's bytes into a Rust struct `T` on every instruction. Fine for small, rarely used state such as `GlobalConfig`.
 
 **`AccountLoader<'info, T>` / zero-copy**
-:   Anchor wrapper that reads an account's bytes in place instead of copying them. Used for `VaultState`, which settlement touches on every trade. Requires `#[account(zero_copy)]` and a fixed `#[repr(C)]` layout.
+: Anchor wrapper that reads an account's bytes in place instead of copying them. Used for `VaultState`, which settlement touches on every trade. Requires `#[account(zero_copy)]` and a fixed `#[repr(C)]` layout.
 
 **Anchor**
-:   A Rust framework for Solana programs. `#[program]` lists the instructions, `#[derive(Accounts)]` declares and validates each instruction's accounts, and `#[error_code]` defines error variants.
+: A Rust framework for Solana programs. `#[program]` lists the instructions, `#[derive(Accounts)]` declares and validates each instruction's accounts, and `#[error_code]` defines error variants.
 
 **Protocol admin**
-:   The admin pubkey on `GlobalConfig` (code field `authority`). Signs `pause` / `unpause`, `register_clean_funds_root`, `set_vault_mints`, and `set_vkey_hash`. Not the vault PDA and not an SPL token-account spender.
+: The admin pubkey on `GlobalConfig` (code field `authority`). Signs `pause` / `unpause`, `register_clean_funds_root`, `set_vault_mints`, and `set_vkey_hash`. Not the vault PDA and not an SPL token-account spender.
 
 **Bump**
-:   One extra byte added to a PDA's seeds so the derived address has no private key. Stored on `VaultState` so the program can sign as the vault later.
+: One extra byte added to a PDA's seeds so the derived address has no private key. Stored on `VaultState` so the program can sign as the vault later.
 
 **`bytemuck::Pod` / `Zeroable`**
-:   Traits that mark a type as plain bytes with no hidden pointers, so zero-copy can map account data onto it safely. `#[account(zero_copy)]` derives them.
+: Traits that mark a type as plain bytes with no hidden pointers, so zero-copy can map account data onto it safely. `#[account(zero_copy)]` derives them.
 
 **Compute units (CU)**
-:   Solana's per-transaction execution budget. Proof verification takes a large share, which is why hot-path state avoids copies.
+: Solana's per-transaction execution budget. Proof verification takes a large share, which is why hot-path state avoids copies.
 
 **CPI (cross-program invocation)**
-:   One program calling another inside the same transaction, for example the SPL Token program for transfers.
+: One program calling another inside the same transaction, for example the SPL Token program for transfers.
 
 **`declare_id!`**
-:   Embeds the program's public address in the binary. Anchor checks incoming instructions target this ID.
+: Embeds the program's public address in the binary. Anchor checks incoming instructions target this ID.
 
 **Discriminator (account)**
-:   The first 8 bytes of an Anchor account, a type tag so one account type cannot be read as another. Allocations are therefore `8 + data size`.
+: The first 8 bytes of an Anchor account, a type tag so one account type cannot be read as another. Allocations are therefore `8 + data size`.
 
 **Discriminator (instruction)**
-:   The first 8 bytes of instruction data, telling the program which handler to run. Separate from the account discriminator.
+: The first 8 bytes of instruction data, telling the program which handler to run. Separate from the account discriminator.
 
 **Explicit padding**
-:   Spare bytes added by hand (`_padding: [u8; 7]` on `VaultState`) so the struct size is a multiple of 8 and has no compiler-inserted gaps.
+: Spare bytes added by hand (`_padding: [u8; 7]` on `VaultState`) so the struct size is a multiple of 8 and has no compiler-inserted gaps.
 
 **Fee payer**
-:   The signer charged the transaction fee. On settle this may be a relayer; it need not own the recipient token accounts. Not necessarily the same as the rent payer for a new account.
+: The signer charged the transaction fee. On settle this may be a relayer; it need not own the recipient token accounts. Not necessarily the same as the rent payer for a new account.
 
 **`init`**
-:   Anchor account constraint that creates a new account in this instruction, allocates `space` bytes, and makes this program its owner. Fails if the account already exists, which is what makes the nullifier check atomic.
+: Anchor account constraint that creates a new account in this instruction, allocates `space` bytes, and makes this program its owner. Fails if the account already exists, which is what makes the nullifier check atomic.
 
 **`INIT_SPACE`**
-:   Size of a struct's fields, generated by `#[derive(InitSpace)]`. Excludes the 8-byte discriminator, so `space = 8 + T::INIT_SPACE`.
+: Size of a struct's fields, generated by `#[derive(InitSpace)]`. Excludes the 8-byte discriminator, so `space = 8 + T::INIT_SPACE`.
 
 **Instruction**
-:   One call into a program, carrying a list of accounts and some data. A transaction holds one or more instructions and succeeds or fails as a whole.
+: One call into a program, carrying a list of accounts and some data. A transaction holds one or more instructions and succeeds or fails as a whole.
 
 **Lamports**
-:   The smallest unit of SOL.
+: The smallest unit of SOL.
 
 **LiteSVM**
-:   An in-memory Solana runtime for fast program tests without a validator.
+: An in-memory Solana runtime for fast program tests without a validator.
 
 **Owner (program owner)**
-:   The program allowed to change an account's data. After `init`, this program owns its PDAs. Not the same as an SPL token account's owner, which is who may spend the tokens.
+: The program allowed to change an account's data. After `init`, this program owns its PDAs. Not the same as an SPL token account's owner, which is who may spend the tokens.
 
 **`pause_flag`**
-:   Field on `GlobalConfig`. When set by the protocol admin, settlement is refused. An emergency stop.
+: Field on `GlobalConfig`. When set by the protocol admin, settlement is refused. An emergency stop.
 
 **Payer**
-:   The signer that funds the rent deposit when an account is created.
+: The signer that funds the rent deposit when an account is created.
 
 **PDA (Program Derived Address)**
-:   An address derived from seeds and the program ID. No private key exists for it, so only the program can sign for it.
+: An address derived from seeds and the program ID. No private key exists for it, so only the program can sign for it.
 
 **Rent-exempt deposit**
-:   Lamports locked in an account so it stays alive. Proportional to the account's size, which is one reason sizes are kept tight.
+: Lamports locked in an account so it stays alive. Proportional to the account's size, which is one reason sizes are kept tight.
 
 **`#[repr(C)]`**
-:   Fixes a struct's field order and layout in memory, required for zero-copy so bytes on chain mean the same thing every time.
+: Fixes a struct's field order and layout in memory, required for zero-copy so bytes on chain mean the same thing every time.
 
 **Seeds**
-:   The byte strings a PDA is derived from, for example `["nullifier", nullifier]`. Same seeds always give the same address.
+: The byte strings a PDA is derived from, for example `["nullifier", nullifier]`. Same seeds always give the same address.
 
 **Signer**
-:   An account whose private key signed the transaction. Anchor's `Signer<'info>` enforces it.
+: An account whose private key signed the transaction. Anchor's `Signer<'info>` enforces it.
 
 **SPL Token**
-:   Solana's standard token program. Deposit and settle move tokens through it.
+: Solana's standard token program. Deposit and settle move tokens through it.
 
 **Vault-only settle**
-:   After deposit, mint A already sits in the vault. `settle_shielded_spot` does not pull that mint from the user again; the vault pays the other mint 1:1.
+: After deposit, mint A already sits in the vault. `settle_shielded_spot` does not pull that mint from the user again; the vault pays the other mint 1:1.
 
 **System Program**
-:   The built-in program that creates accounts and transfers SOL. `init` calls it under the hood.
+: The built-in program that creates accounts and transfers SOL. `init` calls it under the hood.
 
 ## Zero-Knowledge
 
 **Circuit / guest**
-:   The program whose correct execution is being proven. Here, a Rust program compiled for the SP1 zkVM.
+: The program whose correct execution is being proven. Here, a Rust program compiled for the SP1 zkVM.
 
 **Commitment**
-:   A hash that hides data but binds to it: you cannot later claim different data produced it. The leaf is a commitment to a note.
+: A hash that hides data but binds to it: you cannot later claim different data produced it. The leaf is a commitment to a note.
 
 **Execute**
-:   Running the guest in the zkVM without producing a proof. Fast and free, used to catch failures before paying for a proof.
+: Running the guest in the zkVM without producing a proof. Fast and free, used to catch failures before paying for a proof.
 
 **Fail closed**
-:   If any rule fails, the guest panics and no proof can be produced. Invalid inputs never yield something the chain would accept.
+: If any rule fails, the guest panics and no proof can be produced. Invalid inputs never yield something the chain would accept.
 
 **Groth16**
-:   A proof system with very small proofs (356 bytes here) and cheap verification, which suits on-chain checks. SP1 wraps its own proof into Groth16 for Solana.
+: A proof system with very small proofs (356 bytes here) and cheap verification, which suits on-chain checks. SP1 wraps its own proof into Groth16 for Solana.
 
 **Host**
-:   The native program that prepares inputs, runs the guest, and requests proofs.
+: The native program that prepares inputs, runs the guest, and requests proofs.
 
 **Journal (public values)**
-:   The values the guest commits publicly. Here: swap amount, mint, nullifier, and Merkle root (104 bytes).
+: The values the guest commits publicly. Here: swap amount, mint, nullifier, and Merkle root (104 bytes).
 
 **Leaf**
-:   A note's commitment: `Poseidon(secret, user_address, balance)`.
+: A note's commitment: `Poseidon(secret, user_address, balance)`.
 
 **Leaf index**
-:   A leaf's position in the tree. It decides which side each sibling sits on. Public when the leaf is inserted, private when proving, so a spend cannot be linked to its deposit.
+: A leaf's position in the tree. It decides which side each sibling sits on. Public when the leaf is inserted, private when proving, so a spend cannot be linked to its deposit.
 
 **Merkle path**
-:   The sibling hashes needed to climb from one leaf to the root, plus which side each sibling sits on. 20 levels here.
+: The sibling hashes needed to climb from one leaf to the root, plus which side each sibling sits on. 20 levels here.
 
 **Merkle root**
-:   A single 32-byte hash representing the whole tree. Changing any leaf changes the root.
+: A single 32-byte hash representing the whole tree. Changing any leaf changes the root.
 
 **Nullifier**
-:   `Poseidon(secret, leaf, mint)`, a one-time tag revealed when spending. The same note always yields the same nullifier, so a second spend is detectable without revealing which note it was.
+: `Poseidon(secret, leaf, mint)`, a one-time tag revealed when spending. The same note always yields the same nullifier, so a second spend is detectable without revealing which note it was.
 
 **Poseidon**
-:   A hash function designed to be cheap inside zero-knowledge proofs. 32-byte inputs (secrets, Solana pubkeys, mint ids) are reduced into the BN254 scalar field before hashing, matching circom / `poseidon-lite`.
+: A hash function designed to be cheap inside zero-knowledge proofs. 32-byte inputs (secrets, Solana pubkeys, mint ids) are reduced into the BN254 scalar field before hashing, matching circom / `poseidon-lite`.
 
 **Private inputs (witness)**
-:   The hidden data the guest reads: secret, balance, path, and so on. Never revealed by the proof.
+: The hidden data the guest reads: secret, balance, path, and so on. Never revealed by the proof.
 
 **Prover vs verifier**
-:   The prover (host plus prover network) does the heavy work of producing a proof. The verifier (the Solana program) only checks it, which is cheap.
+: The prover (host plus prover network) does the heavy work of producing a proof. The verifier (the Solana program) only checks it, which is cheap.
 
 **SP1**
-:   Succinct's zkVM. You write Rust, and SP1 proves the program ran correctly.
+: Succinct's zkVM. You write Rust, and SP1 proves the program ran correctly.
 
 **Verifying key (vkey) / `vkey_hash`**
-:   A fingerprint of a specific guest program. A proof only verifies against the key of the program that made it. `GlobalConfig` stores the hash so the chain trusts exactly one circuit. Protocol admin may rotate it with `set_vkey_hash` after a guest rebuild.
+: A fingerprint of a specific guest program. A proof only verifies against the key of the program that made it. `GlobalConfig` stores the hash so the chain trusts exactly one circuit. Protocol admin may rotate it with `set_vkey_hash` after a guest rebuild.
 
 **Zero-knowledge proof**
-:   A proof that a statement is true which reveals nothing beyond the statement itself.
+: A proof that a statement is true which reveals nothing beyond the statement itself.

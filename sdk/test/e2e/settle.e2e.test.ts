@@ -1,5 +1,5 @@
 /**
- * Days 36–37: localnet E2E (RUN_E2E=1 + validator preloads from e2e-localnet.ts).
+ * localnet E2E (RUN_E2E=1 + validator preloads from e2e-localnet.ts).
  *
  * Order matters: negative cases that need an unused nullifier run before happy settle.
  */
@@ -62,12 +62,12 @@ async function ensureRoot(
       })
       .rpc();
   } catch {
-    /* already registered */
+ /* already registered */
   }
   return cleanFundsRoot;
 }
 
-describe.skipIf(!run)("Day 36–37 localnet E2E", () => {
+describe.skipIf(!run)("localnet E2E", () => {
   it("flip 1 proof byte → InvalidProof", async () => {
     const bundle = loadBundle();
     const wallet = loadKeypairWallet();
@@ -208,7 +208,7 @@ describe.skipIf(!run)("Day 36–37 localnet E2E", () => {
     );
     const sig = await provider.sendAndConfirm(tx);
     await confirmSignature(provider.connection, sig);
-    // Ready-to-paste for demo slide "What's in the tx" (use with KEEP_VALIDATOR=1).
+ // Ready-to-paste for demo slide "What's in the tx" (use with KEEP_VALIDATOR=1).
     const rpc = process.env.ANCHOR_PROVIDER_URL ?? "http://127.0.0.1:8899";
     console.log(`\nsolana confirm -v ${sig} --url ${rpc}`);
 
@@ -221,7 +221,7 @@ describe.skipIf(!run)("Day 36–37 localnet E2E", () => {
       provider.connection,
       new PublicKey(bundle.userTokenB),
     );
-    // Day 48 vault-only: no second debit of journal mint A.
+ // vault-only: no second debit of journal mint A.
     expect(userAAfter.amount).toBe(userABefore.amount);
     expect(userBAfter.amount).toBe(userBBefore.amount + amount);
 

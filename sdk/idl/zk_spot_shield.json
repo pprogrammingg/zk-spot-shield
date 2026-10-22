@@ -10,7 +10,7 @@
     {
       "name": "deposit_shielded",
       "docs": [
-        "Day 41: transfer SPL into vault and record a public leaf commitment PDA."
+        "transfer SPL into vault and record a public leaf commitment PDA."
       ],
       "discriminator": [
         153,
@@ -243,7 +243,7 @@
     {
       "name": "pause",
       "docs": [
-        "Authority sets `GlobalConfig.pause_flag = true` (Day 28)."
+        "Authority sets `GlobalConfig.pause_flag = true`."
       ],
       "discriminator": [
         211,
@@ -394,7 +394,7 @@
     {
       "name": "set_vault_mints",
       "docs": [
-        "Protocol admin writes `mint_a` / `mint_b` once (Day 61). Fails if already set."
+        "Protocol admin writes `mint_a` / `mint_b` once. Fails if already set."
       ],
       "discriminator": [
         172,
@@ -556,7 +556,7 @@
           "name": "payer",
           "docs": [
             "Fee payer: pays SOL fees + nullifier PDA rent. May differ from note owner /",
-            "recipient ATA owners (Day 46 relayer)."
+            "recipient ATA owners (relayer)."
           ],
           "writable": true,
           "signer": true
@@ -612,13 +612,13 @@
         {
           "name": "clean_funds_root",
           "docs": [
-            "Approved root PDA for journal `merkle_root` (Day 40: seeds, not handler-only)."
+            "Approved root PDA for journal `merkle_root` (seeds, not handler-only)."
           ]
         },
         {
           "name": "nullifier_account",
           "docs": [
-            "One-time spend tag PDA. Must be empty; created after success (Day 28)."
+            "One-time spend tag PDA. Must be empty; created after success."
           ],
           "writable": true
         },
@@ -634,7 +634,7 @@
           "name": "user_token_a",
           "docs": [
             "Recipient / user ATA for mint A (payout or unused journal side).",
-            "Owner need not equal `payer` (Day 46)."
+            "Owner need not equal `payer`."
           ],
           "writable": true
         },
@@ -668,7 +668,7 @@
     {
       "name": "unpause",
       "docs": [
-        "Authority clears `GlobalConfig.pause_flag` (Day 28)."
+        "Authority clears `GlobalConfig.pause_flag`."
       ],
       "discriminator": [
         169,
@@ -1094,7 +1094,7 @@
     {
       "name": "VKEY_HASH",
       "docs": [
-        "SP1 `vk.bytes32()` for the frozen happy-path guest ELF (Day 15).",
+        "SP1 `vk.bytes32()` for the frozen happy-path guest ELF.",
         "Source: `zk-circuit/fixtures/happy/vkey.bytes32.txt` / `notes/proving.md`.",
         "Rebuild guest → re-prove → update this array, the fixture, and the notes."
       ],

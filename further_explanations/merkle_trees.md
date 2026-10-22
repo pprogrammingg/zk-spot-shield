@@ -25,23 +25,23 @@ The Groth16 bytes in `zk-circuit/fixtures/happy/` prove **this** witness. They a
 
 ```text
 Leaf / hash / root / sibling / nullifier
-  → [u8; 32]     // one bn254 field element as 32 bytes
+ → [u8; 32] // one bn254 field element as 32 bytes
 
 empty (empty-subtree table)
-  → [[u8; 32]; 20]
-     empty[h] = hash of a perfect 2^h-wide all-zero subtree
+ → [[u8; 32]; 20]
+ empty[h] = hash of a perfect 2^h-wide all-zero subtree
 
 merkle_path (witness path for one leaf)
-  → [([u8; 32], bool); 20]
-     path[h] = (sibling_hash, is_right)
-     is_right == true  → hash(current, sibling)   // sibling on the right
-     is_right == false → hash(sibling, current)   // sibling on the left
+ → [([u8; 32], bool); 20]
+ path[h] = (sibling_hash, is_right)
+ is_right == true → hash(current, sibling) // sibling on the right
+ is_right == false → hash(sibling, current) // sibling on the left
 
 PrivateInputs.merkle_path
-  → same [([u8; 32], bool); 20]
+ → same [([u8; 32], bool); 20]
 
 Journal PublicOutputs (after prove)
-  → { amount: u64, mint: [u8;32], nullifier: [u8;32], merkle_root: [u8;32] }
+ → { amount: u64, mint: [u8;32], nullifier: [u8;32], merkle_root: [u8;32] }
 ```
 
 Depth **20** ⇒ up to **2²⁰** leaves. Tests only place a real leaf at **index 0**.
@@ -53,12 +53,12 @@ Depth **20** ⇒ up to **2²⁰** leaves. Tests only place a real leaf at **inde
 Same idea; height labels match `empty[h]`.
 
 ```text
-                    root = hash(N1, empty[2])
-                   /                    \
-              N1 = hash(L, empty[0])    empty[2] = hash(empty[1], empty[1])
-             /              \            (entire right half is "empty")
-            L              empty[0]
-         (our leaf)       = [0; 32]
+ root = hash(N1, empty[2])
+ / \
+ N1 = hash(L, empty[0]) empty[2] = hash(empty[1], empty[1])
+ / \ (entire right half is "empty")
+ L empty[0]
+ (our leaf) = [0; 32]
 ```
 
 For index **0**, every step the live node is on the **left**, so the sibling is always on the **right** (`is_right = true`).
@@ -72,11 +72,11 @@ Depth 20 is the same ladder, twenty times.
 ### Step 0 — Fixed toy note (not a real user)
 
 ```text
-secret         = [1u8; 32]     // 32 bytes, all 0x01
-user_address   = [2u8; 32]
-asset_id_mint  = [3u8; 32]
-balance        = 1000_u64
-requested_swap = 100_u64       // ≤ balance → solvency ok
+secret = [1u8; 32] // 32 bytes, all 0x01
+user_address = [2u8; 32]
+asset_id_mint = [3u8; 32]
+balance = 1000_u64
+requested_swap = 100_u64 // ≤ balance → solvency ok
 ```
 
 ### Step 1 — Leaf commitment
@@ -92,20 +92,20 @@ leaf: [u8; 32] = Poseidon3(secret, user_address, balance_as_32_be)
 ```text
 empty: [[u8; 32]; 20]
 
-empty[0] = [0u8; 32]                          // "empty leaf"
-empty[1] = hash(empty[0], empty[0])           // two empty leaves
-empty[2] = hash(empty[1], empty[1])           // four empty leaves
+empty[0] = [0u8; 32] // "empty leaf"
+empty[1] = hash(empty[0], empty[0]) // two empty leaves
+empty[2] = hash(empty[1], empty[1]) // four empty leaves
 ...
-empty[h] = hash(empty[h-1], empty[h-1])       // 2^h empty leaves
+empty[h] = hash(empty[h-1], empty[h-1]) // 2^h empty leaves
 ```
 
 Left and right are the **same** child on purpose: a full empty subtree is two identical empty half-trees. Not `empty[h]` with `empty[h+1]`.
 
 ```text
-h=0:  ○                 ○ = [0;32]
-h=1:  hash(○,○)
-h=2:  hash( h1 , h1 )
-h=3:  hash( h2 , h2 )
+h=0: ○ ○ = [0;32]
+h=1: hash(○,○)
+h=2: hash( h1, h1 )
+h=3: hash( h2, h2 )
 ...
 ```
 
@@ -115,10 +115,10 @@ h=3:  hash( h2 , h2 )
 path: [([u8; 32], bool); 20]
 
 for h in 0..20:
-  path[h] = (empty[h], true)   // sibling = empty subtree at this height; right side
+ path[h] = (empty[h], true) // sibling = empty subtree at this height; right side
 ```
 
-At height 0, sibling is the other leaf under the same parent → empty leaf `[0;32]`.  
+At height 0, sibling is the other leaf under the same parent → empty leaf `[0;32]`.
 At height 1, sibling is the empty pair-of-leaves hash `empty[1]`, and so on.
 
 ### Step 4 — Climb to root (`verify_merkle_path`)
@@ -127,25 +127,25 @@ At height 1, sibling is the empty pair-of-leaves hash `empty[1]`, and so on.
 current: [u8; 32] = leaf
 
 for h in 0..20:
-  (sibling, is_right) = path[h]
-  // is_right always true for index 0:
-  current = hash(current, sibling)
+ (sibling, is_right) = path[h]
+ // Is_right always true for index 0:
+ current = hash(current, sibling)
 
-expected_root: [u8; 32] = current   // after 20 steps
+expected_root: [u8; 32] = current // after 20 steps
 ```
 
 Visual for the first two steps:
 
 ```text
 step h=0:
-  current = hash( leaf , empty[0] )     // sibling right
+ current = hash( leaf, empty[0] ) // sibling right
 
 step h=1:
-  current = hash( current , empty[1] )
+ current = hash( current, empty[1] )
 
 ...
 step h=19:
-  current = hash( current , empty[19] ) → root
+ current = hash( current, empty[19] ) → root
 ```
 
 ### Step 5 — What the guest checks
@@ -175,8 +175,8 @@ No prover call. Same empty path as above.
 ```text
 Leaf slots (conceptual), depth 20 → 2^20 positions:
 
-index:  0      1      2      3     ...   2^20-1
-        [L]   [0]    [0]    [0]   ...   [0]
+index: 0 1 2 3 ... 2^20-1
+ [L] [0] [0] [0] ... [0]
 
 L = our leaf. Everything else = zero leaf.
 The Merkle path only needs the sibling at each level of that sparse tree.

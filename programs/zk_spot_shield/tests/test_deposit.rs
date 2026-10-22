@@ -1,4 +1,4 @@
-//! Days 41–43: deposit custody, leaf PDA, deposit-tip root → settle.
+//! Deposit custody, leaf PDA, deposit-tip root → settle.
 
 use {
     anchor_lang::{
@@ -352,7 +352,7 @@ fn deposit_then_register_tip_then_settle() {
         0,
     );
 
-    // Day 41–42: deposit happy leaf (tip of empty tree ⇒ fixture merkle_root).
+    // Deposit happy leaf (tip of empty tree ⇒ fixture merkle_root).
     send_ix(
         &mut svm,
         &payer,
@@ -361,7 +361,7 @@ fn deposit_then_register_tip_then_settle() {
     .expect("deposit happy leaf");
     assert_eq!(read_vault(&svm, program_id).reserve_a, 1_000);
 
-    // Day 43: register tip (= journal merkle_root for index-0 happy leaf).
+    // Register tip (= journal merkle_root for index-0 happy leaf).
     let (global_config, _) = Pubkey::find_program_address(
         &[zk_spot_shield::constants::GLOBAL_CONFIG_SEED],
         &program_id,
@@ -417,7 +417,7 @@ fn deposit_then_register_tip_then_settle() {
 
     let amount = public.requested_swap_amount;
     let vault_state = read_vault(&svm, program_id);
-    // Day 48: deposit funded A; settle pays B only — no second user→vault of A.
+    // Deposit funded A; settle pays B only — no second user→vault of A.
     assert_eq!(vault_state.reserve_a, 1_000);
     assert_eq!(vault_state.reserve_b, 1_000 - amount);
     assert_eq!(token_amount(&svm, uta), 2_000 - 1_000);

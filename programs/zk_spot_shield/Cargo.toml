@@ -33,9 +33,12 @@ bytemuck = { version = "1.16", features = ["derive"] }
 # 0.1.0 only covers SP1 ≤ v5; we verify the v6.1.0 envelope in `verify_sp1`.
 groth16-solana = "0.2.0"
 sha2 = "0.10"
-ark-bn254 = "0.4.0"
-ark-ff = "0.4.2"
-ark-serialize = "0.4.2"
+ark-bn254 = "=0.4.0"
+# Alias 0.4 so `use ark_ff::PrimeField` cannot bind ark-ff 0.5 (groth16-solana)
+# or 0.6 (workspace host/SP1). Those versions drop `from_be_bytes_mod_order`
+# onto a different PrimeField trait; CI then fails E0599.
+ark-ff-04 = { package = "ark-ff", version = "=0.4.2" }
+ark-serialize-04 = { package = "ark-serialize", version = "=0.4.2" }
 
 [dev-dependencies]
 # Stay on 0.10 until a coordinated Agave/LiteSVM bump. 0.15+ needs matching

@@ -36,4 +36,4 @@ pub vault: Account<'info, VaultState>,
 pub vault: AccountLoader<'info, VaultState>,
 ```
 
-Counter scaffold (`Account` + `InitSpace`) is temporary Day-1 sample — replace with zero-copy for production state.
+Do not use `Account<'info, T>` for hot-path state. `GlobalConfig` is the exception (small, rarely written).

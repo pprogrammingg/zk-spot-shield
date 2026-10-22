@@ -16,59 +16,10 @@ Guidance for AI agents working in **zk-spot-shield**.
 | `01-anchor-zero-copy.mdc` | `programs/**/*.rs` — zero-copy / `AccountLoader` |
 | `02-sp1-circuit.mdc` | `zk-circuit/**` — guest/host SP1 constraints |
 | `03-session-roadmap.mdc` | Always — one Day per session, checklist hygiene |
-| `06-readme-toolchain.mdc` | Always — README Installation pins point at `rust-toolchain.toml` / `Anchor.toml` / `sdk/package.json`, not hardcoded versions |
-| `07-commit-messages.mdc` | Always — suggest ≤50-char subjects + ` - YES`; user commits/pushes; no Cursor Co-authored-by |
+| `06-readme-toolchain.mdc` | Always — README Installation pins point at source files, not hardcoded versions |
+| `07-commit-messages.mdc` | Always — suggest ≤50-char subjects + ` - YES`; user commits/pushes |
 | `04-context-hygiene.mdc` | Always — skip `target/` and other generated trees |
-| `05-tests-security.mdc` | Always — after editing a crate, `--lib` + clippy on **that** crate; `cargo audit`; host execute is not a substitute |
-| `08-docs-sync.mdc` | Always — after a behavior change, update the matching `docs/` / `notes/` page (map in the rule) |
+| `05-tests-security.mdc` | Always — after editing a crate, `--lib` + clippy on **that** crate |
+| `08-docs-sync.mdc` | Always — after a behavior change, update the matching `docs/` / `notes/` page |
 
-## Repo shape
-
-```text
-programs/zk_spot_shield/  # Anchor crate zk_spot_shield
-zk-circuit/io/        # shared I/O + Poseidon Merkle + deposit tree (no sp1-zkvm)
-zk-circuit/guest/     # SP1 guest circuit
-zk-circuit/host/      # SP1 host prover driver
-client/               # Rust helpers (CU budget, ALT sizing)
-relayer/              # Axum fee-payer + HTTP 402 (/health, /submit-intent, /402/*)
-sdk/                  # TypeScript SDK: Anchor provider, Merkle, prove, settle E2E
-ui/                   # React + TypeScript + Vite swap UI (self-submit default)
-Anchor.toml           # localnet + program id
-Cargo.toml            # workspace
-docs/ # public docs site (MkDocs) incl. glossary
-further_explanations/ # session notes
-```
-
-Ignore for search/context: `target/`, `.anchor/`, `test-ledger/`, `sdk/node_modules/` (see `.cursorignore`).
-
-## Verify toolchain
-
-```bash
-rustc --version && cargo --version
-solana --version && anchor --version
-cargo prove --version
-solana config get   # expect localhost
-```
-
-## Build
-
-```bash
-export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-anchor build
-```
-
-Deploy artifact: `target/deploy/zk_spot_shield.so` (required for program integration tests that `include_bytes!` it).
-
-## Tests (required)
-
-Unit + security are the default bar (GitHub Actions **Unit tests** and **Security**). Do not substitute host execute.
-
-```bash
-# After editing crate `<p>`, run that crate first (clippy + --lib), then CI set:
-cargo test -p zk_spot_shield --lib --locked
-cargo test -p zk-circuit-io --lib --locked
-cargo clippy -p zk_spot_shield -p zk-circuit-io -p client --locked --all-targets -- -D warnings
-cargo audit
-```
-
-LiteSVM / `anchor build` is extra (`Program tests` workflow), not a replacement for `--lib`.
+Layout, ignore lists, and stack pins live in `00-project.mdc`. Test commands live in `05-tests-security.mdc`. Toolchain verify and `anchor build` live in `README.md`.

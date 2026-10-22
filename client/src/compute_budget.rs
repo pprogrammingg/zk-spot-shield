@@ -1,4 +1,4 @@
-//! Day 30: compute-budget ix helpers for settle-shaped transactions.
+//! Compute-budget ix helpers for settle-shaped transactions.
 
 use solana_compute_budget_interface::ComputeBudgetInstruction;
 use solana_instruction::Instruction;
@@ -7,7 +7,7 @@ use solana_instruction::Instruction;
 /// Leave headroom under the ~1.4M tx cap (`notes/budgets.md`).
 pub const SETTLE_CU_LIMIT: u32 = 1_400_000;
 
-/// LiteSVM full settle (Day 51/52). Groth16 dominates; remainder is SPL + nullifier.
+/// LiteSVM full settle. Groth16 dominates; remainder is SPL + nullifier.
 pub const SETTLE_CU_MEASURED: u32 = 285_947;
 /// Verifier-class target from Month 2 (~280k).
 pub const SETTLE_VERIFY_CU_TARGET: u32 = 280_000;

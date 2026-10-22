@@ -1,4 +1,4 @@
-//! SP1 verifying-key fingerprint helpers (Day 15).
+//! SP1 verifying-key fingerprint helpers.
 //!
 //! `vk.bytes32()` is a 0x-prefixed hex string. On-chain `GlobalConfig.vkey_hash`
 //! stores the same 32 bytes. Guest ELF change → new vkey → update constants + notes.
@@ -83,7 +83,7 @@ pub fn load_vkey_bytes_from_file(path: &Path) -> Result<[u8; 32], String> {
     parse_vkey_bytes32(&text).map_err(|e| e.to_string())
 }
 
-/// Print hex + Rust array for the frozen happy fixture (Day 15 CLI).
+/// Print hex + Rust array for the frozen happy fixture.
 pub fn print_happy_fixture_vkey() {
     let bytes = load_happy_fixture_vkey_bytes().expect("happy fixture vkey");
     println!("vk.bytes32() = 0x{}", hex_lower(&bytes));

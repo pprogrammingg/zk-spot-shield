@@ -1,4 +1,4 @@
-//! Day 22–32: settle path, CU profile, compute budget, zero-copy load, ALT sizing.
+//! Settle path, CU profile, compute budget, zero-copy load, ALT sizing.
 
 use {
     anchor_lang::{
@@ -22,7 +22,7 @@ use {
     zk_spot_shield::state::VaultState,
 };
 
-/// Match `client::SETTLE_CU_LIMIT` (Day 30). Default LiteSVM budget is 200k.
+/// Match `client::SETTLE_CU_LIMIT`. Default LiteSVM budget is 200k.
 const SETTLE_CU_LIMIT: u32 = 1_400_000;
 const MINT_B_BYTES: [u8; 32] = [4u8; 32];
 
@@ -56,7 +56,7 @@ fn send_ix(svm: &mut LiteSVM, payer: &Keypair, instruction: Instruction) -> Resu
     send_ix_cu(svm, payer, instruction).map(|_| ())
 }
 
-/// Day 29: return compute units consumed on success.
+/// Return compute units consumed on success.
 fn send_ix_cu(svm: &mut LiteSVM, payer: &Keypair, instruction: Instruction) -> Result<u64, String> {
     let blockhash = svm.latest_blockhash();
     let msg = Message::new_with_blockhash(
@@ -362,7 +362,7 @@ fn settle_cu_profile_within_budget() {
     .expect("settle for CU profile");
     let confirm_ms = wall.elapsed();
 
-    // Day 29: Groth16 dominates; full settle should land near ~280–400k, well under 1.4M.
+    // Groth16 dominates; full settle should land near ~280–400k, well under 1.4M.
     // Exact number is recorded in `notes/budgets.md` after this test is green.
     assert!(
         cu >= 200_000,
@@ -370,14 +370,14 @@ fn settle_cu_profile_within_budget() {
     );
     assert!(
         cu <= 800_000,
-        "settle CU {cu} above Day 29 hotspot band; update notes/budgets.md"
+        "settle CU {cu} above hotspot band; update notes/budgets.md"
     );
     // Keep the measured value visible in test output / CI logs.
-    eprintln!("Day 29 settle compute_units_consumed={cu}");
-    eprintln!("Day 51 LiteSVM settle wall={confirm_ms:?}");
+    eprintln!("settle compute_units_consumed={cu}");
+    eprintln!("LiteSVM settle wall={confirm_ms:?}");
     let verify_band = 270_000u64;
     let non_verify = cu.saturating_sub(verify_band);
-    eprintln!("Day 52 CU split verify~{verify_band} non_verify~{non_verify} total={cu}");
+    eprintln!("CU split verify~{verify_band} non_verify~{non_verify} total={cu}");
 }
 
 #[test]
@@ -425,7 +425,7 @@ fn settle_moves_vault_reserves_and_token_balances() {
     .expect("settle must move reserves + SPL");
 
     let vault = read_vault(&svm, program_id);
-    // Day 48 vault-only: journal mint reserve/ATA unchanged; pay other mint only.
+    // Vault-only: journal mint reserve/ATA unchanged; pay other mint only.
     assert_eq!(vault.reserve_a, 1_000);
     assert_eq!(vault.reserve_b, 1_000 - amount);
 
@@ -639,7 +639,7 @@ fn settle_rejects_unregistered_merkle_root() {
         settle_ix(program_id, &accounts, proof, journal),
     )
     .expect_err("wrong CleanFundsRoot PDA must fail");
-    // Day 40: seeds bind clean_funds_root to journal merkle_root → ConstraintSeeds
+    // Seeds bind clean_funds_root to journal merkle_root → ConstraintSeeds
     // before the handler's MerkleRootNotFound path.
     assert!(
         err.contains("MerkleRootNotFound")
@@ -722,7 +722,7 @@ fn settle_scaffold_fails_on_empty_proof() {
     assert!(!err.is_empty());
 }
 
-/// Day 39 (LiteSVM harness): random/mutated proof bytes must fail closed — no verifier
+/// (LiteSVM harness): random/mutated proof bytes must fail closed — no verifier
 /// crash, vault reserves unchanged. Chose LiteSVM over Mollusk/Trident to keep the
 /// pinned `litesvm = 0.10` Agave stack (see `tests.md`).
 #[test]
@@ -780,7 +780,7 @@ fn settle_random_proof_bytes_fail_closed() {
     assert_eq!(vault_after.reserve_b, vault_before.reserve_b);
 }
 
-/// Day 46: fee payer (relayer) may differ from recipient ATA owner.
+/// Fee payer (relayer) may differ from recipient ATA owner.
 #[test]
 fn settle_fee_payer_differs_from_token_owner() {
     let program_id = zk_spot_shield::id();
@@ -843,7 +843,7 @@ fn settle_fee_payer_differs_from_token_owner() {
     assert_eq!(token_amount(&svm, utb), public.requested_swap_amount);
 }
 
-/// Day 48 Exit: deposit 300 A → settle spend 100 A for 100 B — no second debit of A.
+/// Exit: deposit 300 A → settle spend 100 A for 100 B — no second debit of A.
 #[test]
 fn deposit_300_vault_only_settle_100() {
     let program_id = zk_spot_shield::id();

@@ -1,8 +1,8 @@
 //! Settle hot path: verify → root → vault-only spend → SPL payout → nullifier.
 //!
-//! Day 46: `payer` is the **fee payer** (SOL + nullifier rent). Recipient ATAs need
+//! `payer` is the **fee payer** (SOL + nullifier rent). Recipient ATAs need
 //! not be owned by the fee payer (relayer ≠ note owner).
-//! Day 48: deposit-backed spend — no second user→vault of the journal mint.
+//! Deposit-backed spend — no second user→vault of the journal mint.
 
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{self, CreateAccount};
@@ -16,7 +16,7 @@ use crate::{
     CLEAN_FUNDS_ROOT_SEED_PREFIX, GLOBAL_CONFIG_SEED, NULLIFIER_SEED_PREFIX, SPOT_VAULT_SEED,
 };
 
-/// Happy-path fixture sizes (`notes/budgets.md` / Day 12 wrap).
+/// Happy-path fixture sizes (`notes/budgets.md`).
 pub const SETTLE_PROOF_BYTE_LEN: usize = SP1_V6_PROOF_BYTE_LEN;
 pub const SETTLE_JOURNAL_BYTE_LEN: usize = JOURNAL_BYTE_LEN;
 
@@ -25,12 +25,12 @@ const JOURNAL_NULLIFIER_OFFSET: usize = 8 + 32;
 const JOURNAL_MERKLE_ROOT_OFFSET: usize = 8 + 32 + 32;
 
 /// Account order: fee payer → config → zero-copy → tokens → programs.
-/// Day 40: every PDA uses `seeds` + `bump` (clean-funds root bound to journal bytes).
+/// Every PDA uses `seeds` + `bump` (clean-funds root bound to journal bytes).
 #[derive(Accounts)]
 #[instruction(proof: Vec<u8>, journal: Vec<u8>)]
 pub struct SettleShieldedSpot<'info> {
     /// Fee payer: pays SOL fees + nullifier PDA rent. May differ from note owner /
-    /// recipient ATA owners (Day 46 relayer).
+    /// recipient ATA owners (relayer).
     #[account(mut)]
     pub payer: Signer<'info>,
 
@@ -48,7 +48,7 @@ pub struct SettleShieldedSpot<'info> {
     )]
     pub vault: AccountLoader<'info, VaultState>,
 
-    /// Approved root PDA for journal `merkle_root` (Day 40: seeds, not handler-only).
+    /// Approved root PDA for journal `merkle_root` (seeds, not handler-only).
     #[account(
         seeds = [
             CLEAN_FUNDS_ROOT_SEED_PREFIX,
@@ -58,7 +58,7 @@ pub struct SettleShieldedSpot<'info> {
     )]
     pub clean_funds_root: AccountLoader<'info, CleanFundsRoot>,
 
-    /// One-time spend tag PDA. Must be empty; created after success (Day 28).
+    /// One-time spend tag PDA. Must be empty; created after success.
     /// CHECK: empty ⇒ unused; non-empty ⇒ `NullifierAlreadyUsed`.
     #[account(
         mut,
@@ -80,7 +80,7 @@ pub struct SettleShieldedSpot<'info> {
     pub vault_token_b: Account<'info, TokenAccount>,
 
     /// Recipient / user ATA for mint A (payout or unused journal side).
-    /// Owner need not equal `payer` (Day 46).
+    /// Owner need not equal `payer`.
     #[account(mut)]
     pub user_token_a: Account<'info, TokenAccount>,
 
@@ -160,7 +160,7 @@ pub fn handle_settle_shielded_spot(
         ErrorCode::InvalidTokenAccount
     );
 
-    // Day 48: vault PDA pays the other mint only — no user→vault of journal mint.
+    // Vault PDA pays the other mint only — no user→vault of journal mint.
     let vault_seeds: &[&[u8]] = &[SPOT_VAULT_SEED, &[vault_bump]];
     if asset_mint == mint_a {
         token::transfer(
@@ -192,7 +192,7 @@ pub fn handle_settle_shielded_spot(
         return err!(ErrorCode::UnknownVaultMint);
     }
 
-    // Day 28: create + fill nullifier PDA only after verify/vault/SPL succeed.
+    // Create + fill nullifier PDA only after verify/vault/SPL succeed.
     let space = 8 + std::mem::size_of::<NullifierAccount>();
     let lamports = Rent::get()?.minimum_balance(space);
     let nf_bump = ctx.bumps.nullifier_account;

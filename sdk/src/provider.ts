@@ -1,5 +1,5 @@
 /**
- * Day 33: Anchor provider pointed at localnet (solana-test-validator).
+ * Anchor provider pointed at localnet (solana-test-validator).
  *
  * Default RPC matches `solana config set --url localhost` → 127.0.0.1:8899.
  * Wallet: `ANCHOR_WALLET` or `~/.config/solana/id.json` (same as Anchor.toml).

@@ -202,7 +202,7 @@ ls -l zk-circuit/fixtures/happy/journal.bin   # expect 104</pre>
 cd sdk && npm install && npm run test:e2e</pre>
     <ol class="look-steps">
       <li><code>==&gt; anchor build</code> then <code>solana-test-validator</code> starting (program + preloaded accounts)</li>
-      <li>Unit tests pass, then vitest e2e file <code>Day 36–37 localnet E2E</code></li>
+      <li>Unit tests pass, then vitest e2e file <code>localnet E2E</code></li>
       <li>Four green checks in this order: InvalidProof → unregistered root → happy path → replay</li>
       <li>Footer: <code>Test Files  1 passed</code> / <code>Tests  4 passed</code>; validator stops / ledger torn down</li>
     </ol>
@@ -231,7 +231,7 @@ cd sdk && npm install && npm run test:e2e</pre>
     <ol class="look-steps">
       <li>Line: <code>✓ unregistered root → seeds / MerkleRootNotFound</code></li>
       <li>Narrate: journal still has the happy merkle root; we pass the wrong root PDA on purpose</li>
-      <li>Day 40: Anchor <strong>seeds</strong> bind PDA to journal root → usually <code>ConstraintSeeds</code> (handler may never run)</li>
+      <li>Anchor <strong>seeds</strong> bind PDA to journal root → usually <code>ConstraintSeeds</code> (handler may never run)</li>
       <li>Test still accepts <code>MerkleRootNotFound</code> / <code>seeds</code> / <code>custom program error</code></li>
       <li>Vault / SPL unchanged; happy path later still has a fresh nullifier</li>
     </ol>

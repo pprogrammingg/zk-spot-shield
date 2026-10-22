@@ -1,4 +1,4 @@
-//! Settle instruction payload packing (Day 14).
+//! Settle instruction payload packing.
 //!
 //! **Settle payload contract** — Anchor ix data is one length-prefixed blob:
 //! ```text

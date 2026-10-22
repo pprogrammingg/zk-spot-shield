@@ -1,6 +1,6 @@
 # Security
 
-Attack surface: client note, off-chain indexer and prover, SP1 guest, and on-chain settle (`CleanFundsRoot`, nullifiers, vault). Root register is protocol-admin-gated. Deposit couples SPL custody with a leaf PDA. Relayer is optional (user can self-submit). Not built yet: decentralized deposit log, change notes, encrypted note backup. Short reviewer page: [`notes/threat-model.md`](../notes/threat-model.md).
+Attack surface: client note, off-chain indexer and prover, SP1 guest, and on-chain settle (`CleanFundsRoot`, nullifiers, vault). Root register is protocol-admin-gated. Deposit couples SPL custody with a leaf PDA. Relayer is optional (user can self-submit). Not built yet: decentralized deposit log, change notes, encrypted note backup. This table is the threat model.
 
 | ID | Attack type | Technique used to solve | Attack recovery |
 | --- | --- | --- | --- |

@@ -1,5 +1,5 @@
 /**
- * Day 49: high-level SDK — proof inputs, vault-only swap request, vault reads,
+ * High-level SDK — proof inputs, vault-only swap request, vault reads,
  * CleanFundsRoot subscribe helper, relayer settle-intent encoding.
  *
  * Relayer may be `feePayer`; recipient ATAs may differ from the depositor
@@ -157,7 +157,7 @@ export async function subscribeCleanFundsRoot(
 
 export type ShieldedSwapRequest = {
   program: Program;
-  /** SOL fee payer — relayer key is allowed (Day 46). */
+  /** SOL fee payer — relayer key is allowed. */
   feePayer: PublicKey;
   vaultTokenA: PublicKey;
   vaultTokenB: PublicKey;
@@ -241,7 +241,7 @@ export async function requestShieldedSwap(
   };
 }
 
-/** Relayer `SettleIntent` JSON (Day 46) for `POST /submit-intent`. */
+/** Relayer `SettleIntent` JSON for `POST /submit-intent`. */
 export type RelayerSettleIntent = {
   proof_base64: string;
   journal_base64: string;

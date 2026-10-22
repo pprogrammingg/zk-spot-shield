@@ -11,11 +11,21 @@ npm run dev
 
 On **localnet**, load `~/.config/solana/id.json` in the keypair control. Do not use a mainnet secret. Paste the sample proof and journal (base64) from `zk-circuit/fixtures/happy/`. Token account addresses come from a localnet init (the SDK end-to-end bundle).
 
-Static build (relayer can be off):
+## Static build
+
+The program on Solana still works if the website is taken down. The UI should too.
 
 ```bash
 npm run build
 npx --yes serve dist
+# or open dist/index.html as a local file (the injected wallet still talks to RPC)
 ```
 
-The build uses relative URLs, so `dist/` works from a local folder or IPFS. Put more than one RPC URL in the list if you want fallback. Publish steps: [`notes/uncensorable-ui.md`](../notes/uncensorable-ui.md).
+The build uses relative URLs, so `dist/` works from a local folder or IPFS. In the UI, list RPC URLs separated by commas or newlines. The first endpoint that answers JSON-RPC `getHealth` is used (`sdk/src/rpcFallback.ts`).
+
+```bash
+shasum -a 256 dist/index.html dist/assets/*
+# optional: ipfs add -r dist
+```
+
+No IPFS CID is published yet. If someone seizes the marketing site, settle still works for anyone who has this bundle, the program id, and an RPC.

@@ -1,5 +1,5 @@
 /**
- * Day 70: ordered RPC list with fallback when one endpoint dies or censors.
+ * Ordered RPC list with fallback when one endpoint dies or censors.
  */
 
 export type RpcHealthFetch = (

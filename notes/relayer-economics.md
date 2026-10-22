@@ -4,11 +4,11 @@ The relayer pays Succinct **prove credits** (`$PROVE`) and Solana **SOL** fees, 
 
 ```text
 User fee (basis points / flat)
-        │
-        ▼
-  Relayer treasury
-     ├── SOL  → fee payer for settle (nullifier rent + tx fees)
-     └── $PROVE → network Groth16 wrap (when wired; fixtures until then)
+ │
+ ▼
+ Relayer treasury
+ ├── SOL → fee payer for settle (nullifier rent + tx fees)
+ └── $PROVE → network Groth16 wrap (when wired; fixtures until then)
 ```
 
 ## Roles

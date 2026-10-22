@@ -15,8 +15,8 @@ path = "src/main.rs"
 
 [features]
 default = []
-# Remote Succinct prover (Day 12 wrap). Off by default: pulls AWS smithy via
-# sp1-sdk and is easy to break on `cargo update`. Execute / Day 13 need it off.
+# Remote Succinct prover. Off by default: pulls AWS smithy via
+# sp1-sdk and is easy to break on `cargo update`. Execute does not need it.
 network = ["sp1-sdk/network"]
 
 [dependencies]

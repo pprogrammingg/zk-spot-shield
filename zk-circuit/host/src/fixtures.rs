@@ -1,4 +1,4 @@
-//! Day 17: single happy-path pack for host execute, prove, and (later) TS client.
+//! Single happy-path pack for host execute, prove, and (later) TS client.
 //!
 //! - **Runtime source:** [`happy_path_inputs`] (built with `zk-circuit-io` hashes).
 //! - **Portable dump:** `zk-circuit/fixtures/happy.json` (hex fields; must match this pack).
@@ -14,7 +14,7 @@ use zk_circuit_io::{
     verify_merkle_path, DepositTree, PrivateInputs, PublicOutputs,
 };
 
-/// Day 42: same happy note, but path/root come from a live [`DepositTree`] insert.
+/// Same happy note, but path/root come from a live [`DepositTree`] insert.
 pub fn deposit_backed_happy_inputs() -> PrivateInputs {
     let secret = [1u8; 32];
     let user_address = [2u8; 32];
@@ -79,7 +79,7 @@ pub fn happy_fixture_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../fixtures/happy")
 }
 
-/// Portable Day 17 dump of [`happy_path_inputs`] (hex). Kept in sync by unit test.
+/// Portable dump of [`happy_path_inputs`] (hex). Kept in sync by unit test.
 pub fn happy_json_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../fixtures/happy.json")
 }
@@ -115,7 +115,7 @@ fn parse_hex32(s: &str) -> [u8; 32] {
     out
 }
 
-/// Day 63: one-leaf tree from a gitignored witness JSON (hex fields). Never logs the secret.
+/// One-leaf tree from a gitignored witness JSON (hex fields). Never logs the secret.
 pub fn inputs_from_witness_json(path: &Path) -> PrivateInputs {
     let raw = fs::read_to_string(path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
     let w: WitnessFile = serde_json::from_str(&raw).expect("witness json");
@@ -212,7 +212,7 @@ mod tests {
     #[test]
     fn happy_json_matches_happy_path_inputs() {
         let raw = fs::read_to_string(happy_json_path())
-            .expect("commit zk-circuit/fixtures/happy.json (Day 17 portable pack)");
+            .expect("commit zk-circuit/fixtures/happy.json (portable pack)");
         let inputs = happy_path_inputs();
         let expected = expected_public_outputs(&inputs);
 
@@ -289,7 +289,7 @@ mod tests {
         );
     }
 
-    /// Day 42 Exit: after a deposit-tree insert, host execute accepts live path/root.
+    /// Exit: after a deposit-tree insert, host execute accepts live path/root.
     #[tokio::test]
     async fn deposit_backed_path_execute_ok() {
         let inputs = deposit_backed_happy_inputs();

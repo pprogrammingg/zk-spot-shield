@@ -5,7 +5,7 @@
 ![Program tests](https://github.com/pprogrammingg/zk-spot-shield/actions/workflows/program-tests.yml/badge.svg)
 ![Docs](https://github.com/pprogrammingg/zk-spot-shield/actions/workflows/docs.yml/badge.svg)
 
-Private spot settlement on Solana. A zero-knowledge circuit proves you deposited and can afford the trade. The on-chain program checks a short proof, a registered Merkle root, and a one-time nullifier (double-spend tag), then the vault pays the other token 1:1.
+Private spot settlement on Solana. A zero-knowledge circuit proves you deposited and can afford the trade. The on-chain program checks a short proof, a registered Merkle root, and a one-time nullifier, then the vault pays the other token 1:1.
 
 This is **not a mixer**. The deposit transaction still shows who deposited.
 
@@ -19,21 +19,21 @@ This is **not a mixer**. The deposit transaction still shows who deposited.
 | Protocol admin (`GlobalConfig.authority`) for pause and which Merkle roots are allowed | The website that hosts the UI (you can submit the transaction yourself) |
 | The remote proving service, if you use Succinct (it sees your private witness) | A single RPC endpoint (the UI can fall back to another) |
 
-Details: [`notes/threat-model.md`](./notes/threat-model.md) · [`docs/security.md`](./docs/security.md).
+Attack table: [`docs/security.md`](./docs/security.md).
 
 Local Groth16 wrapping runs out of memory on a 16 GB laptop. Use free **execute** to check the circuit, or pay `$PROVE` for a remote Groth16 proof. Do not invent a proof file. Log: [`notes/proving.md`](./notes/proving.md).
 
 ## Repository
 
 ```text
-programs/zk_spot_shield/  on-chain program
-zk-circuit/io/            Merkle hashing and public journal layout
-zk-circuit/guest/         circuit (runs in SP1)
-zk-circuit/host/          execute locally, or prove remotely
-client/                   compute-budget helpers
-relayer/                  optional fee payer and HTTP 402
-sdk/                      TypeScript client
-ui/                       swap screen (React)
+programs/zk_spot_shield/ on-chain program
+zk-circuit/io/ Merkle hashing and public journal layout
+zk-circuit/guest/ circuit (runs in SP1)
+zk-circuit/host/ execute locally, or prove remotely
+client/ compute-budget helpers
+relayer/ optional fee payer and HTTP 402
+sdk/ TypeScript client
+ui/ swap screen (React)
 ```
 
 Program id (`declare_id!` / localnet / Devnet): `74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G`. Deploy record: [`notes/devnet.md`](./notes/devnet.md).
@@ -42,9 +42,8 @@ Program id (`declare_id!` / localnet / Devnet): `74UW993wrDasAMyBQ53PjHpYLK5vMkW
 
 | Number | Where |
 | --- | --- |
-| Settle uses **285,947 compute units** (Groth16 is most of that) | [`notes/cu-breakdown.md`](./notes/cu-breakdown.md) |
-| Transaction limit **1,400,000** compute units | [`notes/budgets.md`](./notes/budgets.md) |
-| Public journal **104 bytes** | [`notes/payload-throughput.md`](./notes/payload-throughput.md) |
+| Settle **285,947** CU (Groth16 is most of that); tx cap **1,400,000** | [`notes/budgets.md`](./notes/budgets.md) |
+| Public journal **104 bytes** | [`notes/budgets.md`](./notes/budgets.md) |
 | Remote Groth16 **30.7 s**; execute **11,093,598** cycles | [`notes/proving.md`](./notes/proving.md) |
 
 ## Installation
@@ -99,7 +98,7 @@ cargo run -p zk-circuit-host -- --print-vkey
 
 ```bash
 SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info \
-  cargo run -p zk-circuit-host --features network --release
+ cargo run -p zk-circuit-host --features network --release
 ```
 
 **Unit tests** (CI default):
@@ -111,7 +110,7 @@ cargo test -p client --lib --locked
 cargo test -p zk-spot-shield-relayer --lib --locked
 ```
 
-See [`tests.md`](./tests.md).
+See [`docs/tests.md`](./docs/tests.md) and `.cursor/rules/05-tests-security.mdc`.
 
 ## SDK, relayer, UI
 
@@ -121,11 +120,11 @@ cd ../relayer && cargo run -p zk-spot-shield-relayer
 cd ../ui && npm install && npm run dev
 ```
 
-The UI uses your wallet as the fee payer by default. The relayer is optional. How to host the static build: [`notes/uncensorable-ui.md`](./notes/uncensorable-ui.md). No IPFS CID is published yet; hash `ui/dist` after `npm run build` when you pin one.
+The UI uses your wallet as the fee payer by default. The relayer is optional. Static build: [`ui/README.md`](./ui/README.md). No IPFS CID is published yet; hash `ui/dist` after `npm run build` when you pin one.
 
 ## Devnet
 
-Deploy / operator steps: [`notes/devnet.md`](./notes/devnet.md) (start at Day 58). Click through the UI: [`notes/manual-devnet.md`](./notes/manual-devnet.md). Live-cluster tests: [`notes/devnet-tests.md`](./notes/devnet-tests.md) (`DEVNET_ONCHAIN=1`).
+Operator record: [`notes/devnet.md`](./notes/devnet.md). Live-cluster tests: `DEVNET_ONCHAIN=1` from `sdk/`.
 
 ## Docs site
 

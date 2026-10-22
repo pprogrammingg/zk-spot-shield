@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { journalToPayBody, parseJournalPublic, resourceUrl } from "../src/index.js";
 
-describe("Day 50 402 client helpers", () => {
+describe("402 client helpers", () => {
   it("pay body is journal-only (no wallet)", () => {
     const journal = readFileSync(
       join(

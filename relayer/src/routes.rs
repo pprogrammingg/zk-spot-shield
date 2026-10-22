@@ -1,4 +1,4 @@
-//! HTTP routes: health + submit-intent (Days 44–45) + HTTP 402 payer (Day 50).
+//! HTTP routes: health + submit-intent + HTTP 402 payer.
 
 use axum::extract::{Path, Query, State};
 use axum::http::{Method, StatusCode};

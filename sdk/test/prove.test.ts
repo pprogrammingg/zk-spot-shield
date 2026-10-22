@@ -5,7 +5,7 @@ import {
   parseJournalPublic,
 } from "../src/prove.js";
 
-describe("Day 34 prove bridge", () => {
+describe("prove bridge", () => {
   it("loads committed happy groth16 + journal", () => {
     const bundle = loadHappyProofFixture();
     expect(bundle.source).toBe("fixture");

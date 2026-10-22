@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * Days 60–61: create GlobalConfig + happy-path CleanFundsRoot, then VaultState.
+ * Create GlobalConfig + happy-path CleanFundsRoot, then VaultState.
  *
  *   cd sdk && npm install
  *   export ANCHOR_PROVIDER_URL=https://api.devnet.solana.com
@@ -13,7 +13,7 @@
  *   npx tsx scripts/devnet-init.ts settle
  *
  * Wallet must be protocol admin (pays rent). Do not run until source
- * `declare_id!` matches the on-chain program (notes/devnet.md Day 59).
+ * `declare_id!` matches the on-chain program (notes/devnet.md ).
  */
 
 import { dirname, join } from "node:path";
@@ -283,7 +283,7 @@ async function ensureUserAta(
   return ata;
 }
 
-/** Day 63 custody: mint 1.0 of each vault mint to the admin wallet and deposit. */
+/** custody: mint 1.0 of each vault mint to the admin wallet and deposit. */
 async function depositBoth(): Promise<void> {
   const url = process.env.ANCHOR_PROVIDER_URL ?? "https://api.devnet.solana.com";
   requireDevnetUrl(url);

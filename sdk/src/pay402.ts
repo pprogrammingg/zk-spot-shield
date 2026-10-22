@@ -1,5 +1,5 @@
 /**
- * Day 50: client helpers for the relayer HTTP 402 shielded payer.
+ * Client helpers for the relayer HTTP 402 shielded payer.
  * Payment credential is the settle **journal** (nullifier path), not a wallet.
  */
 

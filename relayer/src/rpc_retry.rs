@@ -1,4 +1,4 @@
-//! Day 47: exponential backoff for send/confirm RPC calls.
+//! Exponential backoff for send/confirm RPC calls.
 
 use std::time::Duration;
 

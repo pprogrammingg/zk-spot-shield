@@ -34,7 +34,7 @@ pub mod zk_spot_shield {
         instructions::initialize_vault::handle_initialize_vault(ctx)
     }
 
-    /// Protocol admin writes `mint_a` / `mint_b` once (Day 61). Fails if already set.
+    /// Protocol admin writes `mint_a` / `mint_b` once. Fails if already set.
     pub fn set_vault_mints(
         ctx: Context<SetVaultMints>,
         mint_a: Pubkey,
@@ -51,7 +51,7 @@ pub mod zk_spot_shield {
         instructions::register_clean_funds_root::handle_register_clean_funds_root(ctx, root)
     }
 
-    /// Day 41: transfer SPL into vault and record a public leaf commitment PDA.
+    /// Transfer SPL into vault and record a public leaf commitment PDA.
     pub fn deposit_shielded(
         ctx: Context<DepositShielded>,
         leaf: [u8; 32],
@@ -69,12 +69,12 @@ pub mod zk_spot_shield {
         instructions::settle_shielded_spot::handle_settle_shielded_spot(ctx, proof, journal)
     }
 
-    /// Authority sets `GlobalConfig.pause_flag = true` (Day 28).
+    /// Authority sets `GlobalConfig.pause_flag = true`.
     pub fn pause(ctx: Context<SetPause>) -> Result<()> {
         instructions::set_pause::handle_pause(ctx)
     }
 
-    /// Authority clears `GlobalConfig.pause_flag` (Day 28).
+    /// Authority clears `GlobalConfig.pause_flag`.
     pub fn unpause(ctx: Context<SetPause>) -> Result<()> {
         instructions::set_pause::handle_unpause(ctx)
     }

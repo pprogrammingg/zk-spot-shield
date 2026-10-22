@@ -77,7 +77,7 @@ mod happy_fixture_tests {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("../fixtures/happy")
     }
 
-    /// Same bytes as host `happy_path_inputs` / `fixtures/happy.json` (Day 17 pack).
+    /// Same bytes as host `happy_path_inputs` / `fixtures/happy.json`.
     #[test]
     fn happy_journal_matches_io_hashes() {
         let bytes = fs::read(happy_dir().join("journal.bin"))

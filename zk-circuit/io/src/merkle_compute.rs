@@ -1,5 +1,5 @@
 use ark_bn254::Fr;
-use ark_ff::{BigInteger, PrimeField};
+use ark_ff_04::{BigInteger, PrimeField};
 use light_poseidon::{Poseidon, PoseidonHasher};
 
 /// Interpret big-endian bytes as an integer and reduce into BN254 Fr.

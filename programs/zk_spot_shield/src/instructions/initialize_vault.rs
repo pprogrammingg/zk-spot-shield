@@ -1,5 +1,5 @@
-//! Day 21: create the zero-copy escrow `VaultState` PDA (`["spot_vault"]`).
-//! Mints stay unset until `set_vault_mints` (Day 61); reserves start at zero.
+//! Create the zero-copy escrow `VaultState` PDA (`["spot_vault"]`).
+//! Mints stay unset until `set_vault_mints`; reserves start at zero.
 
 use crate::{state::VaultState, SPOT_VAULT_SEED};
 use anchor_lang::prelude::*;

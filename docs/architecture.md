@@ -8,47 +8,47 @@ The system has three parts. The **client** holds the user's secret note. The **Z
 
 ```mermaid
 flowchart TB
-  User([User])
-  Ui[Trading UI or web SDK]
-  User -->|opens app| Ui
-  Ui -->|connect wallet| Client
+ User([User])
+ Ui[Trading UI or web SDK]
+ User -->|opens app| Ui
+ Ui -->|connect wallet| Client
 
-  subgraph offchain [Off-chain]
-    Client[Client or Phantom]
-    Indexer[Deposit tree or indexer]
-    Relayer[Relayer fee payer]
-    Host[ZK host]
-    Guest[SP1 guest]
-    Prover[Succinct network]
-  end
+ subgraph offchain [Off-chain]
+ Client[Client or Phantom]
+ Indexer[Deposit tree or indexer]
+ Relayer[Relayer fee payer]
+ Host[ZK host]
+ Guest[SP1 guest]
+ Prover[Succinct network]
+ end
 
-  subgraph onchain [Solana]
-    Program[zk_spot_shield]
-    Config[GlobalConfig PDA]
-    Vault[VaultState PDA]
-    VaultAta[Vault token ATAs]
-    Leaves[DepositLeaf PDAs]
-    Roots[CleanFundsRoot PDAs]
-    Nullifiers[Nullifier PDAs]
-    Spl[SPL Token program]
-  end
+ subgraph onchain [Solana]
+ Program[zk_spot_shield]
+ Config[GlobalConfig PDA]
+ Vault[VaultState PDA]
+ VaultAta[Vault token ATAs]
+ Leaves[DepositLeaf PDAs]
+ Roots[CleanFundsRoot PDAs]
+ Nullifiers[Nullifier PDAs]
+ Spl[SPL Token program]
+ end
 
-  Client --> Host
-  Indexer --> Host
-  Host --> Guest
-  Host --> Prover
-  Prover --> Host
-  Host --> Client
-  Client --> Program
-  Client --> Relayer
-  Relayer --> Program
-  Program --> Config
-  Program --> Vault
-  Program --> Leaves
-  Program --> Roots
-  Program --> Nullifiers
-  Program --> Spl
-  Spl --> VaultAta
+ Client --> Host
+ Indexer --> Host
+ Host --> Guest
+ Host --> Prover
+ Prover --> Host
+ Host --> Client
+ Client --> Program
+ Client --> Relayer
+ Relayer --> Program
+ Program --> Config
+ Program --> Vault
+ Program --> Leaves
+ Program --> Roots
+ Program --> Nullifiers
+ Program --> Spl
+ Spl --> VaultAta
 ```
 
 ## Numbered product flow
@@ -57,7 +57,7 @@ Swap economics today are **1:1 spot**. An AMM-style curve is **(upcoming)**.
 
 On settle the chain learns **amount**, **asset mint**, **nullifier**, and **Merkle root**. The proof keeps private: **secret**, **full note balance**, and **Merkle path / leaf index**.
 
-Step numbers **continue across phases**. Each phase is a **separate** Mermaid diagram below (blank space between them) so GitHub Pages can render them.
+Each phase is a separate diagram so GitHub Pages can render them.
 
 | Phase | Steps | Status |
 | --- | --- | --- |
@@ -73,12 +73,12 @@ Step numbers **continue across phases**. Each phase is a **separate** Mermaid di
 
 ```mermaid
 sequenceDiagram
-  participant U as User
-  participant W as WebSDK
-  participant Ph as Phantom
-  U->>W: 1 Open web app
-  U->>Ph: 2 Connect wallet
-  Ph-->>W: 3 Pubkey ready for SDK
+ participant U as User
+ participant W as WebSDK
+ participant Ph as Phantom
+ U->>W: 1 Open web app
+ U->>Ph: 2 Connect wallet
+ Ph-->>W: 3 Pubkey ready for SDK
 ```
 
 ---
@@ -87,22 +87,22 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-  participant U as User
-  participant W as WebSDK
-  participant Ph as Phantom
-  participant Prog as Program
-  participant Spl as TokenProgram
-  participant Tree as DepositTree
-  U->>W: 4 Pick mint A and amount 300
-  W->>W: 5 Create note secret and leaf
-  W->>Ph: 6 Sign deposit_shielded
-  Ph->>Prog: 7 Call deposit_shielded
-  Prog->>Spl: 8 Transfer user ATA to vault ATA
-  Prog->>Prog: 9 Init deposit leaf PDA
-  Prog->>Prog: 10 Bump vault reserve
-  Note over Prog: Leaf PDA stores leaf amount mint depositor
-  Prog-->>Tree: 11 Insert leaf into deposit tree
-  Tree-->>Prog: 12 Protocol admin registers CleanFundsRoot tip
+ participant U as User
+ participant W as WebSDK
+ participant Ph as Phantom
+ participant Prog as Program
+ participant Spl as TokenProgram
+ participant Tree as DepositTree
+ U->>W: 4 Pick mint A and amount 300
+ W->>W: 5 Create note secret and leaf
+ W->>Ph: 6 Sign deposit_shielded
+ Ph->>Prog: 7 Call deposit_shielded
+ Prog->>Spl: 8 Transfer user ATA to vault ATA
+ Prog->>Prog: 9 Init deposit leaf PDA
+ Prog->>Prog: 10 Bump vault reserve
+ Note over Prog: Leaf PDA stores leaf amount mint depositor
+ Prog-->>Tree: 11 Insert leaf into deposit tree
+ Tree-->>Prog: 12 Protocol admin registers CleanFundsRoot tip
 ```
 
 ---
@@ -111,19 +111,19 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-  participant U as User
-  participant W as WebSDK
-  participant Tree as DepositTree
-  participant Host as ZkHost
-  participant Net as Succinct
-  U->>W: 13 Choose 1 to 1 swap of A for B
-  W->>Tree: 14 Fetch Merkle path under registered root
-  Tree-->>W: 15 Return path and root
-  W->>Host: 16 Send witness to host
-  Host->>Host: 17 Cheap execute guest
-  Host->>Net: 18 Request Groth16 wrap
-  Net-->>Host: Return proof and journal
-  Host-->>W: 19 Proof ready for settle
+ participant U as User
+ participant W as WebSDK
+ participant Tree as DepositTree
+ participant Host as ZkHost
+ participant Net as Succinct
+ U->>W: 13 Choose 1 to 1 swap of A for B
+ W->>Tree: 14 Fetch Merkle path under registered root
+ Tree-->>W: 15 Return path and root
+ W->>Host: 16 Send witness to host
+ Host->>Host: 17 Cheap execute guest
+ Host->>Net: 18 Request Groth16 wrap
+ Net-->>Host: Return proof and journal
+ Host-->>W: 19 Proof ready for settle
 ```
 
 ---
@@ -134,21 +134,21 @@ Fee payer may be a relayer (not the note owner). Settle is **vault-only**: no se
 
 ```mermaid
 sequenceDiagram
-  participant W as WebSDK
-  participant Ph as Phantom
-  participant Prog as Program
-  participant Spl as TokenProgram
-  W->>Ph: 20 Sign settle or hand to relayer
-  Ph->>Prog: 21 settle_shielded_spot
-  Note over Prog: proof and journal are ix data not vault fields
-  Prog->>Prog: 22 Reject if paused
-  Prog->>Prog: 23 Verify Groth16 vs vkey_hash
-  Prog->>Prog: 24 Root must match CleanFundsRoot
-  Prog->>Prog: 25 Nullifier PDA must be empty
-  Prog->>Prog: 26 apply_vault_only_spend pay other mint
-  Prog->>Spl: 27 Vault pays other mint to user
-  Prog->>Prog: 28 Create nullifier PDA
-  Note over Prog: Fee payer pays SOL rent; no second debit of journal mint
+ participant W as WebSDK
+ participant Ph as Phantom
+ participant Prog as Program
+ participant Spl as TokenProgram
+ W->>Ph: 20 Sign settle or hand to relayer
+ Ph->>Prog: 21 settle_shielded_spot
+ Note over Prog: proof and journal are ix data not vault fields
+ Prog->>Prog: 22 Reject if paused
+ Prog->>Prog: 23 Verify Groth16 vs vkey_hash
+ Prog->>Prog: 24 Root must match CleanFundsRoot
+ Prog->>Prog: 25 Nullifier PDA must be empty
+ Prog->>Prog: 26 apply_vault_only_spend pay other mint
+ Prog->>Spl: 27 Vault pays other mint to user
+ Prog->>Prog: 28 Create nullifier PDA
+ Note over Prog: Fee payer pays SOL rent; no second debit of journal mint
 ```
 
 ---
@@ -159,13 +159,13 @@ Fee-payer settle already works in phase D (self-submit or relayer). Still to bui
 
 ```mermaid
 sequenceDiagram
-  participant Rel as Relayer
-  participant Net as Succinct
-  participant W as WebSDK
-  Rel-->>Net: 30 Pay prove credits from treasury
-  Note over Rel: User fees refill PROVE and SOL
-  Note over W: 32 Change note + encrypted backup
-  Note over W: 33 Hide depositor / unlink recipient
+ participant Rel as Relayer
+ participant Net as Succinct
+ participant W as WebSDK
+ Rel-->>Net: 30 Pay prove credits from treasury
+ Note over Rel: User fees refill PROVE and SOL
+ Note over W: 32 Change note + encrypted backup
+ Note over W: 33 Hide depositor / unlink recipient
 ```
 
 ---
@@ -174,37 +174,23 @@ sequenceDiagram
 
 ```mermaid
 flowchart TB
-  subgraph privateSide [Private]
-    Secret[secret]
-    Balance[full balance]
-    Path[Merkle path]
-    Index[leaf position]
-  end
-  subgraph publicSide [Public]
-    Amount[swap amount]
-    Mint[token mint]
-    Nullifier[nullifier]
-    Root[Merkle root]
-    Proof[Groth16 proof]
-    DepositLink[deposit tx and depositor]
-  end
-  privateSide -->|zero-knowledge proof| publicSide
+ subgraph privateSide [Private]
+ Secret[secret]
+ Balance[full balance]
+ Path[Merkle path]
+ Index[leaf position]
+ end
+ subgraph publicSide [Public]
+ Amount[swap amount]
+ Mint[token mint]
+ Nullifier[nullifier]
+ Root[Merkle root]
+ Proof[Groth16 proof]
+ DepositLink[deposit tx and depositor]
+ end
+ privateSide -->|zero-knowledge proof| publicSide
 ```
 
-Deposit today still links a **wallet** to a leaf on-chain. Settle hides the secret and leaf index, but the settle transaction still lists **token accounts** and often the fee payer. Hide/unlink depositor is **Days 77–79** (after note backup).
+Deposit today still links a **wallet** to a leaf on-chain. Settle hides the secret and leaf index, but the settle transaction still lists **token accounts** and often the fee payer. Hide/unlink depositor is upcoming (after note backup).
 
-## Repository layout
-
-| Folder | Role |
-| --- | --- |
-| `programs/zk_spot_shield/` | Anchor program `zk_spot_shield` (on-chain) |
-| `zk-circuit/io/` | Shared input/output types and Poseidon Merkle helpers |
-| `zk-circuit/guest/` | SP1 guest circuit |
-| `zk-circuit/host/` | Host: execute and/or request a proof |
-| `zk-circuit/fixtures/happy/` | Recorded Groth16 proof, journal, and verifying key |
-| `client/` | Rust CU / ALT helpers |
-| `relayer/` | Optional fee payer + HTTP 402 |
-| `sdk/` | TypeScript client |
-| `ui/` | React swap screen (self-submit default) |
-
-See [Accounts deep dive](accounts-deep-dive.md) for PDA vs ATA vs instruction data, and [Solana Program](solana-program.md) for instruction semantics. See [Security](security.md) for the attack-surface table.
+See [Solana Program](solana-program.md) for accounts, instruction data vs state, and settle scenarios. See [Security](security.md) for the attack table. Folder map: [README](https://github.com/pprogrammingg/zk-spot-shield#repository).

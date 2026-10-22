@@ -1,4 +1,4 @@
-//! Day 46–47: parse settle intent, build+sign as fee payer, send with RPC retry.
+//! Parse settle intent, build+sign as fee payer, send with RPC retry.
 //!
 //! Intent JSON (UTF-8) — **pre-proven** bytes only (fixtures / offline prove).
 //! Never calls Succinct / `$PROVE`.
@@ -125,7 +125,7 @@ pub fn process_intent_dry_run(
     })
 }
 
-/// Send with exponential backoff (Day 47).
+/// Send with exponential backoff.
 pub async fn process_intent_send<R: RpcSender>(
     fee_payer: &Keypair,
     intent_bytes: &[u8],
@@ -191,7 +191,7 @@ mod tests {
     }
 
     #[test]
-    fn day51_latency_fixture_to_relayer_sign() {
+    fn latency_fixture_to_relayer_sign() {
         use std::time::Instant;
         let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../zk-circuit/fixtures/happy");
@@ -230,7 +230,7 @@ mod tests {
         let sign = t2.elapsed();
 
         eprintln!(
-            "Day 51 latency fixture_load={load:?} pay402_accept={pay402:?} relayer_sign={sign:?}"
+            "latency fixture_load={load:?} pay402_accept={pay402:?} relayer_sign={sign:?}"
         );
         assert!(load.as_millis() < 500);
         assert!(sign.as_millis() < 2_000);
@@ -336,7 +336,7 @@ mod tests {
             assert!(res.signature.is_none());
         }
         let elapsed = t0.elapsed();
-        eprintln!("Day 53 concurrent 16 dry-run wall={elapsed:?}");
+        eprintln!("concurrent 16 dry-run wall={elapsed:?}");
         assert!(elapsed.as_secs() < 5);
     }
 }

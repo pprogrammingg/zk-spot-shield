@@ -1,4 +1,4 @@
-//! Day 32: Address Lookup Table sizing helpers for settle txs.
+//! Address Lookup Table sizing helpers for settle txs.
 //!
 //! Groth16 proof + journal stay in **instruction data**. ALTs only compress
 //! account **pubkeys** so the packet stays under the 1232-byte MTU.
@@ -72,7 +72,7 @@ mod tests {
     #[test]
     fn legacy_settle_pressures_packet_budget() {
         let legacy = estimate_legacy_settle_message_bytes(SETTLE_IX_DATA_LEN);
-        // Upper-bound estimate should show why Day 32 ALTs exist.
+        // Upper-bound estimate should show why ALTs exist.
         assert!(
             legacy > 900,
             "legacy settle estimate unexpectedly small: {legacy}"

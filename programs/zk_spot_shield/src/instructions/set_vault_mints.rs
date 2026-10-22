@@ -1,4 +1,4 @@
-//! Day 61: protocol admin writes `mint_a` / `mint_b` once on an existing vault PDA.
+//! Protocol admin writes `mint_a` / `mint_b` once on an existing vault PDA.
 
 use anchor_lang::prelude::*;
 

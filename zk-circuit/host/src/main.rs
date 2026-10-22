@@ -3,7 +3,7 @@
 //! RUST_LOG=info cargo run -p zk-circuit-host --release
 //! ```
 //!
-//! Groth16 wrap OOMs this laptop. Day 12 is **remote** (root `.env`: `SP1_USE_NETWORK=1`).
+//! Groth16 wrap OOMs this laptop. Wrap is **remote** (root `.env`: `SP1_USE_NETWORK=1`).
 //! See `further_explanations/prove_network.md`. Not free (`$PROVE`):
 //!
 //! ```bash
@@ -26,7 +26,7 @@ const ELF: Elf = Elf::Static(include_bytes!("../../../target/elf/guest"));
 
 #[tokio::main]
 async fn main() {
-    // Day 15: offline print of frozen fixture vkey (no SP1 / network).
+    // Offline print of frozen fixture vkey (no SP1 / network).
     //   cargo run -p zk-circuit-host -- --print-vkey
     if std::env::args().any(|a| a == "--print-vkey") {
         print_happy_fixture_vkey();
@@ -91,7 +91,7 @@ async fn main() {
         println!(
             "skip groth16 (set SP1_USE_NETWORK=1 and SP1_GROTH16=1 in root .env, then cargo run --features network --release)"
         );
-        println!("Day 15 offline vkey: cargo run -p zk-circuit-host -- --print-vkey");
+        println!("offline vkey: cargo run -p zk-circuit-host -- --print-vkey");
         return;
     }
 

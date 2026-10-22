@@ -1,7 +1,7 @@
 [package]
 name = "client"
 version = "0.1.0"
-description = "Client helpers: compute budget (Day 30) + ALT sizing (Day 32); Phase 7 expands SDK"
+description = "Client helpers: compute budget and ALT sizing"
 edition.workspace = true
 rust-version.workspace = true
 

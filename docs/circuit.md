@@ -4,15 +4,15 @@ The zero-knowledge side uses [SP1](https://docs.succinct.xyz/), a zkVM: you writ
 
 ```mermaid
 flowchart LR
-    Io["io crate: types and hashes"]
-    Guest["guest: runs inside the zkVM"]
-    Host["host: runs on your machine"]
-    Fixtures["fixtures/happy: recorded proof"]
-    Io --> Guest
-    Io --> Host
-    Host -->|"PrivateInputs over stdin"| Guest
-    Guest -->|"journal"| Host
-    Host -->|"writes once"| Fixtures
+ Io["io crate: types and hashes"]
+ Guest["guest: runs inside the zkVM"]
+ Host["host: runs on your machine"]
+ Fixtures["fixtures/happy: recorded proof"]
+ Io --> Guest
+ Io --> Host
+ Host -->|"PrivateInputs over stdin"| Guest
+ Guest -->|"journal"| Host
+ Host -->|"writes once"| Fixtures
 ```
 
 ## `zk-circuit/io`: one source of truth
@@ -39,7 +39,7 @@ Fixed-size arrays everywhere (`[u8; 32]`, a `[_; 20]` path) keep the guest free 
 
 ## The journal: what the chain will see
 
-The journal is exactly 104 bytes. There is no recipient pubkey in it yet (hidden recipient is later).
+The journal is exactly 104 bytes. There is no recipient pubkey in it yet.
 
 | Bytes | Field | Type |
 | --- | --- | --- |

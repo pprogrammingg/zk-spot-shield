@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { firstHealthyRpc, parseRpcList } from "../src/rpcFallback.js";
 
-describe("Day 70 RPC fallback", () => {
+describe("RPC fallback", () => {
   it("parseRpcList splits comma and newline, drops dupes", () => {
     expect(
       parseRpcList("http://127.0.0.1:8899, https://api.devnet.solana.com\nhttp://127.0.0.1:8899"),

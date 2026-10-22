@@ -22,7 +22,7 @@ const happy = JSON.parse(
   derived: { leaf: string };
 };
 
-describe("DepositTree (Day 42)", () => {
+describe("DepositTree", () => {
   it("first insert matches happy fixture root + leaf", async () => {
     const tree = await DepositTree.create();
     const leaf = await computeLeaf(

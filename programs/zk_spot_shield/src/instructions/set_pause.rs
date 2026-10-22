@@ -1,4 +1,4 @@
-//! Day 28: authority-only pause / unpause on `GlobalConfig`.
+//! Authority-only pause / unpause on `GlobalConfig`.
 
 use anchor_lang::prelude::*;
 

@@ -1,47 +1,47 @@
 {
-  "name": "@zk-spot-shield/sdk",
-  "version": "0.1.0",
-  "private": true,
-  "description": "TypeScript SDK: localhost Anchor provider, Poseidon Merkle, prove bridge, settle E2E",
-  "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "test": "vitest run --exclude 'test/e2e/**'",
-    "test:watch": "vitest",
-    "test:e2e": "tsx scripts/e2e-localnet.ts",
-    "test:devnet": "DEVNET_ONCHAIN=1 vitest run test/devnet/onchain.devnet.test.ts",
-    "devnet:init-config": "tsx scripts/devnet-init.ts config",
-    "devnet:init-vault": "tsx scripts/devnet-init.ts vault",
-    "devnet:set-mints": "tsx scripts/devnet-init.ts mints",
-    "devnet:set-vkey": "tsx scripts/devnet-init.ts vkey",
-    "devnet:deposit": "tsx scripts/devnet-init.ts deposit",
-    "devnet:settle": "tsx scripts/devnet-init.ts settle"
-  },
-  "engines": {
-    "node": ">=20"
-  },
-  "dependencies": {
-    "@coral-xyz/anchor": "^0.32.1",
-    "@solana/spl-token": "^0.4.13",
-    "@solana/web3.js": "^1.98.4",
-    "bn.js": "^5.2.1",
-    "poseidon-lite": "^0.3.0"
-  },
-  "devDependencies": {
-    "@types/bn.js": "^5.1.6",
-    "@types/node": "^22.13.10",
-    "tsx": "^4.19.3",
-    "typescript": "^5.8.2",
-    "vitest": "^5.0.4"
-  },
-  "overrides": {
-    "uuid": "^11.1.1",
-    "ws": "^8.22.0",
-    "stream-json": "^3.7.0",
-    "tinypool": "^2.2.0",
-    "bigint-buffer": "npm:four-flap-bigint-buffer@1.1.6",
-    "toml": "^5.0.1"
-  }
+ "name": "@zk-spot-shield/sdk",
+ "version": "0.1.0",
+ "private": true,
+ "description": "TypeScript SDK: localhost Anchor provider, Poseidon Merkle, prove bridge, settle E2E",
+ "type": "module",
+ "main": "dist/index.js",
+ "types": "dist/index.d.ts",
+ "scripts": {
+ "build": "tsc -p tsconfig.json",
+ "test": "vitest run --exclude 'test/e2e/**'",
+ "test:watch": "vitest",
+ "test:e2e": "tsx scripts/e2e-localnet.ts",
+ "test:devnet": "DEVNET_ONCHAIN=1 vitest run test/devnet/onchain.devnet.test.ts",
+ "devnet:init-config": "tsx scripts/devnet-init.ts config",
+ "devnet:init-vault": "tsx scripts/devnet-init.ts vault",
+ "devnet:set-mints": "tsx scripts/devnet-init.ts mints",
+ "devnet:set-vkey": "tsx scripts/devnet-init.ts vkey",
+ "devnet:deposit": "tsx scripts/devnet-init.ts deposit",
+ "devnet:settle": "tsx scripts/devnet-init.ts settle"
+ },
+ "engines": {
+ "node": ">=20"
+ },
+ "dependencies": {
+ "@coral-xyz/anchor": "^0.32.1",
+ "@solana/spl-token": "^0.4.13",
+ "@solana/web3.js": "^1.98.4",
+ "bn.js": "^5.2.1",
+ "poseidon-lite": "^0.3.0"
+ },
+ "devDependencies": {
+ "@types/bn.js": "^5.1.6",
+ "@types/node": "^22.13.10",
+ "tsx": "^4.19.3",
+ "typescript": "^5.8.2",
+ "vitest": "^5.0.4"
+ },
+ "overrides": {
+ "uuid": "^11.1.1",
+ "ws": "^8.22.0",
+ "stream-json": "^3.7.0",
+ "tinypool": "^2.2.0",
+ "bigint-buffer": "npm:four-flap-bigint-buffer@1.1.6",
+ "toml": "^5.0.1"
+ }
 }

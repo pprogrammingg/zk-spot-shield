@@ -1,4 +1,4 @@
-//! Day 47: relayer fee stub (bps of settle amount) for treasury refill.
+//! Relayer fee stub (bps of settle amount) for treasury refill.
 
 /// Flat + bps fee model. Token units match journal `requested_swap_amount`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

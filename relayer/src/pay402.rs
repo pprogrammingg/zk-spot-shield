@@ -1,4 +1,4 @@
-//! Day 50: HTTP 402 shielded payer (P1).
+//! HTTP 402 shielded payer (P1).
 //!
 //! Agent hits a paid resource → `402` quote → presents a settle **journal**
 //! (amount + mint + nullifier). Unlock is keyed by **nullifier**, not a wallet.

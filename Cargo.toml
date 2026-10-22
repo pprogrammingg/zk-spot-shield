@@ -1,19 +1,19 @@
 [workspace]
 resolver = "2"
 members = [
-    "programs/zk_spot_shield",
-    "zk-circuit/io",
-    "zk-circuit/host",
-    "zk-circuit/guest",
-    "client",
-    "relayer",
+ "programs/zk_spot_shield",
+ "zk-circuit/io",
+ "zk-circuit/host",
+ "zk-circuit/guest",
+ "client",
+ "relayer",
 ]
 default-members = [
-    "programs/zk_spot_shield",
-    "zk-circuit/io",
-    "zk-circuit/host",
-    "client",
-    "relayer",
+ "programs/zk_spot_shield",
+ "zk-circuit/io",
+ "zk-circuit/host",
+ "client",
+ "relayer",
 ]
 
 [workspace.package]

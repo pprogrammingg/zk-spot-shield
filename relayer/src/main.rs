@@ -1,9 +1,9 @@
-//! Day 44–47: `cargo run -p zk-spot-shield-relayer`
+//! `cargo run -p zk-spot-shield-relayer`
 //!
 //! Env:
 //! - `RELAYER_BIND` default `127.0.0.1:8787`
 //! - `RELAYER_FEE_PAYER` path to JSON keypair (optional; dry-run settle when set)
-//! - `RELAYER_FEE_BPS` / `RELAYER_FEE_FLAT` (Day 47 fee stub)
+//! - `RELAYER_FEE_BPS` / `RELAYER_FEE_FLAT` (fee stub)
 
 use std::net::SocketAddr;
 use std::sync::Arc;

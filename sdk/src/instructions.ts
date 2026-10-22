@@ -1,5 +1,5 @@
 /**
- * Day 35: compute-budget + settle instruction packaging (+ ALT key plan).
+ * Compute-budget + settle instruction packaging (+ ALT key plan).
  */
 
 import { Program, type Idl, type AnchorProvider } from "@coral-xyz/anchor";
@@ -25,7 +25,7 @@ export const SETTLE_CU_LIMIT = 1_400_000;
 /** Optional micro-lamports per CU; 0 omits the price ix. */
 export const SETTLE_CU_PRICE_MICRO_LAMPORTS = 0;
 
-/** Static keys to put in a settle Address Lookup Table (Day 32 plan). */
+/** Static keys to put in a settle Address Lookup Table. */
 export const SETTLE_ALT_STATIC_LABELS = [
   "token_program",
   "system_program",
@@ -75,7 +75,7 @@ export function settleComputeBudgetIxs(
   return ixs;
 }
 
-/** Settle metas. `payer` = SOL fee payer (relayer OK); ≠ note owner (Day 46). */
+/** Settle metas. `payer` = SOL fee payer (relayer OK); ≠ note owner. */
 export type SettleAccounts = {
   /** Fee payer: SOL + nullifier rent. May be a relayer key. */
   payer: PublicKey;
@@ -227,7 +227,7 @@ export type DepositAccounts = {
   userToken: PublicKey;
 };
 
-/** Day 41: SPL → vault + record public leaf PDA. */
+/** SPL → vault + record public leaf PDA. */
 export async function buildDepositIx(
   program: Program,
   accounts: DepositAccounts,
@@ -249,7 +249,7 @@ export async function buildDepositIx(
     .instruction();
 }
 
-/** Optional: wait for signature confirmation (Day 38 listener hook). */
+/** Optional: wait for signature confirmation. */
 export async function confirmSignature(
   connection: Connection,
   signature: string,

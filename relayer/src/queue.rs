@@ -1,4 +1,4 @@
-//! In-memory prove/settle job queue (Days 45–47).
+//! In-memory prove/settle job queue.
 //!
 //! Worker dry-runs settle tx build with the configured fee-payer key (no `$PROVE`).
 
@@ -128,7 +128,7 @@ pub async fn run_worker(
         let result = if let Some(ref kp) = fee_payer {
             process_intent_dry_run(kp, &intent, fee_cfg)
         } else {
-            // No key configured — accept enqueue only (Day 45 compat).
+            // No key configured — accept enqueue only.
             Ok(crate::submit::SubmitSettleResult {
                 fee_payer: "unconfigured".into(),
                 relayer_fee: crate::fees::compute_relayer_fee(0, fee_cfg),

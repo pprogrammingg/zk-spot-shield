@@ -11,7 +11,7 @@ import {
   requestShieldedSwap,
 } from "../src/index.js";
 
-describe("Day 51 latency probe", () => {
+describe("latency probe", () => {
   it("times fixture prove + SDK swap plan", async () => {
     const t0 = performance.now();
     await getSettleProof();
@@ -47,7 +47,7 @@ describe("Day 51 latency probe", () => {
     const planMs = performance.now() - t2;
 
     console.log(
-      `Day 51 latency fixture_ms=${fixtureMs.toFixed(1)} witness_ms=${witnessMs.toFixed(1)} plan_ms=${planMs.toFixed(1)}`,
+      `latency fixture_ms=${fixtureMs.toFixed(1)} witness_ms=${witnessMs.toFixed(1)} plan_ms=${planMs.toFixed(1)}`,
     );
     expect(fixtureMs).toBeLessThan(500);
     expect(planMs).toBeLessThan(2_000);

@@ -1,4 +1,4 @@
-//! Day 41: SPL deposit into vault + record public leaf commitment PDA.
+//! SPL deposit into vault + record public leaf commitment PDA.
 
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};

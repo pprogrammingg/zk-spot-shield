@@ -1,11 +1,6 @@
 # Tooling scans
 
-```bash
-cargo audit
-cargo clippy -p zk_spot_shield -p zk-circuit-io -p client --locked --all-targets -- -D warnings
-```
-
-CI: `.github/workflows/security.yml`. Ignore list: `.cargo/audit.toml`.
+CI: `.github/workflows/security.yml`. Ignore list: `.cargo/audit.toml`. Commands: `.cursor/rules/05-tests-security.mdc`.
 
 | Advisory | Action |
 | --- | --- |

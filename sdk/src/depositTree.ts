@@ -1,5 +1,5 @@
 /**
- * Day 42: append-only depth-20 Poseidon Merkle tree (mirrors `zk-circuit-io::DepositTree`).
+ * Append-only depth-20 Poseidon Merkle tree (mirrors `zk-circuit-io::DepositTree`).
  */
 
 import {

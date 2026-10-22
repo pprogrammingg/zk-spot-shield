@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * Day 38: one command — build program, start local validator (program + preloaded
+ * One command — build program, start local validator (program + preloaded
  * accounts), run happy + negative E2E, tear down.
  *
  * Usage (from repo root or sdk/):

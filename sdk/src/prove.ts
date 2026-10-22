@@ -1,5 +1,5 @@
 /**
- * Day 34: prove bridge — return Groth16 proof + journal bytes for settle.
+ * Prove bridge — return Groth16 proof + journal bytes for settle.
  *
  * Default: load committed happy-path fixtures (CI-safe, no `$PROVE`).
  * Optional: spawn the Rust host with network Groth16 when explicitly requested.
@@ -39,7 +39,7 @@ export type LoadProofOptions = {
   repoRoot?: string;
 };
 
-/** Read committed `groth16.bin` + `journal.bin` (Day 12 wrap). */
+/** Read committed `groth16.bin` + `journal.bin`. */
 export function loadHappyProofFixture(
   fixtureDir: string = HAPPY_FIXTURE_DIR,
 ): ProofBundle {
