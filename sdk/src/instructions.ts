@@ -2,7 +2,8 @@
  * Day 35: compute-budget + settle instruction packaging (+ ALT key plan).
  */
 
-import { BN, Program, type Idl, type AnchorProvider } from "@coral-xyz/anchor";
+import { Program, type Idl, type AnchorProvider } from "@coral-xyz/anchor";
+import BN from "bn.js";
 import {
   ComputeBudgetProgram,
   PublicKey,
@@ -186,6 +187,36 @@ export async function findDepositLeafPda(
     [SEEDS.depositLeaf, Buffer.from(leaf)],
     programId,
   );
+}
+
+export async function buildSetVkeyHashIx(
+  program: Program,
+  accounts: { authority: PublicKey; globalConfig: PublicKey },
+  vkeyHash: Buffer | Uint8Array,
+): Promise<TransactionInstruction> {
+  return program.methods
+    .setVkeyHash([...Buffer.from(vkeyHash)])
+    .accountsPartial({
+      authority: accounts.authority,
+      globalConfig: accounts.globalConfig,
+    })
+    .instruction();
+}
+
+export async function buildSetVaultMintsIx(
+  program: Program,
+  accounts: { authority: PublicKey; globalConfig: PublicKey; vault: PublicKey },
+  mintA: PublicKey,
+  mintB: PublicKey,
+): Promise<TransactionInstruction> {
+  return program.methods
+    .setVaultMints(mintA, mintB)
+    .accountsPartial({
+      authority: accounts.authority,
+      globalConfig: accounts.globalConfig,
+      vault: accounts.vault,
+    })
+    .instruction();
 }
 
 export type DepositAccounts = {

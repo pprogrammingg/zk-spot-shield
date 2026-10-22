@@ -12,6 +12,7 @@ export {
 } from "./provider.js";
 
 export {
+  BN254_SCALAR_FIELD,
   MERKLE_DEPTH,
   balanceToFieldBytes,
   bytes32ToHex,
@@ -46,6 +47,8 @@ export {
   SETTLE_CU_PRICE_MICRO_LAMPORTS,
   SEEDS,
   buildDepositIx,
+  buildSetVkeyHashIx,
+  buildSetVaultMintsIx,
   buildSettleIx,
   buildSettleTransaction,
   confirmSignature,

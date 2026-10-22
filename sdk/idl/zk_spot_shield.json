@@ -1,5 +1,5 @@
 {
-  "address": "H6X5T8TP6T8hyTySiDVAug8bfULbKGMhCTV5PA9VMHPv",
+  "address": "74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G",
   "metadata": {
     "name": "zk_spot_shield",
     "version": "0.1.0",
@@ -25,11 +25,17 @@
       "accounts": [
         {
           "name": "depositor",
+          "docs": [
+            "Wallet that signs, pays rent for the new leaf PDA, and authorizes the SPL transfer."
+          ],
           "writable": true,
           "signer": true
         },
         {
           "name": "vault",
+          "docs": [
+            "Escrow state PDA (`[\"spot_vault\"]`): mints + reserves; `reserve_*` bumped by `amount`."
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -54,7 +60,8 @@
         {
           "name": "deposit_leaf",
           "docs": [
-            "Public leaf commitment; `init` fails if this leaf was already deposited."
+            "New PDA `[\"deposit_leaf\", leaf]` holding public leaf + amount + mint + depositor.",
+            "`init` fails if this leaf was already deposited."
           ],
           "writable": true,
           "pda": {
@@ -85,18 +92,30 @@
         },
         {
           "name": "vault_token",
+          "docs": [
+            "Vault’s SPL token account (owner = vault PDA) that receives the deposited tokens."
+          ],
           "writable": true
         },
         {
           "name": "user_token",
+          "docs": [
+            "Depositor’s SPL token account (same mint); balance decreases by `amount`."
+          ],
           "writable": true
         },
         {
           "name": "token_program",
+          "docs": [
+            "SPL Token program — CPI target for the transfer."
+          ],
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
           "name": "system_program",
+          "docs": [
+            "System program — creates the `deposit_leaf` account (`init`)."
+          ],
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -119,7 +138,7 @@
     {
       "name": "initialize_global_config",
       "docs": [
-        "Create `GlobalConfig` PDA: authority, frozen `VKEY_HASH`, pause=false."
+        "Create `GlobalConfig` PDA: authority, initial `VKEY_HASH`, pause=false."
       ],
       "discriminator": [
         113,
@@ -173,7 +192,7 @@
     {
       "name": "initialize_vault",
       "docs": [
-        "Create zero-copy escrow `VaultState` PDA (mints/reserves; token ATAs wired later)."
+        "Create zero-copy escrow `VaultState` PDA (mints unset; token ATAs wired later)."
       ],
       "discriminator": [
         48,
@@ -373,6 +392,151 @@
       ]
     },
     {
+      "name": "set_vault_mints",
+      "docs": [
+        "Protocol admin writes `mint_a` / `mint_b` once (Day 61). Fails if already set."
+      ],
+      "discriminator": [
+        172,
+        73,
+        47,
+        237,
+        148,
+        65,
+        14,
+        177
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global_config"
+          ]
+        },
+        {
+          "name": "global_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  112,
+                  111,
+                  116,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "mint_a",
+          "type": "pubkey"
+        },
+        {
+          "name": "mint_b",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "set_vkey_hash",
+      "docs": [
+        "Protocol admin rotates `vkey_hash` after a guest ELF rebuild."
+      ],
+      "discriminator": [
+        84,
+        209,
+        90,
+        145,
+        172,
+        25,
+        136,
+        126
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global_config"
+          ]
+        },
+        {
+          "name": "global_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "vkey_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "settle_shielded_spot",
       "docs": [
         "Settle: verify + root + vault reserves + SPL + nullifier (respects pause)."
@@ -390,6 +554,10 @@
       "accounts": [
         {
           "name": "payer",
+          "docs": [
+            "Fee payer: pays SOL fees + nullifier PDA rent. May differ from note owner /",
+            "recipient ATA owners (Day 46 relayer)."
+          ],
           "writable": true,
           "signer": true
         },
@@ -464,10 +632,17 @@
         },
         {
           "name": "user_token_a",
+          "docs": [
+            "Recipient / user ATA for mint A (payout or unused journal side).",
+            "Owner need not equal `payer` (Day 46)."
+          ],
           "writable": true
         },
         {
           "name": "user_token_b",
+          "docs": [
+            "Recipient / user ATA for mint B."
+          ],
           "writable": true
         },
         {
@@ -702,6 +877,21 @@
       "code": 6017,
       "name": "ZeroDepositLeaf",
       "msg": "Leaf commitment must be non-zero."
+    },
+    {
+      "code": 6018,
+      "name": "VaultMintsAlreadySet",
+      "msg": "Vault mints are already set."
+    },
+    {
+      "code": 6019,
+      "name": "InvalidVaultMint",
+      "msg": "Vault mints must be two distinct non-default pubkeys."
+    },
+    {
+      "code": 6020,
+      "name": "InvalidVkeyHash",
+      "msg": "Verifying-key hash must be non-zero."
     }
   ],
   "types": [

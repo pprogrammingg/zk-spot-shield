@@ -4,11 +4,16 @@
  *
  * Depth-20 tree; path entries are `(sibling, is_right)` as in Rust.
  * Uses `poseidon-lite` (no ethers) so npm audit stays clear of circomlibjs.
+ * 32-byte keys reduce into BN254 Fr before hashing (same as `from_be_bytes_mod_order`).
  */
 
 import { poseidon2, poseidon3 } from "poseidon-lite";
 
 export const MERKLE_DEPTH = 20;
+
+/** BN254 scalar field (circom / ark-bn254 Fr / poseidon-lite `F`). */
+export const BN254_SCALAR_FIELD =
+  21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
 export type MerklePathEntry = {
   sibling: Uint8Array;
@@ -29,7 +34,7 @@ function bytes32ToField(bytes: Uint8Array): bigint {
   for (const b of bytes) {
     x = (x << 8n) + BigInt(b);
   }
-  return x;
+  return x % BN254_SCALAR_FIELD;
 }
 
 /** Field element → big-endian 32 bytes. */

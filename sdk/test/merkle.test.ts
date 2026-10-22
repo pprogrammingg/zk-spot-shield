@@ -66,6 +66,18 @@ describe("Poseidon Merkle (matches zk-circuit-io)", () => {
     expect(bytes32ToHex(root)).toBe(happy.expected_root);
   });
 
+  it("pubkey-sized bytes (above Fr) match zk-circuit-io", async () => {
+    const secret = new Uint8Array(32).fill(0xff);
+    const addr = new Uint8Array(32).fill(0xee);
+    const mint = new Uint8Array(32).fill(0xdd);
+    const leaf = await computeLeaf(secret, addr, 1_000_000);
+    expect(bytes32ToHex(leaf)).toBe(
+      "0x0dad9f6a7dc18f49a0a303d3c0ecceadd7746e48c9b9c502ec07ca95ccf12d9e",
+    );
+    const n = await computeNullifier(secret, leaf, mint);
+    expect(n.some((b) => b !== 0)).toBe(true);
+  });
+
   it("path from happy.json verifies to expected_root", async () => {
     const leaf = hexToBytes32(happy.derived.leaf);
     const path = happy.merkle_path.map((e) => ({

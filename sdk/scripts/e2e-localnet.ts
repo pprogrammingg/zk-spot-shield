@@ -28,7 +28,7 @@ const SDK_ROOT = join(SCRIPT_DIR, "..");
 const REPO_ROOT = join(SDK_ROOT, "..");
 const LEDGER = join(REPO_ROOT, "test-ledger-e2e");
 const ACCOUNTS_DIR = join(SDK_ROOT, ".e2e-accounts");
-const PROGRAM_ID = "H6X5T8TP6T8hyTySiDVAug8bfULbKGMhCTV5PA9VMHPv";
+const PROGRAM_ID = "74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G";
 const SO = join(REPO_ROOT, "target/deploy/zk_spot_shield.so");
 
 const VKEY_HASH = Buffer.from(
