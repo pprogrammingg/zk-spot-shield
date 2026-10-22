@@ -11098,7 +11098,7 @@ name = "zk-circuit-io"
 version = "0.1.0"
 dependencies = [
  "ark-bn254 0.4.0",
- "ark-ff 0.4.2",
+ "ark-ff 0.6.0",
  "light-poseidon 0.2.0",
  "serde",
 ]
@@ -11139,7 +11139,7 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "ark-bn254 0.4.0",
- "ark-ff 0.4.2",
+ "ark-ff 0.6.0",
  "ark-serialize 0.4.2",
  "bytemuck",
  "groth16-solana",
