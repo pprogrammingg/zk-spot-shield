@@ -78,8 +78,8 @@ pub fn load_happy_fixture_vkey_bytes() -> Result<[u8; 32], String> {
 }
 
 pub fn load_vkey_bytes_from_file(path: &Path) -> Result<[u8; 32], String> {
-    let text = std::fs::read_to_string(path)
-        .map_err(|e| format!("read {}: {e}", path.display()))?;
+    let text =
+        std::fs::read_to_string(path).map_err(|e| format!("read {}: {e}", path.display()))?;
     parse_vkey_bytes32(&text).map_err(|e| e.to_string())
 }
 

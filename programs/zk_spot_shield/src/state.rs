@@ -1,10 +1,8 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    error::ErrorCode, CLEAN_FUNDS_ROOT_SEED_PREFIX, DEPOSIT_LEAF_SEED_PREFIX,
-    NULLIFIER_SEED_PREFIX,
+    error::ErrorCode, CLEAN_FUNDS_ROOT_SEED_PREFIX, DEPOSIT_LEAF_SEED_PREFIX, NULLIFIER_SEED_PREFIX,
 };
-
 
 #[account]
 #[derive(InitSpace)]
@@ -21,17 +19,26 @@ pub struct GlobalConfig {
     pub pause_flag: bool,
 }
 
+impl GlobalConfig {
+    /// Protocol admin rotates the circuit fingerprint after a guest rebuild.
+    pub fn rotate_vkey_hash(&mut self, vkey_hash: [u8; 32]) -> Result<()> {
+        require!(vkey_hash != [0u8; 32], ErrorCode::InvalidVkeyHash);
+        self.vkey_hash = vkey_hash;
+        Ok(())
+    }
+}
+
 #[account(zero_copy)]
 #[repr(C)]
 #[derive(Debug, PartialEq)]
 pub struct VaultState {
-    pub authority: Pubkey,       // 32 bytes
-    pub mint_a: Pubkey,          // 32 bytes
-    pub mint_b: Pubkey,          // 32 bytes
-    pub reserve_a: u64,          // 8 bytes
-    pub reserve_b: u64,          // 8 bytes
-    pub bump: u8,                // 1 byte
-    pub _padding: [u8; 7],       // 7 bytes (explicit padding to align to 8-byte boundary)
+    pub authority: Pubkey, // 32 bytes
+    pub mint_a: Pubkey,    // 32 bytes
+    pub mint_b: Pubkey,    // 32 bytes
+    pub reserve_a: u64,    // 8 bytes
+    pub reserve_b: u64,    // 8 bytes
+    pub bump: u8,          // 1 byte
+    pub _padding: [u8; 7], // 7 bytes (explicit padding to align to 8-byte boundary)
 }
 
 // Static alignment and size checks compile-time
@@ -43,10 +50,7 @@ const _: () = {
 
 impl VaultState {
     pub fn find_pda(program_id: &Pubkey) -> (Pubkey, u8) {
-        Pubkey::find_program_address(
-            &[crate::SPOT_VAULT_SEED],
-            program_id,
-        )
+        Pubkey::find_program_address(&[crate::SPOT_VAULT_SEED], program_id)
     }
 
     /// Day 26 legacy wallet-leg swap: vault takes `asset_mint` and pays the other.
@@ -124,6 +128,22 @@ impl VaultState {
         }
         Ok(())
     }
+
+    /// Day 61: write the two pair mints once. Fail closed if already set, equal, or default.
+    pub fn set_mints(&mut self, mint_a: &Pubkey, mint_b: &Pubkey) -> Result<()> {
+        require!(
+            self.mint_a == Pubkey::default() && self.mint_b == Pubkey::default(),
+            ErrorCode::VaultMintsAlreadySet
+        );
+        require!(
+            *mint_a != Pubkey::default() && *mint_b != Pubkey::default(),
+            ErrorCode::InvalidVaultMint
+        );
+        require!(mint_a != mint_b, ErrorCode::InvalidVaultMint);
+        self.mint_a = *mint_a;
+        self.mint_b = *mint_b;
+        Ok(())
+    }
 }
 
 /// PDA seeds: `["deposit_leaf", leaf]` — public leaf commitment after a deposit.
@@ -166,14 +186,8 @@ const _: () = {
 };
 
 impl NullifierAccount {
-    pub fn find_pda(
-        program_id: &Pubkey,
-        nullifier: &[u8; 32],
-    ) -> (Pubkey, u8) {
-        Pubkey::find_program_address(
-            &[NULLIFIER_SEED_PREFIX, nullifier],
-            program_id,
-        )
+    pub fn find_pda(program_id: &Pubkey, nullifier: &[u8; 32]) -> (Pubkey, u8) {
+        Pubkey::find_program_address(&[NULLIFIER_SEED_PREFIX, nullifier], program_id)
     }
 }
 
@@ -195,14 +209,8 @@ const _: () = {
 };
 
 impl CleanFundsRoot {
-    pub fn find_pda(
-        program_id: &Pubkey,
-        root: &[u8; 32],
-    ) -> (Pubkey, u8) {
-        Pubkey::find_program_address(
-            &[CLEAN_FUNDS_ROOT_SEED_PREFIX, root],
-            program_id,
-        )
+    pub fn find_pda(program_id: &Pubkey, root: &[u8; 32]) -> (Pubkey, u8) {
+        Pubkey::find_program_address(&[CLEAN_FUNDS_ROOT_SEED_PREFIX, root], program_id)
     }
 }
 
@@ -349,6 +357,65 @@ mod tests {
             error!(ErrorCode::InvalidDepositMint)
         );
         assert_eq!(vault.reserve_a, 100);
+        assert_eq!(vault.reserve_b, 200);
+    }
+
+    fn unset_mints_vault() -> VaultState {
+        VaultState {
+            authority: Pubkey::new_unique(),
+            mint_a: Pubkey::default(),
+            mint_b: Pubkey::default(),
+            reserve_a: 0,
+            reserve_b: 0,
+            bump: 255,
+            _padding: [0u8; 7],
+        }
+    }
+
+    #[test]
+    fn rotate_vkey_hash_writes_and_rejects_zero() {
+        let mut config = GlobalConfig {
+            authority: Pubkey::new_unique(),
+            vkey_hash: [1u8; 32],
+            pause_flag: false,
+        };
+        assert_eq!(
+            config.rotate_vkey_hash([0u8; 32]).unwrap_err(),
+            error!(ErrorCode::InvalidVkeyHash)
+        );
+        let next = [2u8; 32];
+        config.rotate_vkey_hash(next).unwrap();
+        assert_eq!(config.vkey_hash, next);
+    }
+
+    #[test]
+    fn set_mints_writes_once() {
+        let mut vault = unset_mints_vault();
+        let a = Pubkey::new_from_array([3u8; 32]);
+        let b = Pubkey::new_from_array([4u8; 32]);
+        vault.set_mints(&a, &b).unwrap();
+        assert_eq!(vault.mint_a, a);
+        assert_eq!(vault.mint_b, b);
+        assert_eq!(
+            vault.set_mints(&a, &b).unwrap_err(),
+            error!(ErrorCode::VaultMintsAlreadySet)
+        );
+    }
+
+    #[test]
+    fn set_mints_rejects_default_and_equal() {
+        let mut vault = unset_mints_vault();
+        let a = Pubkey::new_from_array([3u8; 32]);
+        assert_eq!(
+            vault.set_mints(&Pubkey::default(), &a).unwrap_err(),
+            error!(ErrorCode::InvalidVaultMint)
+        );
+        assert_eq!(
+            vault.set_mints(&a, &a).unwrap_err(),
+            error!(ErrorCode::InvalidVaultMint)
+        );
+        assert_eq!(vault.mint_a, Pubkey::default());
+        assert_eq!(vault.mint_b, Pubkey::default());
     }
 
     #[test]
@@ -362,15 +429,15 @@ mod tests {
     fn apply_swap_arithmetic_edge_harness() {
         // (reserve_a, reserve_b, amount, expect_ok) for mint_a = receive A / pay B.
         let edges: &[(u64, u64, u64, bool)] = &[
-            (1_000, 1_000, 0, false),       // zero amount
-            (0, 1_000, 1, true),            // receive into empty A
-            (1_000, 0, 1, false),           // pay-side empty
-            (1_000, 1, 1, true),            // exact pay drain
-            (1_000, 1, 2, false),           // pay underflow
-            (u64::MAX, 1_000, 1, false),    // receive overflow
-            (u64::MAX - 10, 10, 5, true),   // near max receive (sum stays ≤ u64::MAX)
-            (0, 0, 1, false),               // both empty → pay underflow
-            (500, 500, 500, true),          // equal drain
+            (1_000, 1_000, 0, false),     // zero amount
+            (0, 1_000, 1, true),          // receive into empty A
+            (1_000, 0, 1, false),         // pay-side empty
+            (1_000, 1, 1, true),          // exact pay drain
+            (1_000, 1, 2, false),         // pay underflow
+            (u64::MAX, 1_000, 1, false),  // receive overflow
+            (u64::MAX - 10, 10, 5, true), // near max receive (sum stays ≤ u64::MAX)
+            (0, 0, 1, false),             // both empty → pay underflow
+            (500, 500, 500, true),        // equal drain
         ];
 
         for &(ra, rb, amount, expect_ok) in edges {
@@ -426,11 +493,9 @@ mod tests {
         let program_id = Pubkey::new_unique();
         let nullifier = [1u8; 32];
 
-        let (pda1, bump1) =
-            NullifierAccount::find_pda(&program_id, &nullifier);
+        let (pda1, bump1) = NullifierAccount::find_pda(&program_id, &nullifier);
 
-        let (pda2, bump2) =
-            NullifierAccount::find_pda(&program_id, &nullifier);
+        let (pda2, bump2) = NullifierAccount::find_pda(&program_id, &nullifier);
 
         assert_eq!(pda1, pda2);
         assert_eq!(bump1, bump2);
@@ -443,11 +508,9 @@ mod tests {
         let nullifier_a = [1u8; 32];
         let nullifier_b = [2u8; 32];
 
-        let (pda_a, _) =
-            NullifierAccount::find_pda(&program_id, &nullifier_a);
+        let (pda_a, _) = NullifierAccount::find_pda(&program_id, &nullifier_a);
 
-        let (pda_b, _) =
-            NullifierAccount::find_pda(&program_id, &nullifier_b);
+        let (pda_b, _) = NullifierAccount::find_pda(&program_id, &nullifier_b);
 
         assert_ne!(pda_a, pda_b);
     }
@@ -457,11 +520,9 @@ mod tests {
         let program_id = Pubkey::new_unique();
         let root = [1u8; 32];
 
-        let (pda1, bump1) =
-            CleanFundsRoot::find_pda(&program_id, &root);
+        let (pda1, bump1) = CleanFundsRoot::find_pda(&program_id, &root);
 
-        let (pda2, bump2) =
-            CleanFundsRoot::find_pda(&program_id, &root);
+        let (pda2, bump2) = CleanFundsRoot::find_pda(&program_id, &root);
 
         assert_eq!(pda1, pda2);
         assert_eq!(bump1, bump2);
@@ -474,11 +535,9 @@ mod tests {
         let root_a = [1u8; 32];
         let root_b = [2u8; 32];
 
-        let (pda_a, _) =
-            CleanFundsRoot::find_pda(&program_id, &root_a);
+        let (pda_a, _) = CleanFundsRoot::find_pda(&program_id, &root_a);
 
-        let (pda_b, _) =
-            CleanFundsRoot::find_pda(&program_id, &root_b);
+        let (pda_b, _) = CleanFundsRoot::find_pda(&program_id, &root_b);
 
         assert_ne!(pda_a, pda_b);
     }

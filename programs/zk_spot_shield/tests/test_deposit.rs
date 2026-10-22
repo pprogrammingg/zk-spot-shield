@@ -27,9 +27,8 @@ const MINT_B_BYTES: [u8; 32] = [4u8; 32];
 
 /// `happy.json` derived.leaf — Poseidon(secret=0x01.., addr=0x02.., balance=1000).
 const HAPPY_LEAF: [u8; 32] = [
-    0x26, 0x3f, 0xf1, 0x74, 0x37, 0xc6, 0x65, 0xe4, 0xa4, 0x78, 0x62, 0x85, 0x99, 0x42, 0xf8,
-    0x35, 0xfc, 0xf6, 0x8c, 0x55, 0x64, 0x22, 0x38, 0xcc, 0x4a, 0x2d, 0x3f, 0x82, 0xd0, 0x9d,
-    0x6a, 0x76,
+    0x26, 0x3f, 0xf1, 0x74, 0x37, 0xc6, 0x65, 0xe4, 0xa4, 0x78, 0x62, 0x85, 0x99, 0x42, 0xf8, 0x35,
+    0xfc, 0xf6, 0x8c, 0x55, 0x64, 0x22, 0x38, 0xcc, 0x4a, 0x2d, 0x3f, 0x82, 0xd0, 0x9d, 0x6a, 0x76,
 ];
 
 fn load_program(svm: &mut LiteSVM, program_id: Pubkey) {
@@ -58,11 +57,7 @@ fn happy_fixture() -> (Vec<u8>, Vec<u8>) {
     (proof, journal)
 }
 
-fn send_ix(
-    svm: &mut LiteSVM,
-    payer: &Keypair,
-    instruction: Instruction,
-) -> Result<(), String> {
+fn send_ix(svm: &mut LiteSVM, payer: &Keypair, instruction: Instruction) -> Result<(), String> {
     let blockhash = svm.latest_blockhash();
     let msg = Message::new_with_blockhash(
         &[
@@ -131,10 +126,8 @@ fn init_config_and_vault(svm: &mut LiteSVM, program_id: Pubkey, payer: &Keypair)
         &[zk_spot_shield::constants::GLOBAL_CONFIG_SEED],
         &program_id,
     );
-    let (vault_pda, _) = Pubkey::find_program_address(
-        &[zk_spot_shield::constants::SPOT_VAULT_SEED],
-        &program_id,
-    );
+    let (vault_pda, _) =
+        Pubkey::find_program_address(&[zk_spot_shield::constants::SPOT_VAULT_SEED], &program_id);
 
     send_ix(
         svm,
@@ -285,14 +278,7 @@ fn deposit_moves_tokens_and_records_leaf() {
     send_ix(
         &mut svm,
         &payer,
-        deposit_ix(
-            program_id,
-            payer.pubkey(),
-            HAPPY_LEAF,
-            1_000,
-            vta,
-            uta,
-        ),
+        deposit_ix(program_id, payer.pubkey(), HAPPY_LEAF, 1_000, vta, uta),
     )
     .expect("deposit");
 
@@ -370,14 +356,7 @@ fn deposit_then_register_tip_then_settle() {
     send_ix(
         &mut svm,
         &payer,
-        deposit_ix(
-            program_id,
-            payer.pubkey(),
-            HAPPY_LEAF,
-            1_000,
-            vta,
-            uta,
-        ),
+        deposit_ix(program_id, payer.pubkey(), HAPPY_LEAF, 1_000, vta, uta),
     )
     .expect("deposit happy leaf");
     assert_eq!(read_vault(&svm, program_id).reserve_a, 1_000);

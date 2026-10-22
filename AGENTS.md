@@ -20,6 +20,7 @@ Guidance for AI agents working in **zk-spot-shield**.
 | `07-commit-messages.mdc` | Always — suggest ≤50-char subjects + ` - YES`; user commits/pushes; no Cursor Co-authored-by |
 | `04-context-hygiene.mdc` | Always — skip `target/` and other generated trees |
 | `05-tests-security.mdc` | Always — after editing a crate, `--lib` + clippy on **that** crate; `cargo audit`; host execute is not a substitute |
+| `08-docs-sync.mdc` | Always — after a behavior change, update the matching `docs/` / `notes/` page (map in the rule) |
 
 ## Repo shape
 

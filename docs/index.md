@@ -33,15 +33,15 @@ The chain learns the trade amount, the token, and the one-time tag. It never lea
 
 | Area | Status |
 | --- | --- |
-| Circuit: Merkle inclusion, solvency check, nullifier | Done |
-| Remote Groth16 proof of the happy-path example | Done, stored as test fixtures |
-| Negative test: a forged Merkle path is rejected | Done |
-| Solana program: config, vault, roots, nullifiers, deposit leaves | Done |
-| On-chain verify + 1:1 settle + SPL legs | Done |
-| Relayer scaffold + fee stub | Done |
-| Vault-only shielded spend | Done |
-| Hidden recipient hooks | Partial (SDK; full unlink later) |
-| Change notes + encrypted note backup | Next (Days 73–76) |
-| Trading UI polish / extra RPC / IPFS | Later |
+| Circuit, Groth16 fixtures, forged-path reject | Done |
+| Program: config, vault, roots, nullifiers, deposit | Done |
+| Vault-only 1:1 settle (proof → vault pays the other mint) | Done |
+| Relayer fee payer + HTTP 402 stub | Done |
+| TypeScript SDK + basic swap UI | Done (UI Exit needs a localnet click-through) |
+| Hidden recipient | Partial (SDK hooks; Days 77–79 omit depositor + settle unlink) |
+| Change notes + encrypted note backup | After Devnet 63 settle + 64 tag (Days 73–76) |
+| Hide / unlink depositor | After backup (Days 77–79) |
+| Devnet launch | 58–63 done (program `74UW…`, live settle `3V7YF2UL…`); **next: Day 64** tag |
+| Extra RPC / IPFS | Later (Days 69–72) |
 
 Start with [Architecture](architecture.md) for the numbered flow, [Accounts deep dive](accounts-deep-dive.md) for PDA/ATA vocabulary, or [Tests](tests.md) for fixtures.

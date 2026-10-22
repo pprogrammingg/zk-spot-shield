@@ -87,16 +87,19 @@ pub fn unpack_settle_payload(bytes: &[u8]) -> Result<(Vec<u8>, Vec<u8>), PackErr
             got: bytes.len(),
         });
     }
-    let journal_len =
-        u32::from_le_bytes(bytes[journal_len_start..journal_len_start + 4].try_into().unwrap())
-            as usize;
+    let journal_len = u32::from_le_bytes(
+        bytes[journal_len_start..journal_len_start + 4]
+            .try_into()
+            .unwrap(),
+    ) as usize;
     let journal_start = journal_len_start + 4;
-    let journal_end = journal_start
-        .checked_add(journal_len)
-        .ok_or(PackError::JournalLenMismatch {
-            declared: journal_len,
-            remaining: bytes.len().saturating_sub(journal_start),
-        })?;
+    let journal_end =
+        journal_start
+            .checked_add(journal_len)
+            .ok_or(PackError::JournalLenMismatch {
+                declared: journal_len,
+                remaining: bytes.len().saturating_sub(journal_start),
+            })?;
     if journal_end != bytes.len() {
         return Err(PackError::JournalLenMismatch {
             declared: journal_len,

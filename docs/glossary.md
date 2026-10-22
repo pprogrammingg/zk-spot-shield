@@ -1,7 +1,7 @@
 # Glossary
 
 !!! tip "Owner, payer, protocol admin"
-    Three different jobs that are easy to mix up. **Owner** is the *program* allowed to write an account's data. **Payer** is who funds the rent when an account is created. **Protocol admin** is the public key stored in `GlobalConfig` (Rust field `authority`) that may pause settle and register Merkle tips. One wallet can fill several roles, but they are separate jobs. SPL also uses the word “authority” for token spenders — that is not the protocol admin.
+    Three different jobs that are easy to mix up. **Owner** is the *program* allowed to write an account's data. **Payer** is who funds the rent when an account is created. **Protocol admin** is the public key stored in `GlobalConfig` (Rust field `authority`) that may pause settle, register Merkle tips, and rotate `vkey_hash`. One wallet can fill several roles, but they are separate jobs. SPL also uses the word “authority” for token spenders — that is not the protocol admin.
 
 ## Solana
 
@@ -24,7 +24,7 @@
 :   A Rust framework for Solana programs. `#[program]` lists the instructions, `#[derive(Accounts)]` declares and validates each instruction's accounts, and `#[error_code]` defines error variants.
 
 **Protocol admin**
-:   The admin pubkey on `GlobalConfig` (code field `authority`). Signs `pause` / `unpause` and `register_clean_funds_root`. Not the vault PDA and not an SPL token-account spender.
+:   The admin pubkey on `GlobalConfig` (code field `authority`). Signs `pause` / `unpause`, `register_clean_funds_root`, `set_vault_mints`, and `set_vkey_hash`. Not the vault PDA and not an SPL token-account spender.
 
 **Bump**
 :   One extra byte added to a PDA's seeds so the derived address has no private key. Stored on `VaultState` so the program can sign as the vault later.
@@ -51,7 +51,7 @@
 :   Spare bytes added by hand (`_padding: [u8; 7]` on `VaultState`) so the struct size is a multiple of 8 and has no compiler-inserted gaps.
 
 **Fee payer**
-:   The signer charged the transaction fee. Not necessarily the same as the rent payer for a new account.
+:   The signer charged the transaction fee. On settle this may be a relayer; it need not own the recipient token accounts. Not necessarily the same as the rent payer for a new account.
 
 **`init`**
 :   Anchor account constraint that creates a new account in this instruction, allocates `space` bytes, and makes this program its owner. Fails if the account already exists, which is what makes the nullifier check atomic.
@@ -93,7 +93,10 @@
 :   An account whose private key signed the transaction. Anchor's `Signer<'info>` enforces it.
 
 **SPL Token**
-:   Solana's standard token program. Settlement will move tokens through it.
+:   Solana's standard token program. Deposit and settle move tokens through it.
+
+**Vault-only settle**
+:   After deposit, mint A already sits in the vault. `settle_shielded_spot` does not pull that mint from the user again; the vault pays the other mint 1:1.
 
 **System Program**
 :   The built-in program that creates accounts and transfers SOL. `init` calls it under the hood.
@@ -137,7 +140,7 @@
 :   `Poseidon(secret, leaf, mint)`, a one-time tag revealed when spending. The same note always yields the same nullifier, so a second spend is detectable without revealing which note it was.
 
 **Poseidon**
-:   A hash function designed to be cheap inside zero-knowledge proofs.
+:   A hash function designed to be cheap inside zero-knowledge proofs. 32-byte inputs (secrets, Solana pubkeys, mint ids) are reduced into the BN254 scalar field before hashing, matching circom / `poseidon-lite`.
 
 **Private inputs (witness)**
 :   The hidden data the guest reads: secret, balance, path, and so on. Never revealed by the proof.
@@ -149,7 +152,7 @@
 :   Succinct's zkVM. You write Rust, and SP1 proves the program ran correctly.
 
 **Verifying key (vkey) / `vkey_hash`**
-:   A fingerprint of a specific guest program. A proof only verifies against the key of the program that made it. `GlobalConfig` stores the hash so the chain trusts exactly one circuit.
+:   A fingerprint of a specific guest program. A proof only verifies against the key of the program that made it. `GlobalConfig` stores the hash so the chain trusts exactly one circuit. Protocol admin may rotate it with `set_vkey_hash` after a guest rebuild.
 
 **Zero-knowledge proof**
 :   A proof that a statement is true which reveals nothing beyond the statement itself.

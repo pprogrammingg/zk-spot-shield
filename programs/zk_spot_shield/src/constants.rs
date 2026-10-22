@@ -54,7 +54,8 @@ mod tests {
         // Init: global_config + vault — seeds + bump on init.
         assert_eq!(GLOBAL_CONFIG_SEED, b"global-config");
         assert_eq!(SPOT_VAULT_SEED, b"spot_vault");
-        // Authority gates: register_clean_funds_root + pause/unpause use has_one = authority.
+        // Authority gates: register_clean_funds_root + pause/unpause + set_vault_mints
+        // + set_vkey_hash use has_one = authority on GlobalConfig.
         // Settle PDAs: global_config, vault (bump from account), clean_funds_root (journal root),
         // nullifier (journal nullifier). Settle is permissionless (no has_one on payer).
         assert_eq!(CLEAN_FUNDS_ROOT_SEED_PREFIX, b"clean_funds_root");
@@ -67,16 +68,20 @@ mod tests {
         let ixs: &[(&str, &str)] = &[
             ("initialize_global_config", "payer"),
             ("initialize_vault", "payer"),
+            ("set_vault_mints", "authority"),
+            ("set_vkey_hash", "authority"),
             ("register_clean_funds_root", "authority"),
             ("deposit_shielded", "depositor"),
             ("settle_shielded_spot", "payer"),
             ("pause", "authority"),
             ("unpause", "authority"),
         ];
-        assert_eq!(ixs.len(), 7);
+        assert_eq!(ixs.len(), 9);
         assert!(ixs.iter().all(|(n, s)| !n.is_empty() && !s.is_empty()));
         assert_eq!(
-            ixs.iter().find(|(n, _)| *n == "settle_shielded_spot").map(|(_, s)| *s),
+            ixs.iter()
+                .find(|(n, _)| *n == "settle_shielded_spot")
+                .map(|(_, s)| *s),
             Some("payer")
         );
     }
@@ -90,9 +95,9 @@ mod tests {
         assert_eq!(
             VKEY_HASH,
             [
-                0x00, 0xb3, 0xa1, 0x5c, 0xe4, 0xc0, 0xea, 0x94, 0xe3, 0xb0, 0x26, 0x74, 0x73,
-                0xc6, 0xb7, 0x54, 0x3a, 0x80, 0xc7, 0x2d, 0x20, 0x9b, 0x2c, 0x94, 0x7f, 0x71,
-                0x88, 0x6c, 0x6a, 0x57, 0x35, 0xd7,
+                0x00, 0xb3, 0xa1, 0x5c, 0xe4, 0xc0, 0xea, 0x94, 0xe3, 0xb0, 0x26, 0x74, 0x73, 0xc6,
+                0xb7, 0x54, 0x3a, 0x80, 0xc7, 0x2d, 0x20, 0x9b, 0x2c, 0x94, 0x7f, 0x71, 0x88, 0x6c,
+                0x6a, 0x57, 0x35, 0xd7,
             ]
         );
     }

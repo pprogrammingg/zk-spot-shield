@@ -11,20 +11,36 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("H6X5T8TP6T8hyTySiDVAug8bfULbKGMhCTV5PA9VMHPv");
+declare_id!("74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G");
 
 #[program]
 pub mod zk_spot_shield {
     use super::*;
 
-    /// Create `GlobalConfig` PDA: authority, frozen `VKEY_HASH`, pause=false.
+    /// Create `GlobalConfig` PDA: authority, initial `VKEY_HASH`, pause=false.
     pub fn initialize_global_config(ctx: Context<InitializeGlobalConfig>) -> Result<()> {
-        crate::instructions::initialize_global_config::handle_initialize_global_config(ctx, VKEY_HASH)
+        crate::instructions::initialize_global_config::handle_initialize_global_config(
+            ctx, VKEY_HASH,
+        )
     }
 
-    /// Create zero-copy escrow `VaultState` PDA (mints/reserves; token ATAs wired later).
+    /// Protocol admin rotates `vkey_hash` after a guest ELF rebuild.
+    pub fn set_vkey_hash(ctx: Context<SetVkeyHash>, vkey_hash: [u8; 32]) -> Result<()> {
+        instructions::set_vkey_hash::handle_set_vkey_hash(ctx, vkey_hash)
+    }
+
+    /// Create zero-copy escrow `VaultState` PDA (mints unset; token ATAs wired later).
     pub fn initialize_vault(ctx: Context<InitializeVault>) -> Result<()> {
         instructions::initialize_vault::handle_initialize_vault(ctx)
+    }
+
+    /// Protocol admin writes `mint_a` / `mint_b` once (Day 61). Fails if already set.
+    pub fn set_vault_mints(
+        ctx: Context<SetVaultMints>,
+        mint_a: Pubkey,
+        mint_b: Pubkey,
+    ) -> Result<()> {
+        instructions::set_vault_mints::handle_set_vault_mints(ctx, mint_a, mint_b)
     }
 
     /// Authority registers a `CleanFundsRoot` PDA for an approved Merkle root.

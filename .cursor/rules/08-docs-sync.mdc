@@ -1,0 +1,37 @@
+---
+description: After code changes, update the matching docs — do not leave pages describing old settle or planned features that shipped.
+alwaysApply: true
+---
+
+# Docs follow the code
+
+If you change behavior, layout, or a public claim, update the pages in the table. Skip docs only for refactors that do not change any claim a reader could quote (rename a private helper, comment-only).
+
+Public site is `docs/` (MkDocs). Engineer notes are `notes/` and the root `README.md`. Do not contradict `docs/security.md` from `notes/threat-model.md`.
+
+## Map (edit → open)
+
+| You changed | Update these (check the listed claims) |
+| --- | --- |
+| `programs/**/settle*` / vault spend / SPL legs | `docs/solana-program.md`, `docs/architecture.md` phase D, `docs/accounts-deep-dive.md` happy-path |
+| `programs/**/state.rs`, sizes, seeds, padding | `docs/solana-program.md` table, `docs/accounts-deep-dive.md` cards, `notes/budgets.md`, `notes/layout-signer-audit.md` |
+| Pause, admin, `has_one`, root register | `docs/security.md`, `notes/threat-model.md`, glossary **protocol admin** |
+| Journal / `PublicOutputs` / Poseidon / guest rules | `docs/circuit.md`, `docs/tests.md` happy journal, `docs/glossary.md` ZK terms |
+| Fixtures, vkey, prove path | `docs/circuit.md` fixtures, `notes/proving.md`, `zk-circuit/fixtures/happy/README.md` |
+| Relayer, 402, fee payer | `docs/architecture.md` phase E, `docs/security.md` A16, `notes/relayer-economics.md` |
+| SDK / UI submit path | `docs/architecture.md` phase A + layout, `docs/index.md` status, `ui/README.md` |
+| Compute units / ix byte size | `notes/cu-breakdown.md`, `notes/budgets.md`, root README measured-cost table |
+| Roadmap rank / “next Day” | `roadmap.md` calendar **and** `docs/index.md` status row |
+
+## How to decide
+
+1. Name the **user-visible claim** you changed (e.g. “settle still debit the user’s mint A”).
+2. Grep `docs/` and `notes/` for that claim (old SPL legs, “upcoming” vault-only, “planned” root register).
+3. Fix every hit so shipped vs upcoming matches `roadmap.md`. Prefer one sentence over a new page.
+4. If a threat-model ID (A01–A25) is involved, edit `docs/security.md` first, then the short `notes/threat-model.md`.
+
+## Do not
+
+- Leave `docs/` saying wallet→vault settle if the program is vault-only
+- Mark a feature “planned” after its Day Exit is `[x]`
+- Duplicate the A01–A25 table into the README

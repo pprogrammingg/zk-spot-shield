@@ -1,5 +1,6 @@
 //! Day 21: create `GlobalConfig` PDA (`["global-config"]`).
-//! Stores authority, frozen circuit `vkey_hash`, and `pause_flag = false`.
+//! Stores authority, initial circuit `vkey_hash`, and `pause_flag = false`.
+//! Admin may later rotate the hash with `set_vkey_hash`.
 
 use anchor_lang::prelude::*;
 

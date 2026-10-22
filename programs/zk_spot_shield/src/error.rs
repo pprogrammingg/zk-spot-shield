@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 
-
 #[error_code]
 pub enum ErrorCode {
     // tutorial errors
@@ -58,4 +57,13 @@ pub enum ErrorCode {
 
     #[msg("Leaf commitment must be non-zero.")]
     ZeroDepositLeaf,
+
+    #[msg("Vault mints are already set.")]
+    VaultMintsAlreadySet,
+
+    #[msg("Vault mints must be two distinct non-default pubkeys.")]
+    InvalidVaultMint,
+
+    #[msg("Verifying-key hash must be non-zero.")]
+    InvalidVkeyHash,
 }

@@ -12,7 +12,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-zk_spot_shield = "H6X5T8TP6T8hyTySiDVAug8bfULbKGMhCTV5PA9VMHPv"
+zk_spot_shield = "74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G"
+
+[programs.devnet]
+zk_spot_shield = "74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G"
 
 [provider]
 cluster = "localnet"

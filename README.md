@@ -36,7 +36,7 @@ sdk/                      TypeScript client
 ui/                       swap screen (React)
 ```
 
-Localnet program id: `H6X5T8TP6T8hyTySiDVAug8bfULbKGMhCTV5PA9VMHPv`. Devnet id after deploy: [`notes/devnet.md`](./notes/devnet.md).
+Program id (`declare_id!` / localnet / Devnet): `74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G`. Deploy record: [`notes/devnet.md`](./notes/devnet.md).
 
 ## Measured cost
 
@@ -125,7 +125,7 @@ The UI uses your wallet as the fee payer by default. The relayer is optional. Ho
 
 ## Devnet
 
-Operator steps: [`notes/devnet.md`](./notes/devnet.md). Click through the UI: [`notes/manual-devnet.md`](./notes/manual-devnet.md). Live-cluster tests: [`notes/devnet-tests.md`](./notes/devnet-tests.md) (`DEVNET_ONCHAIN=1`).
+Deploy / operator steps: [`notes/devnet.md`](./notes/devnet.md) (start at Day 58). Click through the UI: [`notes/manual-devnet.md`](./notes/manual-devnet.md). Live-cluster tests: [`notes/devnet-tests.md`](./notes/devnet-tests.md) (`DEVNET_ONCHAIN=1`).
 
 ## Docs site
 

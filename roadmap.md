@@ -1,6 +1,6 @@
 # ZK-Shielded Spot Settlement Engine — Session Roadmap (+ private agent payments over HTTP 402; payment-flow UI planned as a separate repo)
 
-Calibrated for **~80 sessions** (Days **0–76** engineering + **3 writing checkpoints**). Each engineering Day is 1.5 hours (3 × 25 min). Writing checkpoints are also full sessions, but they are **not** design sprints — see the visual budget below.
+Calibrated for **~83 sessions** (Days **0–79** engineering + **3 writing checkpoints**). Each engineering Day is 1.5 hours (3 × 25 min). Writing checkpoints are also full sessions, but they are **not** design sprints — see the visual budget below.
 
 Mark items `[x]` when done. A Day is **done** only when its *Exit* criteria pass — not when the code “mostly exists.”
 
@@ -18,13 +18,17 @@ Next engineering follows this order — not “whatever Day number looks fun.”
 | **2** | **Vault-only shielded settle** | **Day 48** ✓ | Deposit-backed spend: vault pays other mint only — **no** second user→vault of journal mint |
 | **3** | **SDK + optional hidden recipient hooks** | **Day 49** ✓ | Drive deposit-backed settle; recipient ATA ≠ depositor; relayer settle-intent encode |
 | **4** | **Shielded 402 payer (P1)** | **Day 50** ✓ | HTTP 402 quote → pay with settle journal (nullifier path), fixtures — no `$PROVE` |
-| **5** | **Change notes** (spend 100, keep 900) | **Days 73–75** | Partial spend is the product gap. After vault-only (48) + P1 (50). **Do not wait** for uncensorable UI |
+| **Now** | **Live Devnet swap (SDK)** | **Day 63** ✓ | Settle `3V7YF2UL…`; journal mint `DNNk…`; `reserve_b` 1e6 → 9e5 |
+| **Next** | **Docs + `v1.0.0-devnet` tag** | **Day 64** | Settle signature is in `notes/devnet.md`; you commit + tag |
+| **5** | **Change notes** (spend 100, keep 900) | **Days 73–75** | Product gap. After this Devnet slice (61→63→64). **Do not wait** for uncensorable UI |
 | **6** | **Encrypted note backup** | **Day 76** | Wiped device can restore `{secret, balance, address, leaf_index}`. After change notes so the backup format includes remainder notes |
-| **7** | **Uncensorable UI / extra RPC** | **Days 69–72** | Self-submit, multi-RPC, IPFS mirrors — **back seat** until 73–76 Exit |
+| **7** | **Hide / unlink depositor** | **Days 77–79** | Leaf PDA without raw depositor; settle recipient ≠ deposit wallet. After backup so remaining notes are restorable when the deposit link is cut |
+| **8** | **Uncensorable UI / extra RPC** | **Days 69–72** | Self-submit, multi-RPC, IPFS mirrors — **back seat** until 73–79 Exit |
+| — | **Relayer on Devnet RPC** | **Day 62** skip | Local dry-run server only; `RELAYER_RPC` unread. UI self-submit is enough |
 | — | AMM curve (“100 A → 50 B”) | Not a Day | Stay **1:1 spot** unless product explicitly pivots |
-| — | Perfect deposit privacy (no depositor on leaf PDA) | Tech debt / later | Deposit still stores depositor pubkey today |
+| — | Same-mint deposit/withdraw pool | Parked | 1:1 A→B is a dummy; USDC-in/USDC-out is a later track, not ahead of 73–79 |
 
-**Hard rule:** Finish Days **46–49** before Day **50** (P1). Change notes (73–75) and note backup (76) run **before** Days 69–72. Do not invent AMM Days ahead of P1. Devnet 58–64 and a basic swap screen (66) may still finish first so there is something to click; extra RPC and seizure runbooks wait.
+**Hard rule:** Next session is **Day 64** (docs + `v1.0.0-devnet` tag). Skip **62** send. Do not start 73 mid-session. After 64 Exit: **73–75 → 76 → 77–79 → 69–72**. Do not invent AMM Days.
 
 ---
 
@@ -290,7 +294,7 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
 
 ## Month 3: Deposit, Relayer, P1 402, Benchmarks, Audit & Devnet (Sessions 41–64)
 
-Order is fixed by the [Build priority calendar](#build-priority-calendar-do-not-reorder): **deposit (done) → relayer fee payer → vault-only settle → SDK → P1 → bench → audit → Devnet**. Match [Architecture](docs/architecture.md) phases A–E.
+Order is fixed by the [Build priority calendar](#build-priority-calendar-do-not-reorder): deposit through P1 and bench/audit are **done**. Devnet **58–63** recorded (live settle). **Next: Day 64** tag. Skip 62 send. Then **73–75**. Match [Architecture](docs/architecture.md) phases A–E.
 
 ### Phase 9: Deposit → leaf → registered root (3 sessions) — done
 
@@ -382,42 +386,54 @@ Aligned with Architecture **phase E** (upcoming) and remaining ranks 1–3.
 - [x] **Day 57 — Bytecode freeze prep**
   - [x] Reproducible build notes; record program hash procedure
 
-### Phase 14: Devnet Launch (7 sessions)
+### Phase 14: Devnet Launch (remaining **1** session: 64 tag)
 
-Program + relayer + SDK go live. **No browser UI yet** (that is Day 66). Day 65 is the staff README (public artifact). Finished-product Devnet tests (manual + automated) are Days 67–68.
+Program + SDK on Devnet. **No browser UI yet** (that is Day 66). Day 65 README already exists. Finished-product Devnet tests are Days 67–68 (after 63). Skip Day 62.
 
-- [ ] **Day 58 — Devnet keys + SOL**
-  - [ ] Funding, deploy keypair, cluster config
+Recorded cluster: `https://api.devnet.solana.com`. Tables: [`notes/devnet.md`](notes/devnet.md).
 
-- [ ] **Day 59 — Deploy program**
-  - [ ] Deploy to Devnet; record program ID
+- [x] **Day 58 — Devnet keys + SOL**
+  - [x] Cluster Devnet; admin `9sLGgVEotwD8gJgL5HhJdP7w61zeCrJ25NNkJPM3BAaX` (`~/.config/solana/id.json`); funded
+  - [x] *Exit:* pubkey + balance in `notes/devnet.md`
 
-- [ ] **Day 60 — Init + vkey + roots**
-  - [ ] `GlobalConfig`, vkey hash, seed `CleanFundsRoot`
+- [x] **Day 59 — Deploy program**
+  - [x] Program `74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G`; source `declare_id!` pinned; upgrade dump SHA-256 `f9030f95…` matched local freeze
+  - [x] *Exit:* program id + hash in `notes/devnet.md` + `notes/reproducible-build.md`
 
-- [ ] **Day 61 — Vault + token accounts**
-  - [ ] Live vault ATAs on Devnet
+- [x] **Day 60 — Init + vkey + roots**
+  - [x] `GlobalConfig` `BQbrv7CVnh571XjvGv4SMfo5beUcrgF3wtsHrzWAU3CY`; toy `CleanFundsRoot` `6CvBuqnxswcq8g7QJcybGRtGragupRzNdmW37fD7NMLA` (happy fixture `expected_root`)
+  - [x] *Exit:* both pubkeys in `notes/devnet.md`
 
-- [ ] **Day 62 — Relayer on Devnet RPC**
-  - [ ] Production-ish process config pointing at Devnet
+- [x] **Day 61 — Set vault mints + ATAs**
+  - [x] `VaultState` PDA `A3h8dhmMipthngLSS5AmhsxYvt9sbgLmuUf1wfpJDqmd` (`initialize_vault`)
+  - [x] Admin `set_vault_mints` writes `mint_a` / `mint_b` once
+  - [x] `--lib` + clippy; `anchor build`; upgrade `74UW…`; dump SHA-256 `381ba3fb…` matched
+  - [x] Toy mints `DNNk…` / `Hfgiz…`; vault ATAs `EVmR…` / `8wBh…`
+  - [x] *Exit:* non-default mints + ATA addresses in `notes/devnet.md`
 
-- [ ] **Day 63 — Live shielded swap (SDK, not UI)**
-  - [ ] One successful swap via SDK / CLI against the Devnet program
-  - [ ] Explorer verification of balances + zero-copy state
-  - [ ] *Exit:* A Devnet tx signature is recorded; this Day is **not** a browser product (UI is Day 66+)
+- [x] **Day 62 — Relayer on Devnet RPC** (skip send)
+  - [x] Local `/health` ok; dry-run; `RELAYER_RPC` unused
+  - [x] *Skip send:* self-submit as fee payer
 
-- [ ] **Day 64 — Docs + `v1.0.0-devnet`**
-  - [ ] README, install scripts; **one** digestible diagram (reuse Write-2 hero if it exists — do not draw a new poster)
-  - [ ] Tag release; archive build logs, circuit keys, program artifacts
-  - [ ] *Exit:* A stranger can deploy/init from docs. Staff-quality **shield artifact** is Day 65 (before UI). Browser product + Devnet UI tests are Days 66–68.
+- [x] **Day 63 — Live shielded swap (SDK, not UI)**
+  - [x] Deposit 1e6 of each mint into vault ATAs (`reserve_*` = 1000000)
+  - [x] Poseidon 32-byte inputs reduce into BN254 Fr; admin `set_vkey_hash`
+  - [x] Groth16 journal mint = vault `mint_a` (`DNNk…`); wrap in `sp1-artifacts/devnet-settle/`
+  - [x] `settle_shielded_spot` `3V7YF2UL…`; `reserve_a`/`reserve_b` = 1000000 / 900000
+  - [x] *Exit:* settle signature in `notes/devnet.md`. **Not** a browser product (UI is Day 66+)
+
+- [ ] **Day 64 — Docs + `v1.0.0-devnet`** (after 63 Exit only)
+  - [x] README + `notes/devnet.md` tables for 58–61; current program hash recorded
+  - [ ] Tag `v1.0.0-devnet` after a settle signature (you commit + tag)
+  - [ ] *Exit:* A stranger can deploy/init from docs. Browser product + Devnet UI tests are Days 66–68. Then **Day 73**
 
 ---
 
-## Month 3+ buffer: Public artifact, basic UI, then change notes + backup; Devnet and uncensorable UI wait (Sessions 65–76)
+## Month 3+ buffer: Public artifact, basic UI, then change notes + backup + unlink (Sessions 65–79)
 
-Follow the [calendar](#build-priority-calendar-do-not-reorder), not Day number. **Next engineering is Days 73–75 (change notes), then Day 76 (encrypted note backup).** Days **69–72** (extra RPC, IPFS, seizure runbook) wait until those Exit.
+Follow the [calendar](#build-priority-calendar-do-not-reorder), not Day number. **Next session is Day 64** (docs + `v1.0.0-devnet` tag). Then **73–75 → 76 → 77–79**. Days **69–72** wait until those Exit. Skip **62** send.
 
-Day **65** (README) is done. Day **66** has a swap screen; Exit still needs a human click-through. Days **58–64** and **67–68** are **not** done: runbooks exist, but no Devnet program id, vault, or settle signature is recorded. They can run when you have keys; they do **not** block change notes. Do **not** pull AMM work ahead of P1.
+Day **65** (README) is done. Day **66** has a swap screen; Exit still needs a localnet click-through. Devnet **58–63** are recorded (program `74UW…`, live settle `3V7YF2UL…`). **64** tag waits on your commit. Do **not** pull AMM work.
 
 ### Phase 15: Public shield artifact (1 session) — **before UI**
 
@@ -428,7 +444,7 @@ Assemble what already exists (execute, Groth16 or honest block, threat model, CU
   - [x] Link Day 54 threat model (circuit, replay, pause, protocol admin, root registry, deposit)
   - [x] Link CU notes (Days 18 / 29 / 52): verifier budget, measured settle CU if you have it
   - [x] How to build program + run `--lib` tests; program id / Devnet pointers if Days 58–64 ran
-  - [x] *Exit:* A cold reader can follow README → execute → (Groth16 **or** documented block) → threat model → CU numbers. **No UI this Day.** Clone-and-read is the deliverable. **Write-3** is the public-artifact article. **Next engineering is Day 73 (change notes),** not extra RPC.
+  - [x] *Exit:* A cold reader can follow README → execute → (Groth16 **or** documented block) → threat model → CU numbers. **No UI this Day.** Clone-and-read is the deliverable. **Write-3** is the public-artifact article. (Current next session is **Day 64** tag.)
 
 ### Phase 16: Basic swap UI (1 session)
 
@@ -443,7 +459,7 @@ Ship a normal swap screen first. Relayer and a local HTTPS/static server are all
 
 ### Phase 17: Finished product on Devnet — see it and test it (2 sessions) — after 58–64; does not block 73–76
 
-Needs a live Devnet program from Days 58–61. Skip until those tables in `notes/devnet.md` are filled. Do **not** stall change notes waiting for this.
+Needs Day **61** Exit (done) and a Day **63** settle. Skip until the settle signature is in `notes/devnet.md`. Do **not** start this instead of Day 63.
 
 - [ ] **Day 67 — Manual Devnet walkthrough (see the end product)**
   - [ ] Point the Day 66 UI at Devnet (program id + RPC from Days 58–61); fund a wallet if needed
@@ -458,9 +474,9 @@ Needs a live Devnet program from Days 58–61. Skip until those tables in `notes
   - [ ] One command documented (e.g. `ANCHOR_PROVIDER_URL=https://api.devnet.solana.com …`); skip-with-fail if key/SOL missing so CI-default stays localnet
   - [ ] *Exit:* That command passes against live Devnet; tx signatures or account pubkeys from the run are in the test output or `notes/devnet-tests.md`
 
-### Phase 18: Decentralized / uncensorable swap UI (4 sessions) — calendar rank 7, after Day 76
+### Phase 18: Decentralized / uncensorable swap UI (4 sessions) — calendar rank 8, after Day 79
 
-Self-submit and a fallback RPC list are already in `ui/`. This phase is **mirrors + CID + seizure runbook**. Park it until change notes (73–75) and note backup (76) Exit.
+Self-submit and a fallback RPC list are already in `ui/`. This phase is **mirrors + CID + seizure runbook**. Park it until change notes (73–75), note backup (76), and unlink (77–79) Exit.
 
 - [ ] **Day 69 — Static self-submit (no required backend)**
   - [x] Same swap UI as Day 66: works from `file://` or a local static server **without** `relayer/` running
@@ -484,9 +500,9 @@ Self-submit and a fallback RPC list are already in `ui/`. This phase is **mirror
 
 **Out of scope here:** fully trustless in-browser Groth16 on a phone. Prove can stay remote; uncensorable means **anyone can host the UI and submit the tx**, not that prove is free or local.
 
-### Phase 19: Change notes (3 sessions) — calendar rank 5 — **next**
+### Phase 19: Change notes (3 sessions) — calendar rank 5 — after Day 64
 
-Partial spend without burning the whole note balance. UTXO-style: nullify old note, insert change leaf for remainder. Day **48** vault-only settle already landed. Start here; do **not** wait for Devnet or Days 69–72.
+Partial spend without burning the whole note balance. UTXO-style: nullify old note, insert change leaf for remainder. Day **48** vault-only settle already landed. Start after Devnet **61 → 63 → 64**. Do **not** wait for Days 69–72.
 
 - [ ] **Day 73 — Circuit: change output**
   - [ ] Guest: after solvency, commit change note leaf (`balance - amount`) under same or new secret; journal/public shape updated as needed
@@ -510,7 +526,26 @@ Wiped phone or lost browser profile should not mean the note is gone. Export an 
 - [ ] **Day 76 — Encrypted note backup**
   - [ ] Client export / import of an encrypted note blob (passphrase or similar); round-trip restore in tests
   - [ ] Cover a change note (remainder after spend), not only a fresh deposit
-  - [ ] *Exit:* Wipe the in-memory note, restore from the blob, prove/spend the restored note once on localnet. **Then** Days 69–72 if you still want UI resilience.
+  - [ ] *Exit:* Wipe the in-memory note, restore from the blob, prove/spend the restored note once on localnet. **Next: Days 77–79 (hide/unlink depositor).**
+
+### Phase 21: Hide / unlink depositor (3 sessions) — calendar rank 7 — after Day 76
+
+Deposit still writes the user’s wallet on `DepositLeafAccount`. Settle still lists recipient token accounts. SDK Day 49 only allows a different ATA — it does not hide the deposit. Do this **after** backup so a user who rotates receive addresses can still restore notes. Not a mixer: the deposit tx remains on the ledger.
+
+- [ ] **Day 77 — Omit depositor from the leaf PDA**
+  - [ ] Stop storing a raw depositor pubkey on `DepositLeafAccount` (omit or replace with a non-identifying commitment). `init` uniqueness stays `["deposit_leaf", leaf]`
+  - [ ] Indexer / SDK still get leaf, amount, mint from the account or `DepositEvent`
+  - [ ] *Exit:* `--lib` + LiteSVM deposit; account data has no wallet pubkey; docs/threat-model A22 updated
+
+- [ ] **Day 78 — Settle recipient unlink**
+  - [ ] Default happy path: payout ATAs are **not** the depositing wallet’s ATAs (fresh receive account + relayer or self-submit as fee payer)
+  - [ ] Optional: bind recipient in the journal so a relayer cannot redirect (if the journal grows, new Groth16 fixture)
+  - [ ] *Exit:* Localnet: deposit from wallet D, settle pays wallet R; leaf PDA and nullifier PDA do not contain D
+
+- [ ] **Day 79 — Unlink E2E + docs**
+  - [ ] Negative: observer with only the leaf PDA cannot read a depositor field
+  - [ ] Architecture phase E, glossary, `docs/security.md` A22: what is still linkable (deposit tx, unique amounts, token-account graph)
+  - [ ] *Exit:* Checklist + tests green. **Then** Days 69–72 if you still want UI resilience. Same-mint pool stays parked.
 
 ---
 
@@ -519,8 +554,6 @@ Wiped phone or lost browser profile should not mean the note is gone. Export an 
 Do when they unblock toolchain/CI; do not pull them into a session Mid-Day. Do **not** promote these over the [Build priority calendar](#build-priority-calendar-do-not-reorder).
 
 - [x] **Anchor `programs/*/` layout** — Move on-chain crate from `program/` → `programs/zk_spot_shield/` so AVM/Anchor discover `anchor-lang` under the standard path. Workspace + `Anchor.toml` members, LiteSVM `.so` path, docs/rules/CI updated. *Exit:* `cargo test -p zk_spot_shield --lib` and `anchor build --ignore-keys` succeed.
-- [ ] **Deposit privacy** — Stop storing raw `depositor` on `DepositLeafAccount` (or encrypt / omit); reduce deposit↔wallet linkability. Does not replace Day 48 or Days 73–76.
-- [ ] **Full recipient unlink** — Fresh receive ATA + relayer-only submit so settle metas do not dox the note owner. Builds on Days 46 + 49.
 
 ---
 

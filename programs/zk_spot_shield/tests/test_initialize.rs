@@ -92,10 +92,8 @@ fn test_vault_initialize() {
     let program_id = zk_spot_shield::id();
     let payer = Keypair::new();
 
-    let (vault_pda, expected_bump) = Pubkey::find_program_address(
-        &[zk_spot_shield::constants::SPOT_VAULT_SEED],
-        &program_id,
-    );
+    let (vault_pda, expected_bump) =
+        Pubkey::find_program_address(&[zk_spot_shield::constants::SPOT_VAULT_SEED], &program_id);
 
     let mut svm = LiteSVM::new();
     load_program(&mut svm, program_id);
@@ -148,10 +146,8 @@ fn test_day21_init_global_config_and_vault() {
         &[zk_spot_shield::constants::GLOBAL_CONFIG_SEED],
         &program_id,
     );
-    let (vault_pda, vault_bump) = Pubkey::find_program_address(
-        &[zk_spot_shield::constants::SPOT_VAULT_SEED],
-        &program_id,
-    );
+    let (vault_pda, vault_bump) =
+        Pubkey::find_program_address(&[zk_spot_shield::constants::SPOT_VAULT_SEED], &program_id);
 
     let mut svm = LiteSVM::new();
     load_program(&mut svm, program_id);
@@ -207,4 +203,198 @@ fn test_day21_init_global_config_and_vault() {
     assert_eq!(vault.bump, vault_bump);
     assert_eq!(vault.reserve_a, 0);
     assert_eq!(vault.reserve_b, 0);
+}
+
+fn send_ix_err(svm: &mut LiteSVM, payer: &Keypair, instruction: Instruction) {
+    let blockhash = svm.latest_blockhash();
+    let msg = Message::new_with_blockhash(&[instruction], Some(&payer.pubkey()), &blockhash);
+    let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[payer]).unwrap();
+    svm.send_transaction(tx)
+        .expect_err("expected instruction to fail");
+}
+
+/// Day 61: protocol admin sets pair mints once on the existing vault PDA.
+#[test]
+fn test_set_vault_mints_once() {
+    let program_id = zk_spot_shield::id();
+    let payer = Keypair::new();
+    let (global_config, _) = Pubkey::find_program_address(
+        &[zk_spot_shield::constants::GLOBAL_CONFIG_SEED],
+        &program_id,
+    );
+    let (vault_pda, _) =
+        Pubkey::find_program_address(&[zk_spot_shield::constants::SPOT_VAULT_SEED], &program_id);
+    let mint_a = Pubkey::new_unique();
+    let mint_b = Pubkey::new_unique();
+
+    let mut svm = LiteSVM::new();
+    load_program(&mut svm, program_id);
+    svm.airdrop(&payer.pubkey(), 10_000_000_000).unwrap();
+
+    send_ix(
+        &mut svm,
+        &payer,
+        Instruction::new_with_bytes(
+            program_id,
+            &zk_spot_shield::instruction::InitializeGlobalConfig {}.data(),
+            zk_spot_shield::accounts::InitializeGlobalConfig {
+                payer: payer.pubkey(),
+                global_config,
+                system_program: anchor_lang::system_program::ID,
+            }
+            .to_account_metas(None),
+        ),
+    );
+    send_ix(
+        &mut svm,
+        &payer,
+        Instruction::new_with_bytes(
+            program_id,
+            &zk_spot_shield::instruction::InitializeVault {}.data(),
+            zk_spot_shield::accounts::InitializeVault {
+                payer: payer.pubkey(),
+                vault: vault_pda,
+                system_program: anchor_lang::system_program::ID,
+            }
+            .to_account_metas(None),
+        ),
+    );
+    send_ix(
+        &mut svm,
+        &payer,
+        Instruction::new_with_bytes(
+            program_id,
+            &zk_spot_shield::instruction::SetVaultMints { mint_a, mint_b }.data(),
+            zk_spot_shield::accounts::SetVaultMints {
+                authority: payer.pubkey(),
+                global_config,
+                vault: vault_pda,
+            }
+            .to_account_metas(None),
+        ),
+    );
+
+    let vault_acc = svm.get_account(&vault_pda).expect("VaultState");
+    let vault: &zk_spot_shield::state::VaultState = bytemuck::from_bytes(&vault_acc.data[8..]);
+    assert_eq!(vault.mint_a, mint_a);
+    assert_eq!(vault.mint_b, mint_b);
+
+    send_ix_err(
+        &mut svm,
+        &payer,
+        Instruction::new_with_bytes(
+            program_id,
+            &zk_spot_shield::instruction::SetVaultMints { mint_a, mint_b }.data(),
+            zk_spot_shield::accounts::SetVaultMints {
+                authority: payer.pubkey(),
+                global_config,
+                vault: vault_pda,
+            }
+            .to_account_metas(None),
+        ),
+    );
+
+    let stranger = Keypair::new();
+    svm.airdrop(&stranger.pubkey(), 10_000_000_000).unwrap();
+    send_ix_err(
+        &mut svm,
+        &stranger,
+        Instruction::new_with_bytes(
+            program_id,
+            &zk_spot_shield::instruction::SetVaultMints {
+                mint_a: Pubkey::new_unique(),
+                mint_b: Pubkey::new_unique(),
+            }
+            .data(),
+            zk_spot_shield::accounts::SetVaultMints {
+                authority: stranger.pubkey(),
+                global_config,
+                vault: vault_pda,
+            }
+            .to_account_metas(None),
+        ),
+    );
+}
+
+/// Protocol admin rotates `GlobalConfig.vkey_hash` after a guest rebuild.
+#[test]
+fn test_set_vkey_hash() {
+    let program_id = zk_spot_shield::id();
+    let payer = Keypair::new();
+    let (global_config, _) = Pubkey::find_program_address(
+        &[zk_spot_shield::constants::GLOBAL_CONFIG_SEED],
+        &program_id,
+    );
+    let next = [7u8; 32];
+
+    let mut svm = LiteSVM::new();
+    load_program(&mut svm, program_id);
+    svm.airdrop(&payer.pubkey(), 10_000_000_000).unwrap();
+
+    send_ix(
+        &mut svm,
+        &payer,
+        Instruction::new_with_bytes(
+            program_id,
+            &zk_spot_shield::instruction::InitializeGlobalConfig {}.data(),
+            zk_spot_shield::accounts::InitializeGlobalConfig {
+                payer: payer.pubkey(),
+                global_config,
+                system_program: anchor_lang::system_program::ID,
+            }
+            .to_account_metas(None),
+        ),
+    );
+
+    send_ix(
+        &mut svm,
+        &payer,
+        Instruction::new_with_bytes(
+            program_id,
+            &zk_spot_shield::instruction::SetVkeyHash { vkey_hash: next }.data(),
+            zk_spot_shield::accounts::SetVkeyHash {
+                authority: payer.pubkey(),
+                global_config,
+            }
+            .to_account_metas(None),
+        ),
+    );
+
+    let acc = svm.get_account(&global_config).expect("GlobalConfig");
+    let config = zk_spot_shield::state::GlobalConfig::try_deserialize(&mut &acc.data[..])
+        .expect("decode GlobalConfig");
+    assert_eq!(config.vkey_hash, next);
+
+    send_ix_err(
+        &mut svm,
+        &payer,
+        Instruction::new_with_bytes(
+            program_id,
+            &zk_spot_shield::instruction::SetVkeyHash {
+                vkey_hash: [0u8; 32],
+            }
+            .data(),
+            zk_spot_shield::accounts::SetVkeyHash {
+                authority: payer.pubkey(),
+                global_config,
+            }
+            .to_account_metas(None),
+        ),
+    );
+
+    let stranger = Keypair::new();
+    svm.airdrop(&stranger.pubkey(), 10_000_000_000).unwrap();
+    send_ix_err(
+        &mut svm,
+        &stranger,
+        Instruction::new_with_bytes(
+            program_id,
+            &zk_spot_shield::instruction::SetVkeyHash { vkey_hash: [8u8; 32] }.data(),
+            zk_spot_shield::accounts::SetVkeyHash {
+                authority: stranger.pubkey(),
+                global_config,
+            }
+            .to_account_metas(None),
+        ),
+    );
 }

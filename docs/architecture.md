@@ -2,9 +2,7 @@
 
 The system has three parts. The **client** holds the user's secret note. The **ZK circuit** turns private data into a proof. The **Solana program** checks the proof and settles.
 
-Dotted boxes and arrows are **(upcoming)** product direction — not shipped yet. Solid ones exist in the repo today.
-
-**Protocol admin** means the admin pubkey stored on `GlobalConfig` (Rust field `authority`). That wallet may pause settle and register Merkle tips. It is not the vault PDA and not the SPL token spender.
+**Protocol admin** is the admin pubkey on `GlobalConfig` (Rust field `authority`). That wallet may pause settle, register Merkle tips, and set vault mints once. It is not the vault PDA and not the SPL token spender.
 
 ## Components
 
@@ -42,8 +40,8 @@ flowchart TB
   Prover --> Host
   Host --> Client
   Client --> Program
-  Client -.-> Relayer
-  Relayer -.-> Program
+  Client --> Relayer
+  Relayer --> Program
   Program --> Config
   Program --> Vault
   Program --> Leaves
@@ -51,9 +49,6 @@ flowchart TB
   Program --> Nullifiers
   Program --> Spl
   Spl --> VaultAta
-
-  classDef planned stroke-dasharray: 5 5
-  class Relayer planned
 ```
 
 ## Numbered product flow
@@ -66,11 +61,11 @@ Step numbers **continue across phases**. Each phase is a **separate** Mermaid di
 
 | Phase | Steps | Status |
 | --- | --- | --- |
-| **A** Connect | 1 to 3 | UI polish upcoming |
-| **B** Deposit | 4 to 12 | Built on-chain; hosted indexer upcoming |
+| **A** Connect | 1 to 3 | Built (`ui/` + SDK); polish later |
+| **B** Deposit | 4 to 12 | Built on-chain; hosted indexer later |
 | **C** Prove | 13 to 19 | Built |
-| **D** Settle today | 20 to 28 | Built; vault-only spend (Day 48); fee payer ≠ note owner (Day 46) |
-| **E** Relayer ops | 30 to 34 | Scaffold + fee stub (44–47); prove treasury / unlink / change notes upcoming |
+| **D** Settle | 20 to 28 | Built: vault-only; fee payer may be a relayer |
+| **E** Leftovers | 30 to 33 | Prove treasury; change notes + backup; then hide/unlink depositor |
 
 ---
 
@@ -135,7 +130,7 @@ sequenceDiagram
 
 ### Phase D — Settle today (steps 20 to 28)
 
-Days **46–48**: fee payer may be a relayer (≠ note owner); settle is **vault-only** (no second user→vault of the journal mint).
+Fee payer may be a relayer (not the note owner). Settle is **vault-only**: no second user→vault of the journal mint.
 
 ```mermaid
 sequenceDiagram
@@ -158,20 +153,19 @@ sequenceDiagram
 
 ---
 
-### Phase E — Upcoming (steps 30 to 34)
+### Phase E — Upcoming (steps 30 to 33)
+
+Fee-payer settle already works in phase D (self-submit or relayer). Still to build:
 
 ```mermaid
 sequenceDiagram
   participant Rel as Relayer
   participant Net as Succinct
-  participant Prog as Program
   participant W as WebSDK
   Rel-->>Net: 30 Pay prove credits from treasury
-  Rel-->>Prog: 31 Submit settle and pay SOL fees
   Note over Rel: User fees refill PROVE and SOL
-  Note over W: 32 Hidden recipient unlink
-  Note over W: 33 Change note for leftover balance
-  Note over Prog: 34 Vault-only spend no second debit of A
+  Note over W: 32 Change note + encrypted backup
+  Note over W: 33 Hide depositor / unlink recipient
 ```
 
 ---
@@ -197,7 +191,7 @@ flowchart TB
   privateSide -->|zero-knowledge proof| publicSide
 ```
 
-Deposit today still links a **wallet** to a leaf on-chain. Settle hides the secret and leaf index, but the settle transaction still lists **token accounts** and often the fee payer. Full unlink is **(upcoming)**.
+Deposit today still links a **wallet** to a leaf on-chain. Settle hides the secret and leaf index, but the settle transaction still lists **token accounts** and often the fee payer. Hide/unlink depositor is **Days 77–79** (after note backup).
 
 ## Repository layout
 
@@ -209,7 +203,8 @@ Deposit today still links a **wallet** to a leaf on-chain. Settle hides the secr
 | `zk-circuit/host/` | Host: execute and/or request a proof |
 | `zk-circuit/fixtures/happy/` | Recorded Groth16 proof, journal, and verifying key |
 | `client/` | Rust CU / ALT helpers |
-| `relayer/` | Axum fee-payer scaffold |
-| `sdk/` | TypeScript Anchor provider, Merkle helpers, settle bridge |
+| `relayer/` | Optional fee payer + HTTP 402 |
+| `sdk/` | TypeScript client |
+| `ui/` | React swap screen (self-submit default) |
 
 See [Accounts deep dive](accounts-deep-dive.md) for PDA vs ATA vs instruction data, and [Solana Program](solana-program.md) for instruction semantics. See [Security](security.md) for the attack-surface table.

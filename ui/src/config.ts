@@ -1,6 +1,6 @@
-/** Default localnet program id (`declare_id!` / Anchor.toml). */
+/** Default program id (`declare_id!` / Anchor.toml / Devnet). */
 export const DEFAULT_PROGRAM_ID =
-  "H6X5T8TP6T8hyTySiDVAug8bfULbKGMhCTV5PA9VMHPv";
+  "74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G";
 
 export const DEFAULT_RPC_LIST = "http://127.0.0.1:8899";
 

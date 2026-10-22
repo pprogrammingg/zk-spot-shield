@@ -12,14 +12,12 @@ use groth16_solana::groth16::{Groth16Verifier, Groth16Verifyingkey};
 use sha2::{Digest, Sha256};
 
 /// Groth16 VK for SP1 circuits v6.1.0 (`~/.sp1/circuits/groth16/v6.1.0/`).
-pub const GROTH16_VK_V6_1_0_BYTES: &[u8] =
-    include_bytes!("../vk/groth16_vk_v6_1_0.bin");
+pub const GROTH16_VK_V6_1_0_BYTES: &[u8] = include_bytes!("../vk/groth16_vk_v6_1_0.bin");
 
 /// SP1 v6.1.0 recursion vk merkle root (must match proof envelope bytes 36..68).
 pub const SP1_V6_1_0_VK_ROOT: [u8; 32] = [
-    0x00, 0x2f, 0x85, 0x0e, 0xe9, 0x98, 0x97, 0x4d, 0x6c, 0xc0, 0x0e, 0x50, 0xcd, 0x08, 0x14,
-    0xb0, 0x98, 0xc0, 0x5b, 0xfa, 0xde, 0x46, 0x6d, 0x28, 0x57, 0x32, 0x40, 0xd0, 0x57, 0xf2,
-    0x53, 0x52,
+    0x00, 0x2f, 0x85, 0x0e, 0xe9, 0x98, 0x97, 0x4d, 0x6c, 0xc0, 0x0e, 0x50, 0xcd, 0x08, 0x14, 0xb0,
+    0x98, 0xc0, 0x5b, 0xfa, 0xde, 0x46, 0x6d, 0x28, 0x57, 0x32, 0x40, 0xd0, 0x57, 0xf2, 0x53, 0x52,
 ];
 
 /// `[4 selector | 32 exit | 32 vkRoot | 32 nonce | 256 groth16]`
@@ -89,13 +87,7 @@ pub fn verify_sp1_groth16_v6(
     let mut padded_vkey = [0u8; 32];
     padded_vkey[1..].copy_from_slice(&sp1_vkey_hash[1..]);
     let committed = hash_public_inputs(journal);
-    let public_inputs = [
-        padded_vkey,
-        committed,
-        exit_code,
-        vk_root,
-        nonce,
-    ];
+    let public_inputs = [padded_vkey, committed, exit_code, vk_root, nonce];
 
     verify_raw_v6(&proof[100..], &public_inputs, groth16_vk)
 }
@@ -124,14 +116,9 @@ fn verify_raw_v6(
         vk_ic: vk.vk_ic.as_slice(),
     };
 
-    let mut verifier = Groth16Verifier::new(
-        &proof.pi_a,
-        &proof.pi_b,
-        &proof.pi_c,
-        public_inputs,
-        &vk,
-    )
-    .map_err(|_| VerifyError::VerificationFailed)?;
+    let mut verifier =
+        Groth16Verifier::new(&proof.pi_a, &proof.pi_b, &proof.pi_c, public_inputs, &vk)
+            .map_err(|_| VerifyError::VerificationFailed)?;
 
     verifier
         .verify()
@@ -217,7 +204,11 @@ fn load_proof_from_bytes(buffer: &[u8]) -> Result<Proof, VerifyError> {
         return Err(VerifyError::ProofLoad);
     }
     Ok(Proof {
-        pi_a: negate_g1(buffer[..64].try_into().map_err(|_| VerifyError::ProofLoad)?)?,
+        pi_a: negate_g1(
+            buffer[..64]
+                .try_into()
+                .map_err(|_| VerifyError::ProofLoad)?,
+        )?,
         pi_b: buffer[64..192]
             .try_into()
             .map_err(|_| VerifyError::ProofLoad)?,
@@ -329,9 +320,7 @@ mod tests {
         for i in 0..64 {
             let mut proof = base.clone();
             for _ in 0..8 {
-                state = state
-                    .wrapping_mul(6364136223846793005)
-                    .wrapping_add(1);
+                state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
                 let idx = (state >> 33) as usize % proof.len();
                 proof[idx] ^= ((state >> 16) as u8).max(1);
             }

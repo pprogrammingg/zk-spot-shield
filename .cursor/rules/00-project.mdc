@@ -13,12 +13,14 @@ Solana + Anchor program that settles spot swaps after SP1 Groth16 verification. 
 - `zk-circuit/io` — shared I/O types + Poseidon Merkle (no zkVM)
 - `zk-circuit/guest` — SP1 guest; `zk-circuit/host` — prover driver
 - `client/` — Rust CU/ALT helpers
+- `relayer/` — optional fee payer + HTTP 402
 - `sdk/` — TypeScript SDK (Anchor provider, Merkle, prove bridge, settle E2E)
 - `ui/` — React + TypeScript + Vite swap screen (self-submit default)
 - `Anchor.toml` + root `Cargo.toml` — workspace source of truth
 - `roadmap.md` — session checklist; mark `[x]` only when Exit passes
 - `.github/workflows/` — unit + security CI must stay green (see `05-tests-security.mdc`)
 - `docs/` — public docs site (MkDocs); `docs/glossary.md` is the term map (owner vs payer vs authority, etc.)
+- After behavior changes, update the matching docs (see `08-docs-sync.mdc`)
 
 ## Stack pins
 

@@ -1,30 +1,41 @@
 use ark_bn254::Fr;
-use light_poseidon::{Poseidon, PoseidonBytesHasher};
+use ark_ff::{BigInteger, PrimeField};
+use light_poseidon::{Poseidon, PoseidonHasher};
+
+/// Interpret big-endian bytes as an integer and reduce into BN254 Fr.
+///
+/// `light_poseidon::hash_bytes_be` rejects values ≥ the scalar field (~2^254).
+/// Solana pubkeys, mint addresses, and random secrets often sit above that.
+/// Circom / `poseidon-lite` reduce the same way (`x mod p`), so TypeScript
+/// leaves stay consistent with this crate.
+fn bytes32_to_fr(bytes: &[u8]) -> Fr {
+    Fr::from_be_bytes_mod_order(bytes)
+}
+
+fn hash_fields(inputs: &[Fr]) -> [u8; 32] {
+    let mut hasher =
+        Poseidon::<Fr>::new_circom(inputs.len()).expect("Failed to initialize Poseidon hasher");
+    let out = hasher.hash(inputs).expect("Failed to compute Poseidon hash");
+    let be = out.into_bigint().to_bytes_be();
+    be.try_into().expect("BN254 Fr encodes as 32 bytes")
+}
 
 /// 2-to-1 Poseidon hash for Merkle tree nodes
 pub fn hash_nodes(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
-    let mut hasher = Poseidon::<Fr>::new_circom(2).expect("Failed to initialize Poseidon hasher");
-
-    hasher
-        .hash_bytes_be(&[left.as_slice(), right.as_slice()])
-        .expect("Failed to compute node hash")
+    hash_fields(&[bytes32_to_fr(left), bytes32_to_fr(right)])
 }
 
 /// Private leaf commitment from note data
 pub fn compute_leaf(secret: &[u8; 32], user_address: &[u8; 32], balance: u64) -> [u8; 32] {
-    let mut hasher = Poseidon::<Fr>::new_circom(3).expect("Failed to initialize Poseidon hasher");
-
     let balance_bytes = balance.to_be_bytes();
     let mut balance_padded = [0u8; 32];
     balance_padded[24..32].copy_from_slice(&balance_bytes);
 
-    hasher
-        .hash_bytes_be(&[
-            secret.as_slice(),
-            user_address.as_slice(),
-            balance_padded.as_slice(),
-        ])
-        .expect("Failed to compute leaf hash")
+    hash_fields(&[
+        bytes32_to_fr(secret),
+        bytes32_to_fr(user_address),
+        bytes32_to_fr(&balance_padded),
+    ])
 }
 
 /// Climb the depth-20 Merkle path to a root
@@ -63,16 +74,17 @@ pub fn index0_empty_path() -> [([u8; 32], bool); 20] {
 
 /// Unique 32-byte nullifier (double-spend tag)
 pub fn compute_nullifier(secret: &[u8; 32], leaf: &[u8; 32], asset_id: &[u8; 32]) -> [u8; 32] {
-    let mut hasher = Poseidon::<Fr>::new_circom(3).expect("Failed to initialize Poseidon hasher");
-
-    hasher
-        .hash_bytes_be(&[secret.as_slice(), leaf.as_slice(), asset_id.as_slice()])
-        .expect("Failed to compute nullifier hash")
+    hash_fields(&[
+        bytes32_to_fr(secret),
+        bytes32_to_fr(leaf),
+        bytes32_to_fr(asset_id),
+    ])
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use light_poseidon::PoseidonBytesHasher;
 
     #[test]
     fn leaf_is_stable_and_balance_endianness_matters() {
@@ -114,5 +126,48 @@ mod tests {
         let left = [1u8; 32];
         let right = [2u8; 32];
         assert_ne!(hash_nodes(&left, &right), hash_nodes(&right, &left));
+    }
+
+    #[test]
+    fn in_field_inputs_match_hash_bytes_be() {
+        let left = [1u8; 32];
+        let right = [2u8; 32];
+        let mut hasher = Poseidon::<Fr>::new_circom(2).unwrap();
+        let strict = hasher
+            .hash_bytes_be(&[left.as_slice(), right.as_slice()])
+            .unwrap();
+        assert_eq!(hash_nodes(&left, &right), strict);
+    }
+
+    #[test]
+    fn solana_pubkey_sized_bytes_hash() {
+        let secret = [0xffu8; 32];
+        let addr = [0xeeu8; 32];
+        let mint = [0xddu8; 32];
+        let leaf = compute_leaf(&secret, &addr, 1_000_000);
+        assert_eq!(
+            leaf,
+            [
+                0x0d, 0xad, 0x9f, 0x6a, 0x7d, 0xc1, 0x8f, 0x49, 0xa0, 0xa3, 0x03, 0xd3, 0xc0, 0xec,
+                0xce, 0xad, 0xd7, 0x74, 0x6e, 0x48, 0xc9, 0xb9, 0xc5, 0x02, 0xec, 0x07, 0xca, 0x95,
+                0xcc, 0xf1, 0x2d, 0x9e,
+            ]
+        );
+        assert_eq!(leaf, compute_leaf(&secret, &addr, 1_000_000));
+        let n = compute_nullifier(&secret, &leaf, &mint);
+        assert_ne!(n, [0u8; 32]);
+    }
+
+    #[test]
+    fn reduce_then_hash_matches_canonical_bytes() {
+        let huge = [0xffu8; 32];
+        let reduced = bytes32_to_fr(&huge);
+        let canon: [u8; 32] = reduced.into_bigint().to_bytes_be().try_into().unwrap();
+        assert_ne!(canon, huge);
+        let mut hasher = Poseidon::<Fr>::new_circom(2).unwrap();
+        let via_bytes = hasher
+            .hash_bytes_be(&[canon.as_slice(), canon.as_slice()])
+            .unwrap();
+        assert_eq!(hash_nodes(&huge, &huge), via_bytes);
     }
 }

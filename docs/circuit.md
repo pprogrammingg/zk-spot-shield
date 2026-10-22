@@ -23,7 +23,7 @@ Both sides must hash and lay out data the same way, or proofs fail for confusing
 - `PublicOutputs`: the journal the guest commits and the chain will read.
 - Poseidon helpers: `compute_leaf`, `hash_nodes`, `verify_merkle_path`, `compute_nullifier`, and `index0_empty_path` for test trees.
 
-The crate has no zkVM dependency, so it compiles natively and its unit tests run in CI in seconds. Poseidon (BN254, circom-compatible) is chosen because it is cheap inside proof systems, unlike SHA-256.
+The crate has no zkVM dependency, so it compiles natively and its unit tests run in CI in seconds. Poseidon (BN254, circom-compatible) is chosen because it is cheap inside proof systems, unlike SHA-256. Each 32-byte input is reduced into the BN254 scalar field (`x mod p`) before hashing, so Solana pubkeys and random secrets that sit above ~2^254 still hash. Happy-path toy bytes (`0x01…01`, `0x02…02`) are already in-field, so their leaves stay the same.
 
 ## `zk-circuit/guest`: the circuit
 
@@ -39,7 +39,7 @@ Fixed-size arrays everywhere (`[u8; 32]`, a `[_; 20]` path) keep the guest free 
 
 ## The journal: what the chain will see
 
-The journal is exactly 104 bytes:
+The journal is exactly 104 bytes. There is no recipient pubkey in it yet (hidden recipient is later).
 
 | Bytes | Field | Type |
 | --- | --- | --- |

@@ -6,6 +6,7 @@
 //!
 //! Do not invent a second guest fixture. Corrupt-path tests clone this pack and mutate one field.
 
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use zk_circuit_io::{
@@ -93,22 +94,84 @@ pub fn load_root_dotenv() {
     let _ = dotenvy::from_path(path);
 }
 
+#[derive(serde::Deserialize)]
+struct WitnessFile {
+    secret_hex: String,
+    user_address_hex: String,
+    asset_id_mint_hex: String,
+    balance: u64,
+    requested_swap_amount: u64,
+    #[serde(default)]
+    expected_leaf_hex: Option<String>,
+}
+
+fn parse_hex32(s: &str) -> [u8; 32] {
+    let s = s.trim().trim_start_matches("0x");
+    assert_eq!(s.len(), 64, "expected 32-byte hex, got len {}", s.len());
+    let mut out = [0u8; 32];
+    for i in 0..32 {
+        out[i] = u8::from_str_radix(&s[i * 2..i * 2 + 2], 16).expect("hex");
+    }
+    out
+}
+
+/// Day 63: one-leaf tree from a gitignored witness JSON (hex fields). Never logs the secret.
+pub fn inputs_from_witness_json(path: &Path) -> PrivateInputs {
+    let raw = fs::read_to_string(path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
+    let w: WitnessFile = serde_json::from_str(&raw).expect("witness json");
+    let secret = parse_hex32(&w.secret_hex);
+    let user_address = parse_hex32(&w.user_address_hex);
+    let asset_id_mint = parse_hex32(&w.asset_id_mint_hex);
+    let leaf = compute_leaf(&secret, &user_address, w.balance);
+    if let Some(expected) = w.expected_leaf_hex.as_deref() {
+        let want = parse_hex32(expected);
+        assert_eq!(
+            leaf, want,
+            "witness leaf does not match compute_leaf (wrong secret/address/balance)"
+        );
+    }
+    let mut tree = DepositTree::new();
+    let idx = tree.insert(leaf).expect("insert");
+    private_inputs_from_deposit(
+        secret,
+        user_address,
+        w.balance,
+        w.requested_swap_amount,
+        asset_id_mint,
+        &tree,
+        idx,
+    )
+    .expect("path")
+}
+
+pub fn hex32(bytes: &[u8; 32]) -> String {
+    format!(
+        "0x{}",
+        bytes.iter().map(|x| format!("{x:02x}")).collect::<String>()
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
     use sp1_sdk::{Elf, Prover, ProverClient, SP1Stdin};
+    use std::fs;
 
     /// Guest ELF from `cargo prove build` / host prove path. Needed for execute.
     const GUEST_ELF: Elf = Elf::Static(include_bytes!("../../../target/elf/guest"));
 
     fn hex32(b: &[u8; 32]) -> String {
-        format!("0x{}", b.iter().map(|x| format!("{x:02x}")).collect::<String>())
+        format!(
+            "0x{}",
+            b.iter().map(|x| format!("{x:02x}")).collect::<String>()
+        )
     }
 
     fn json_string_field(raw: &str, key: &str) -> String {
         let needle = format!("\"{key}\"");
-        let i = raw.find(&needle).unwrap_or_else(|| panic!("missing key {key}"));
+        let i = raw
+            .find(&needle)
+            .unwrap_or_else(|| panic!("missing key {key}"));
         let after = &raw[i + needle.len()..];
         let colon = after.find(':').expect(":");
         let rest = after[colon + 1..].trim_start();
@@ -120,14 +183,13 @@ mod tests {
 
     fn json_u64_field(raw: &str, key: &str) -> u64 {
         let needle = format!("\"{key}\"");
-        let i = raw.find(&needle).unwrap_or_else(|| panic!("missing key {key}"));
+        let i = raw
+            .find(&needle)
+            .unwrap_or_else(|| panic!("missing key {key}"));
         let after = &raw[i + needle.len()..];
         let colon = after.find(':').expect(":");
         let rest = after[colon + 1..].trim_start();
-        let digits: String = rest
-            .chars()
-            .take_while(|c| c.is_ascii_digit())
-            .collect();
+        let digits: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
         digits.parse().unwrap_or_else(|_| panic!("u64 for {key}"))
     }
 
@@ -191,7 +253,10 @@ mod tests {
                 raw.contains(&format!("\"level\": {level}")),
                 "happy.json missing merkle_path level {level}"
             );
-            assert!(is_right, "index0 empty path siblings are always on the right");
+            assert!(
+                is_right,
+                "index0 empty path siblings are always on the right"
+            );
         }
     }
 
@@ -239,5 +304,26 @@ mod tests {
         let public: PublicOutputs = pv.read();
         assert_eq!(public.merkle_root, inputs.expected_root);
         assert_eq!(public.requested_swap_amount, 100);
+    }
+
+    #[test]
+    fn witness_json_one_leaf_matches_deposit_backed() {
+        let expected = deposit_backed_happy_inputs();
+        let path = std::env::temp_dir().join("zkss-witness-unit.json");
+        fs::write(
+            &path,
+            r#"{
+              "secret_hex": "0101010101010101010101010101010101010101010101010101010101010101",
+              "user_address_hex": "0202020202020202020202020202020202020202020202020202020202020202",
+              "asset_id_mint_hex": "0303030303030303030303030303030303030303030303030303030303030303",
+              "balance": 1000,
+              "requested_swap_amount": 100
+            }"#,
+        )
+        .unwrap();
+        let got = inputs_from_witness_json(&path);
+        assert_eq!(got.expected_root, expected.expected_root);
+        assert_eq!(got.asset_id_mint, expected.asset_id_mint);
+        assert_eq!(got.requested_swap_amount, 100);
     }
 }

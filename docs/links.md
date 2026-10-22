@@ -21,4 +21,6 @@
 
 ## This project
 
+- [Docs site](https://pprogrammingg.github.io/zk-spot-shield/)
 - [Source on GitHub](https://github.com/pprogrammingg/zk-spot-shield)
+- [Threat model (engineer)](https://github.com/pprogrammingg/zk-spot-shield/blob/main/notes/threat-model.md)

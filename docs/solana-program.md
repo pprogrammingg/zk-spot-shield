@@ -25,14 +25,16 @@ Each instruction declares **only the accounts that call needs** in a `#[derive(A
 
 | Bucket | Instruction | Role |
 | --- | --- | --- |
-| Admin / setup | `initialize_global_config` | Create config PDA; freeze `vkey_hash`; set protocol admin |
-| Admin / setup | `initialize_vault` | Create `VaultState` PDA (mints, zero reserves, bump) |
+| Admin / setup | `initialize_global_config` | Create config PDA; write initial `vkey_hash`; set protocol admin |
+| Admin / setup | `initialize_vault` | Create `VaultState` PDA (mints default, zero reserves, bump) |
+| Admin / setup | `set_vault_mints` | Protocol admin writes `mint_a` / `mint_b` once |
+| Admin / setup | `set_vkey_hash` | Protocol admin rotates `vkey_hash` after a guest rebuild |
 | Admin / setup | `register_clean_funds_root` | Protocol admin allow-lists a Merkle root PDA |
 | Admin / setup | `pause` / `unpause` | Protocol admin toggles `pause_flag` |
 | Deposit | `deposit_shielded` | CPI: user ATA → vault ATA; `init` leaf PDA; bump reserves |
-| Spend | `settle_shielded_spot` | Verify proof + journal; check root; update reserves; SPL legs; create nullifier |
+| Spend | `settle_shielded_spot` | Verify proof + journal; check root; vault-only payout of the other mint; create nullifier |
 
-The TypeScript SDK under `sdk/` builds an Anchor provider and mirrors Poseidon Merkle helpers against `zk-circuit/fixtures/happy.json`.
+The TypeScript SDK (`sdk/`) and swap UI (`ui/`) call these same instructions. Default settle uses the committed happy-path fixtures.
 
 ## Instruction data vs durable state
 
@@ -40,27 +42,27 @@ The TypeScript SDK under `sdk/` builds an Anchor provider and mirrors Poseidon M
 
 ## What settle does today vs product direction
 
-**Today (1:1 spot):**
+**Today (vault-only 1:1 spot):**
 
-1. Reject if paused.  
-2. Verify Groth16 against `GlobalConfig.vkey_hash`.  
-3. Require journal `merkle_root` to match an existing `CleanFundsRoot`.  
-4. Require nullifier PDA empty.  
-5. `apply_swap` on `VaultState` reserves (same `amount` both sides).  
-6. SPL: **payer’s** ATA pays the journal mint into the vault ATA; vault PDA signs the **other** mint out to the payer’s ATA.  
+1. Reject if paused.
+2. Verify Groth16 against `GlobalConfig.vkey_hash`.
+3. Require journal `merkle_root` to match an existing `CleanFundsRoot`.
+4. Require nullifier PDA empty.
+5. `apply_vault_only_spend` on `VaultState` reserves (same `amount` both sides).
+6. SPL: vault PDA pays the **other** mint to the recipient token account. No second user→vault of the journal mint (deposit already funded custody).
 7. Create `NullifierAccount`.
 
-So even after a deposit already moved tokens into the vault, **settle still pulls the journal mint from the user’s wallet ATAs**. The proof gates “allowed + solvent + fresh nullifier”; the SPL path is still a **wallet ↔ vault 1:1 swap**.
+The fee payer may be a relayer; it need not own the recipient token accounts.
 
-**(Upcoming)** true shielded spend: consume the note without a second user→vault of mint A; optional change note for leftovers; hidden recipient; relayer-paid fees. See [Architecture](architecture.md) phase **E**.
+**(Upcoming)** change notes for leftovers; full hidden recipient; encrypted note backup. See [Architecture](architecture.md) phase **E** and roadmap Days 73–76.
 
 ## Design notes
 
-**`GlobalConfig` pins which circuit the program trusts.** Protocol admin pubkey (Rust field `authority`), `vkey_hash`, and `pause_flag`. Small and rarely written → ordinary `Account<T>`.
+**`GlobalConfig` pins which circuit the program trusts.** Protocol admin pubkey (Rust field `authority`), `vkey_hash`, and `pause_flag`. Small and rarely written → ordinary `Account<T>`. Init writes the program's `VKEY_HASH`; `set_vkey_hash` rotates the on-chain fingerprint without re-init.
 
-**`VaultState` is zero-copy** because settlement touches it every trade (`AccountLoader`, `#[repr(C)]`, explicit padding to 120 bytes). Compile-time size asserts catch layout breakage.
+**`VaultState` is zero-copy** because settlement touches it every trade (`AccountLoader`, `#[repr(C)]`, `_padding` after `bump` at byte 113). Size **and** field-offset tests catch layout breakage.
 
-**Bump vs protocol admin.** The **bump** lets the program `invoke_signed` as the vault PDA for token payouts. The **protocol admin** pubkey on config (Rust `authority`, also recorded on the vault at init) signs pause/register — not SPL payouts. Anchor `has_one = authority` gates those admin instructions.
+**Bump vs protocol admin.** The **bump** lets the program `invoke_signed` as the vault PDA for token payouts. The **protocol admin** pubkey on config (Rust `authority`, also recorded on the vault at init) signs pause/register/vkey rotate — not SPL payouts. Anchor `has_one = authority` gates those admin instructions.
 
 **Deposit leaf PDA.** Seeds `["deposit_leaf", leaf]` make each commitment unique (`init` fails on replay). Account data stores the public leaf hash plus amount, mint, and **depositor** — useful for indexers and audits; deposit privacy is therefore imperfect today.
 
@@ -70,4 +72,4 @@ So even after a deposit already moved tokens into the vault, **settle still pull
 
 **Errors** map to checks: `InvalidProof`, `MerkleRootNotFound`, `NullifierAlreadyUsed`, `ProtocolPaused`, token/vault errors, and zero-copy failures.
 
-**Tests.** Native unit tests cover sizes, seed uniqueness, and PDA stability. LiteSVM tests exercise initialize, deposit, and settle paths against a real `.so`.
+**Tests.** Native unit tests cover sizes, padding offsets, seed uniqueness, PDA stability, and who must sign each of the nine instructions. LiteSVM tests exercise initialize, `set_vault_mints`, `set_vkey_hash`, deposit, and vault-only settle against a real `.so`.

@@ -16,7 +16,7 @@ Only the protocol admin can set `GlobalConfig.pause_flag` (`has_one = authority`
 
 ## Protocol admin
 
-`GlobalConfig.authority` may pause, unpause, register roots, and (via upgrade) change the program. It is not the vault account and not the fee payer. Stolen admin key: A05.
+`GlobalConfig.authority` may pause, unpause, register roots, set vault mints once, rotate `vkey_hash`, and (via upgrade) change the program. It is not the vault account and not the fee payer. Stolen admin key: A05.
 
 ## Root registry
 

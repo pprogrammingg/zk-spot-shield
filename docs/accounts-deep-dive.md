@@ -1,15 +1,13 @@
 # Solana / Anchor components deep dive
 
-This page walks through the on-chain pieces of ZK Spot Shield: what each account is for, how it is addressed, who can change it, how many of them exist, and what sits *inside* versus what only rides along in a transaction.
-
-If a term is new, the [glossary](glossary.md) has a longer definition. The short versions you need here:
+On-chain pieces: what each account is for, how it is addressed, who can change it, how many exist, and what lives in the account versus what only rides in a transaction. Longer definitions: [glossary](glossary.md).
 
 | Term | Plain meaning |
 | --- | --- |
 | **Account** | An address on Solana that holds lamports and a blob of data. |
 | **Program-derived address (PDA)** | An address made from seeds + the program id. It has no private key; only our program can “sign” for it. |
 | **Program owner** | The program allowed to rewrite an account’s *data* bytes. After we create a PDA, that owner is `zk_spot_shield`. |
-| **Protocol admin** | Admin pubkey on `GlobalConfig` (Rust field `authority`): may pause and register roots. Different from program owner and from an SPL token spender. |
+| **Protocol admin** | Admin pubkey on `GlobalConfig` (Rust field `authority`): may pause, register roots, and set vault mints once. Different from program owner and from an SPL token spender. |
 | **SPL token account** | A balance of one mint, owned by the SPL Token program. The token account’s `owner` field is who may spend those tokens. |
 | **Instruction data** | Bytes attached to a single transaction call (function args). They are **not** written into `VaultState` unless the handler copies something out into an account. |
 | **Associated token account (ATA)** | A **standard address** for “this owner pubkey holds this mint.” Still an SPL token account. “ATA of the vault PDA” means owner = vault address, plus the mint. |
@@ -46,8 +44,8 @@ flowchart LR
 | Blob | Stored on chain permanently? | Readable later from the vault? | What actually happens |
 | --- | --- | --- | --- |
 | **Groth16 proof bytes** | No. Only in the settle instruction for that one transaction. | No. `VaultState` never holds proofs. | Verifier runs in the handler; on success nothing copies the proof into an account. |
-| **Journal (public values)** | Not as a whole blob. | No. | Parsed in-memory: amount, mint, nullifier, Merkle root. Root must match an existing `CleanFundsRoot`. Nullifier is then **written** into a new `NullifierAccount`. Amount/mint update vault **reserves** and drive token transfers. |
-| **Verifying-key hash** | Yes — in `GlobalConfig.vkey_hash`. | N/A (not in the vault). | Proof must verify against this frozen fingerprint. |
+| **Journal (public values)** | Not as a whole blob. | No. | Parsed in-memory: amount, mint, nullifier, Merkle root. Root must match an existing `CleanFundsRoot`. Nullifier is then **written** into a new `NullifierAccount`. Amount/mint update vault **reserves**; the vault pays the other mint. |
+| **Verifying-key hash** | Yes — in `GlobalConfig.vkey_hash`. | N/A (not in the vault). | Proof must verify against this fingerprint. Protocol admin may rotate it with `set_vkey_hash`. |
 | **Approved Merkle root** | Yes — one `CleanFundsRoot` account per root. | No (separate PDA). | Admin registers it before settle. |
 | **Spent nullifier** | Yes — one `NullifierAccount` after a successful settle. | No (separate PDA). | Second settle with the same nullifier fails because the account already exists. |
 | **Token balances** | Yes — in SPL token accounts. Accounting mirrors in `VaultState.reserve_a` / `reserve_b`. | Reserves are on the vault account; tokens are on the token accounts. | Both move together on deposit and settle. |
@@ -229,27 +227,11 @@ flowchart TB
   end
 ```
 
-**Why store the leaf hash?** The leaf hash is the **public commitment** to a private note. Storing it (and keying a PDA on it) does three jobs:
+The leaf hash is the public commitment (`Poseidon(secret, …)`). The PDA is keyed on it so the same leaf cannot be deposited twice (`init` fails if it exists). Amount, mint, and depositor sit in the account so an indexer can insert the leaf into the Merkle tree. Settle never reloads this PDA; it only checks a registered root and a nullifier.
 
-1. **Prove this deposit happened once.** Address = `PDA(["deposit_leaf", leaf])`. Creating it with `init` means the same leaf can’t be deposited twice — account already exists → fail.
-2. **Give the off-chain tree something canonical to index.** Indexers / SDK see: “leaf X was deposited for amount Y / mint Z.” They insert X into the Merkle tree and later serve paths for proofs. Settle never re-reads every leaf PDA; it only checks a **registered root** + nullifier. The leaf PDAs are the public deposit log that feeds that tree.
-3. **Bind public facts to the commitment.** Account data holds `leaf`, `amount`, `mint`, `depositor` so anyone can audit “this commitment was funded with this mint/amount” without seeing the **secret**.
-
-**Why a hash, not the secret?** The leaf is `Poseidon(secret, …)` (commitment). On-chain you need a handle for the note that doesn’t reveal the secret. The hash is that handle.
-
-**Redundancy note:** the leaf appears in both **seeds** and **account data**. Seeds make the address unique; the field makes the value easy to read from the account without reverse-engineering the address. Settle still doesn’t need to load this PDA to swap — it’s for deposit uniqueness + public record + tree sync, not for holding the Groth16 proof.
-
-**Privacy caveat:** `depositor` is the **user’s wallet**. Deposit txs also show their token account. Shielding the spend secret ≠ hiding who funded the leaf. Unlinking deposit from withdraw is **(upcoming)** — see [Architecture](architecture.md) phase E.
-
-**How the user spends later:** they keep the note (secret + balance + leaf) client-side; Thursday’s swap proves knowledge of that secret under a Merkle path — they do not “sign Monday’s deposit again.” See [Architecture](architecture.md).
+`depositor` is the user’s wallet, so deposit is not private. Hide/unlink is Days 77–79 after note backup ([Architecture](architecture.md) phase E). The user spends by proving knowledge of the secret, not by signing the deposit again.
 
 Instruction: [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/instructions/deposit_shielded.rs#L27).
-
----
-
-### Counter — leftover sample
-
-Early scaffold only. It is **not** on the deposit or settle path. Definition: [Code](https://github.com/pprogrammingg/zk-spot-shield/blob/main/programs/zk_spot_shield/src/state.rs#L11).
 
 ---
 
@@ -265,14 +247,13 @@ Someone deposits, an admin registers the tree tip, then a settle with a valid pr
 | --- | --- | --- |
 | `GlobalConfig` | Pause off; `vkey_hash` used to verify | Proof is only in the settle instruction; checked against this hash, then discarded |
 | `VaultState` | Reserves updated 1:1 for the trade | Journal amount/mint are instruction bytes; only the resulting reserve numbers are written here |
-| Vault token accounts | Deposit already moved custody in; settle moves again on today’s wallet legs | Balances via Token program; not proof storage |
+| Vault token accounts | Deposit already moved custody in; settle pays the other mint out | Balances via Token program; not proof storage |
 | `CleanFundsRoot` | Must already exist for the journal’s Merkle root | Root value lives in this PDA (registered earlier), not copied from the vault |
 | `DepositLeafAccount` | Created at deposit time | Leaf/amount/mint/**depositor** stored here after deposit |
 | `NullifierAccount` | Created at the end of settle | Nullifier taken from the journal and written into this new PDA |
-| User token accounts | **Today:** settle still pulls journal mint from payer ATAs and pays the other mint out | Ordinary SPL balances |
+| Recipient token accounts | Receive the other mint; owner need not be the fee payer | Ordinary SPL balances |
 
-!!! warning "Deposit vs settle custody today"
-    After deposit, mint A already sits in the **vault’s token ATA**. Product intuition says settle should only spend that shielded claim. **Current** `settle_shielded_spot` still does user→vault for the journal mint plus vault→user for the other mint (ZK gate + 1:1 swap). Vault-only shielded spend is **(upcoming)**.
+After deposit, mint A sits in the vault. Settle is **vault-only**: no second user→vault of the journal mint; the vault pays the other mint 1:1.
 
 ### Pause / ops stop
 
@@ -290,7 +271,7 @@ Admin sets `pause_flag`. Settles must fail closed until unpaused.
 | --- | --- | --- | --- |
 | Replay the same spend | Same proof + journal again | Second settle sees a non-empty nullifier PDA → `NullifierAlreadyUsed` | Proof still only in the tx; the **nullifier account** is the durable lock |
 | Cite an unknown Merkle root | Journal root with no `CleanFundsRoot` | Account constraints / lookup fail (`MerkleRootNotFound` or missing PDA) | Root was never written on chain; vault is irrelevant |
-| Pause or register without protocol admin | Wrong signer | `Unauthorized` via `has_one = authority` | Only the protocol admin pubkey matters |
+| Pause, register, or set vault mints without protocol admin | Wrong signer | `Unauthorized` via `has_one = authority` | Only the protocol admin pubkey matters |
 | Point settle at the wrong token accounts | Mismatched mint or token owner | `InvalidTokenAccount` | Token accounts are separate from `VaultState` |
 | Garbage or wrong-circuit proof | Bad `proof` bytes | Verify fails → `InvalidProof` | Bytes never land in the vault; verification is ephemeral |
 
@@ -298,9 +279,9 @@ Admin sets `pause_flag`. Settles must fail closed until unpaused.
 
 | Failure mode | What runs out | Durable state | Blobs |
 | --- | --- | --- | --- |
-| Vault cannot pay the other mint | `reserve_*` too small | `apply_swap` fails with `VaultReserveUnderflow`; no nullifier account created | Journal still only in the instruction |
+| Vault cannot pay the other mint | `reserve_*` too small | `apply_vault_only_spend` fails with `VaultReserveUnderflow`; no nullifier account created | Journal still only in the instruction |
 | Vault token account empty vs reserves | SPL transfer fails | Accounting should match custody; a mismatch fails the transfer | No proof storage |
-| User cannot fund a deposit or pay leg | User token account balance | Token program rejects the transfer | Deposit leaf is not created if deposit fails |
+| User cannot fund a deposit | User token account balance | Token program rejects the transfer | Deposit leaf is not created if deposit fails |
 | Note balance too low in the circuit | Private inputs invalid | Guest fails closed → **no proof** to submit | Nothing reaches the vault |
 
 ---

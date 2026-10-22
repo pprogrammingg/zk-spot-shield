@@ -52,20 +52,12 @@ fn happy_fixture() -> (Vec<u8>, Vec<u8>) {
     (proof, journal)
 }
 
-fn send_ix(
-    svm: &mut LiteSVM,
-    payer: &Keypair,
-    instruction: Instruction,
-) -> Result<(), String> {
+fn send_ix(svm: &mut LiteSVM, payer: &Keypair, instruction: Instruction) -> Result<(), String> {
     send_ix_cu(svm, payer, instruction).map(|_| ())
 }
 
 /// Day 29: return compute units consumed on success.
-fn send_ix_cu(
-    svm: &mut LiteSVM,
-    payer: &Keypair,
-    instruction: Instruction,
-) -> Result<u64, String> {
+fn send_ix_cu(svm: &mut LiteSVM, payer: &Keypair, instruction: Instruction) -> Result<u64, String> {
     let blockhash = svm.latest_blockhash();
     let msg = Message::new_with_blockhash(
         &[
@@ -134,10 +126,8 @@ fn init_config_and_vault(svm: &mut LiteSVM, program_id: Pubkey, payer: &Keypair)
         &[zk_spot_shield::constants::GLOBAL_CONFIG_SEED],
         &program_id,
     );
-    let (vault_pda, _) = Pubkey::find_program_address(
-        &[zk_spot_shield::constants::SPOT_VAULT_SEED],
-        &program_id,
-    );
+    let (vault_pda, _) =
+        Pubkey::find_program_address(&[zk_spot_shield::constants::SPOT_VAULT_SEED], &program_id);
 
     send_ix(
         svm,
@@ -245,8 +235,7 @@ fn register_root(svm: &mut LiteSVM, program_id: Pubkey, authority: &Keypair, roo
         &[zk_spot_shield::constants::GLOBAL_CONFIG_SEED],
         &program_id,
     );
-    let (clean_funds_root, _) =
-        zk_spot_shield::state::CleanFundsRoot::find_pda(&program_id, &root);
+    let (clean_funds_root, _) = zk_spot_shield::state::CleanFundsRoot::find_pda(&program_id, &root);
 
     send_ix(
         svm,
@@ -281,10 +270,8 @@ fn settle_accounts(
         &[zk_spot_shield::constants::GLOBAL_CONFIG_SEED],
         &program_id,
     );
-    let (vault, _) = Pubkey::find_program_address(
-        &[zk_spot_shield::constants::SPOT_VAULT_SEED],
-        &program_id,
-    );
+    let (vault, _) =
+        Pubkey::find_program_address(&[zk_spot_shield::constants::SPOT_VAULT_SEED], &program_id);
     let (nullifier_account, _) =
         zk_spot_shield::state::NullifierAccount::find_pda(&program_id, nullifier);
     zk_spot_shield::accounts::SettleShieldedSpot {
@@ -633,8 +620,7 @@ fn settle_rejects_unregistered_merkle_root() {
 
     let other_root = [0xABu8; 32];
     register_root(&mut svm, program_id, &payer, other_root);
-    let (wrong_pda, _) =
-        zk_spot_shield::state::CleanFundsRoot::find_pda(&program_id, &other_root);
+    let (wrong_pda, _) = zk_spot_shield::state::CleanFundsRoot::find_pda(&program_id, &other_root);
 
     let accounts = settle_accounts(
         program_id,
@@ -754,9 +740,7 @@ fn settle_random_proof_bytes_fail_closed() {
     let mut state: u64 = 0x39D39u64;
 
     for case in 0..16u64 {
-        state = state
-            .wrapping_mul(6364136223846793005)
-            .wrapping_add(1);
+        state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
         let mut proof = base_proof.clone();
         // Mix: wrong length, single-byte flip, multi-byte scramble.
         match case % 3 {
@@ -770,9 +754,7 @@ fn settle_random_proof_bytes_fail_closed() {
             }
             _ => {
                 for _ in 0..4 {
-                    state = state
-                        .wrapping_mul(6364136223846793005)
-                        .wrapping_add(1);
+                    state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
                     let idx = (state >> 33) as usize % proof.len();
                     proof[idx] = (state >> 16) as u8;
                 }

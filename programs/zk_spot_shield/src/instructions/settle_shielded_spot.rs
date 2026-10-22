@@ -196,11 +196,7 @@ pub fn handle_settle_shielded_spot(
     let space = 8 + std::mem::size_of::<NullifierAccount>();
     let lamports = Rent::get()?.minimum_balance(space);
     let nf_bump = ctx.bumps.nullifier_account;
-    let nf_seeds: &[&[u8]] = &[
-        NULLIFIER_SEED_PREFIX,
-        public.nullifier.as_ref(),
-        &[nf_bump],
-    ];
+    let nf_seeds: &[&[u8]] = &[NULLIFIER_SEED_PREFIX, public.nullifier.as_ref(), &[nf_bump]];
     system_program::create_account(
         CpiContext::new_with_signer(
             system_program::ID,
