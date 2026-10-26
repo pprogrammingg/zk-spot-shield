@@ -147,6 +147,7 @@ impl VaultState {
 }
 
 /// PDA seeds: `["deposit_leaf", leaf]` — public leaf commitment after a deposit.
+/// No wallet pubkey: uniqueness is the leaf; the deposit tx still sits on the ledger.
 #[account(zero_copy)]
 #[repr(C)]
 #[derive(Debug, PartialEq)]
@@ -154,11 +155,10 @@ pub struct DepositLeafAccount {
     pub leaf: [u8; 32],
     pub amount: u64,
     pub mint: Pubkey,
-    pub depositor: Pubkey,
 }
 
 const _: () = {
-    assert!(size_of::<DepositLeafAccount>() == 104);
+    assert!(size_of::<DepositLeafAccount>() == 72);
     assert!(size_of::<DepositLeafAccount>().is_multiple_of(8));
 };
 
@@ -419,8 +419,15 @@ mod tests {
     }
 
     #[test]
-    fn deposit_leaf_account_size_is_104() {
-        assert_eq!(std::mem::size_of::<DepositLeafAccount>(), 104);
+    fn deposit_leaf_account_size_is_72() {
+        assert_eq!(std::mem::size_of::<DepositLeafAccount>(), 72);
+    }
+
+    #[test]
+    fn deposit_leaf_account_has_no_wallet_pubkey_field() {
+        // leaf (32) + amount (8) + mint (32) = 72. A Solana wallet would be a
+        // fourth 32-byte field; that slot is gone.
+        assert_eq!(std::mem::size_of::<DepositLeafAccount>(), 32 + 8 + 32);
     }
 
     /// Arithmetic edges — success keeps `reserve_a + reserve_b` invariant;

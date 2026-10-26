@@ -122,7 +122,13 @@
 : The native program that prepares inputs, runs the guest, and requests proofs.
 
 **Journal (public values)**
-: The values the guest commits publicly. Here: swap amount, mint, nullifier, and Merkle root (104 bytes).
+: The values the guest commits publicly. Legacy Groth16 fixtures are 104 bytes: swap amount, mint, nullifier, Merkle root. A change-note journal is 144 bytes: those four fields plus `change_amount` and `change_leaf`.
+
+**Note**
+: A private commitment `Poseidon(secret, user_address, balance)` inserted as a Merkle leaf after deposit.
+
+**Change note**
+: The remainder after a partial spend. The old note is nullified; the guest binds a new leaf `Poseidon(secret, user_address, balance - amount)`. Spend-all (`change_amount = 0`) does not insert a remainder.
 
 **Leaf**
 : A note's commitment: `Poseidon(secret, user_address, balance)`.

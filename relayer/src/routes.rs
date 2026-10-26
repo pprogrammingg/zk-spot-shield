@@ -4,13 +4,12 @@ use axum::extract::{Path, Query, State};
 use axum::http::{Method, StatusCode};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use tower_http::cors::{Any, CorsLayer};
 use serde::{Deserialize, Serialize};
+use tower_http::cors::{Any, CorsLayer};
 use uuid::Uuid;
 
 use crate::pay402::{
-    hex_decode_32, hex_encode, parse_pay_body, quote, PayLedger, PayRequest, PayResponse,
-    PAID_BODY,
+    hex_decode_32, hex_encode, parse_pay_body, quote, PayLedger, PayRequest, PayResponse, PAID_BODY,
 };
 use crate::queue::{JobStatus, ProveQueue};
 
@@ -76,8 +75,7 @@ async fn submit_intent(
 ) -> Result<Json<SubmitIntentResponse>, (StatusCode, String)> {
     use base64_decode::decode_intent;
 
-    let intent = decode_intent(&body.intent_base64)
-        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+    let intent = decode_intent(&body.intent_base64).map_err(|e| (StatusCode::BAD_REQUEST, e))?;
     if intent.is_empty() {
         return Err((StatusCode::BAD_REQUEST, "intent must be non-empty".into()));
     }
@@ -241,7 +239,11 @@ mod tests {
             .await
             .unwrap();
         let allow = res.headers().get("access-control-allow-origin");
-        assert!(allow.is_some(), "expected CORS header, status={}", res.status());
+        assert!(
+            allow.is_some(),
+            "expected CORS header, status={}",
+            res.status()
+        );
     }
 
     #[tokio::test]
@@ -307,7 +309,10 @@ mod tests {
             serde_json::from_slice(&unpaid.into_body().collect().await.unwrap().to_bytes())
                 .unwrap();
         assert_eq!(q["amount"], 100);
-        assert!(q["pay_via"].as_str().unwrap().contains("settle_shielded_spot"));
+        assert!(q["pay_via"]
+            .as_str()
+            .unwrap()
+            .contains("settle_shielded_spot"));
 
         let b64 = base64::engine::general_purpose::STANDARD.encode(&journal);
         let pay = app
@@ -324,10 +329,12 @@ mod tests {
             .unwrap();
         assert_eq!(pay.status(), StatusCode::OK);
         let paid_body: serde_json::Value =
-            serde_json::from_slice(&pay.into_body().collect().await.unwrap().to_bytes())
-                .unwrap();
+            serde_json::from_slice(&pay.into_body().collect().await.unwrap().to_bytes()).unwrap();
         let nf = paid_body["nullifier_hex"].as_str().unwrap();
-        assert!(!paid_body["nullifier_hex"].as_str().unwrap().contains("wallet"));
+        assert!(!paid_body["nullifier_hex"]
+            .as_str()
+            .unwrap()
+            .contains("wallet"));
 
         let ok = app
             .oneshot(
@@ -340,8 +347,7 @@ mod tests {
             .unwrap();
         assert_eq!(ok.status(), StatusCode::OK);
         let data: serde_json::Value =
-            serde_json::from_slice(&ok.into_body().collect().await.unwrap().to_bytes())
-                .unwrap();
+            serde_json::from_slice(&ok.into_body().collect().await.unwrap().to_bytes()).unwrap();
         assert_eq!(data["data"], "shielded-402-ok");
     }
 }

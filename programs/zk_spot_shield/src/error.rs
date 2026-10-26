@@ -66,4 +66,13 @@ pub enum ErrorCode {
 
     #[msg("Verifying-key hash must be non-zero.")]
     InvalidVkeyHash,
+
+    #[msg("Change-note journal requires an empty deposit-leaf PDA.")]
+    MissingChangeLeafAccount,
+
+    #[msg("Change-leaf account is not the PDA for the journal change leaf.")]
+    InvalidChangeLeafAccount,
+
+    #[msg("Change-leaf PDA already exists.")]
+    ChangeLeafAlreadyUsed,
 }

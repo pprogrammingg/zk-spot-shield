@@ -77,10 +77,7 @@ impl DepositTree {
     pub fn root(&self) -> [u8; 32] {
         if self.leaves.is_empty() {
             // Full empty depth-20 tree: hash(empty[19], empty[19]).
-            return hash_nodes(
-                &self.empty[MERKLE_DEPTH - 1],
-                &self.empty[MERKLE_DEPTH - 1],
-            );
+            return hash_nodes(&self.empty[MERKLE_DEPTH - 1], &self.empty[MERKLE_DEPTH - 1]);
         }
         let leaf0 = self.leaves[0];
         let path = self.path(0).expect("non-empty");

@@ -80,10 +80,18 @@ async fn main() {
         inputs.requested_swap_amount
     );
     assert_ne!(exec_public.nullifier, [0u8; 32]);
+    assert_eq!(
+        exec_public.change_amount,
+        inputs.balance - inputs.requested_swap_amount
+    );
+    if exec_public.change_amount > 0 {
+        assert_ne!(exec_public.change_leaf, [0u8; 32]);
+    }
     println!(
-        "execute ok — cycles={} merkle_root={}",
+        "execute ok — cycles={} merkle_root={} change={}",
         report.total_instruction_count(),
-        fixtures::hex32(&exec_public.merkle_root)
+        fixtures::hex32(&exec_public.merkle_root),
+        exec_public.change_amount
     );
 
     let want_groth16 = std::env::var("SP1_GROTH16").ok().as_deref() == Some("1");
@@ -119,6 +127,10 @@ async fn main() {
     assert_eq!(public.merkle_root, inputs.expected_root);
     assert_eq!(public.requested_swap_amount, inputs.requested_swap_amount);
     assert_ne!(public.nullifier, [0u8; 32]);
+    assert_eq!(
+        public.change_amount,
+        inputs.balance - inputs.requested_swap_amount
+    );
 
     let groth16_bytes = proof.bytes();
     println!(
@@ -157,7 +169,11 @@ async fn main() {
         artifact_dir.display()
     );
 
-    if !custom_witness {
+    // Default host copies into fixtures/happy/. Set SKIP_HAPPY_FIXTURE=1 (or
+    // ARTIFACT_DIR) so a change-note wrap cannot clobber the frozen 104-byte CI pack.
+    let skip_happy = std::env::var("SKIP_HAPPY_FIXTURE").ok().as_deref() == Some("1")
+        || std::env::var("ARTIFACT_DIR").is_ok();
+    if !custom_witness && !skip_happy {
         let fixture = fixtures::happy_fixture_dir();
         fs::create_dir_all(&fixture).expect("mkdir fixtures/happy");
         fs::write(fixture.join("groth16.bin"), &groth16_bytes).expect("write fixture groth16");

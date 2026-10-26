@@ -42,8 +42,8 @@ Program id (`declare_id!` / localnet / Devnet): `74UW993wrDasAMyBQ53PjHpYLK5vMkW
 
 | Number | Where |
 | --- | --- |
-| Settle **285,947** CU (Groth16 is most of that); tx cap **1,400,000** | [`notes/budgets.md`](./notes/budgets.md) |
-| Public journal **104 bytes** | [`notes/budgets.md`](./notes/budgets.md) |
+| Live Devnet settle **281,362** CU (N=1, Groth16 is most of that); LiteSVM **285,947** CU; tx cap **1,400,000** | [`notes/budgets.md`](./notes/budgets.md) · tx in [`notes/devnet.md`](./notes/devnet.md) |
+| Public journal **104 bytes** (144 with a change note) | [`notes/budgets.md`](./notes/budgets.md) |
 | Remote Groth16 **30.7 s**; execute **11,093,598** cycles | [`notes/proving.md`](./notes/proving.md) |
 
 ## Installation

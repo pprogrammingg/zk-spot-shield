@@ -117,9 +117,7 @@ pub async fn run_worker(
     fee_cfg: FeeConfig,
 ) {
     while let Some(id) = rx.recv().await {
-        queue
-            .set_status(id, JobStatus::Running, None, None)
-            .await;
+        queue.set_status(id, JobStatus::Running, None, None).await;
         let intent = match queue.get(id).await {
             Some(j) => j.intent,
             None => continue,
@@ -148,13 +146,9 @@ pub async fn run_worker(
                 // Non-JSON intents stay Done without fee (witness-only until prove wired).
                 if intent.first() == Some(&b'{') {
                     tracing::warn!(%id, error = %e, "settle intent failed");
-                    queue
-                        .set_status(id, JobStatus::Failed, Some(e), None)
-                        .await;
+                    queue.set_status(id, JobStatus::Failed, Some(e), None).await;
                 } else {
-                    queue
-                        .set_status(id, JobStatus::Done, None, None)
-                        .await;
+                    queue.set_status(id, JobStatus::Done, None, None).await;
                     tracing::info!(%id, "opaque intent queued (prove stub)");
                 }
             }
@@ -170,9 +164,8 @@ mod tests {
     async fn enqueue_and_worker_marks_done_opaque() {
         let (queue, rx) = ProveQueue::new();
         let q = queue.clone();
-        let worker = tokio::spawn(async move {
-            run_worker(q, rx, None, FeeConfig::default()).await
-        });
+        let worker =
+            tokio::spawn(async move { run_worker(q, rx, None, FeeConfig::default()).await });
 
         let job = queue.enqueue(vec![1, 2, 3]).await;
         assert_eq!(job.status, JobStatus::Queued);

@@ -281,6 +281,40 @@ mod tests {
             .expect("happy fixture must verify on SP1 v6.1.0 path");
     }
 
+    fn change_dir() -> std::path::PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../zk-circuit/fixtures/change")
+    }
+
+    fn parse_vkey_bytes32_txt(s: &str) -> [u8; 32] {
+        let hex = s.trim().strip_prefix("0x").expect("0x vkey");
+        assert_eq!(hex.len(), 64);
+        let mut out = [0u8; 32];
+        for i in 0..32 {
+            out[i] = u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).expect("hex");
+        }
+        out
+    }
+
+    #[test]
+    fn change_fixture_verifies_against_its_vkey() {
+        let proof = std::fs::read(change_dir().join("groth16.bin")).expect("groth16.bin");
+        let journal = std::fs::read(change_dir().join("journal.bin")).expect("journal.bin");
+        let vkey = parse_vkey_bytes32_txt(
+            &std::fs::read_to_string(change_dir().join("vkey.bytes32.txt")).expect("vkey"),
+        );
+        assert_eq!(proof.len(), SP1_V6_PROOF_BYTE_LEN);
+        assert_eq!(journal.len(), 144);
+        verify_sp1_groth16_v6(&proof, &journal, &vkey)
+            .expect("change-note fixture must verify on SP1 v6.1.0 path");
+    }
+
+    #[test]
+    fn change_fixture_does_not_verify_against_frozen_vkey() {
+        let proof = std::fs::read(change_dir().join("groth16.bin")).expect("groth16.bin");
+        let journal = std::fs::read(change_dir().join("journal.bin")).expect("journal.bin");
+        assert!(verify_sp1_groth16_v6(&proof, &journal, &crate::constants::VKEY_HASH).is_err());
+    }
+
     #[test]
     fn garbage_proof_fails() {
         let journal = std::fs::read(happy_dir().join("journal.bin")).expect("journal.bin");

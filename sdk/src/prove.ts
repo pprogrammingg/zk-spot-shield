@@ -19,6 +19,11 @@ export const HAPPY_FIXTURE_DIR = join(
   "zk-circuit/fixtures/happy",
 );
 
+export const CHANGE_FIXTURE_DIR = join(
+  REPO_ROOT,
+  "zk-circuit/fixtures/change",
+);
+
 export type ProofBundle = {
   proof: Buffer;
   journal: Buffer;
@@ -57,6 +62,28 @@ export function loadHappyProofFixture(
   }
   if (journal.length !== 104) {
     throw new Error(`expected journal.bin length 104, got ${journal.length}`);
+  }
+  return { proof, journal, source: "fixture" };
+}
+
+/** Read committed change-note `groth16.bin` + 144-byte `journal.bin`. */
+export function loadChangeProofFixture(
+  fixtureDir: string = CHANGE_FIXTURE_DIR,
+): ProofBundle {
+  const proofPath = join(fixtureDir, "groth16.bin");
+  const journalPath = join(fixtureDir, "journal.bin");
+  if (!existsSync(proofPath) || !existsSync(journalPath)) {
+    throw new Error(
+      `missing change fixtures under ${fixtureDir} (need groth16.bin + journal.bin)`,
+    );
+  }
+  const proof = readFileSync(proofPath);
+  const journal = readFileSync(journalPath);
+  if (proof.length !== 356) {
+    throw new Error(`expected groth16.bin length 356, got ${proof.length}`);
+  }
+  if (journal.length !== 144) {
+    throw new Error(`expected journal.bin length 144, got ${journal.length}`);
   }
   return { proof, journal, source: "fixture" };
 }
@@ -117,14 +144,25 @@ export function parseJournalPublic(journal: Buffer): {
   assetIdMint: Buffer;
   nullifier: Buffer;
   merkleRoot: Buffer;
+  changeAmount: bigint;
+  changeLeaf: Buffer;
 } {
-  if (journal.length !== 104) {
-    throw new Error(`journal must be 104 bytes, got ${journal.length}`);
+  if (journal.length !== 104 && journal.length !== 144) {
+    throw new Error(`journal must be 104 or 144 bytes, got ${journal.length}`);
+  }
+  const changeAmount =
+    journal.length === 144 ? journal.readBigUInt64LE(104) : 0n;
+  const changeLeaf =
+    journal.length === 144 ? journal.subarray(112, 144) : Buffer.alloc(32);
+  if (changeAmount > 0n && changeLeaf.every((b) => b === 0)) {
+    throw new Error("change_amount > 0 requires a non-zero change_leaf");
   }
   return {
     requestedSwapAmount: journal.readBigUInt64LE(0),
     assetIdMint: journal.subarray(8, 40),
     nullifier: journal.subarray(40, 72),
     merkleRoot: journal.subarray(72, 104),
+    changeAmount,
+    changeLeaf,
   };
 }

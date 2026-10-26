@@ -22,7 +22,7 @@ Toy note: secret of all `0x01`, address of all `0x02`, mint of all `0x03`, balan
 | Root | `0x1aa60d6eb3b8b764ce14a2d49f45e3732bee6ddd962709eb3d26fdbcd814f354` |
 | Nullifier | `0x1023e6c76d8f6adae4f07e565b323cd2e94fb547fe4c413c83664eb28314f8bd` |
 
-Journal (also `journal.bin`): amount `100`, mint `0x03…03`, that nullifier, that root.
+Journal (`fixtures/happy/journal.bin`): amount `100`, mint `0x03…03`, that nullifier, that root. That frozen file is **104 bytes** (no change note) so CI Groth16 verify stays on `VKEY_HASH`. `fixtures/change/journal.bin` is the **144-byte** wrap of the same witness: remainder `900` plus `change_leaf`. Native `public_outputs_from_private` checks spend 100 / change 900 and rejects an underfunded spend.
 
 `happy_fixture_journal_matches_happy_path_inputs` (host) and `happy_journal_matches_io_hashes` (io) check the recorded journal matches these inputs.
 

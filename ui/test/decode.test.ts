@@ -39,7 +39,19 @@ describe("UI account decode", () => {
     j.fill(3, 8, 40);
     const pub = parseJournal(j);
     expect(pub.requestedSwapAmount).toBe(100n);
+    expect(pub.changeAmount).toBe(0n);
     expect(() => parseJournal(j.subarray(0, 103))).toThrow();
     expect(encodeBase64(j).length).toBeGreaterThan(0);
+  });
+
+  it("parses 144-byte journal with change note", () => {
+    const j = new Uint8Array(144);
+    new DataView(j.buffer).setBigUint64(0, 100n, true);
+    new DataView(j.buffer).setBigUint64(104, 900n, true);
+    j.fill(9, 112, 144);
+    const pub = parseJournal(j);
+    expect(pub.requestedSwapAmount).toBe(100n);
+    expect(pub.changeAmount).toBe(900n);
+    expect(pub.changeLeaf.every((b) => b === 9)).toBe(true);
   });
 });

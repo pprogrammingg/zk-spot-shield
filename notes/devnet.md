@@ -165,7 +165,17 @@ Network prove whose journal `asset_id_mint` is vault `mint_a` or `mint_b`, amoun
 | Merkle root (hex) | `08d4c239e1f6b3afcdbf68dd8e6b36e853fc6a418bb85b05dc8d14b23acad818` |
 | Groth16 wrap | gitignored `sp1-artifacts/devnet-settle/` ([Succinct 0x3f8c…e344](https://explorer.succinct.xyz/request/0x3f8c073fc36fa195ad057d04164d4b60253467d334af3f321eaeb8ec4f52e344)) |
 | Settle signature | `3V7YF2ULaHULbnSJinSTahDw5gJSMGkvB2GuQyLevnzh9A15d4yoEcXNbCMfvbkzAcdDBHStYpzkECMrbYGz5NyF` |
+| `computeUnitsConsumed` (N=1) | **281,362** (`getTransaction` / `meta.computeUnitsConsumed`; slot `513744382`; fee `5000` lamports) |
 | Explorer (tx) | https://explorer.solana.com/tx/3V7YF2ULaHULbnSJinSTahDw5gJSMGkvB2GuQyLevnzh9A15d4yoEcXNbCMfvbkzAcdDBHStYpzkECMrbYGz5NyF?cluster=devnet |
+
+Re-read this (or a later) settle the same way. Do not quote LiteSVM **285,947** as cluster CU.
+
+```bash
+solana confirm -v 3V7YF2ULaHULbnSJinSTahDw5gJSMGkvB2GuQyLevnzh9A15d4yoEcXNbCMfvbkzAcdDBHStYpzkECMrbYGz5NyF \
+  --url https://api.devnet.solana.com
+```
+
+Or `getTransaction` and print `meta.computeUnitsConsumed`. Optional: after `sendAndConfirm`, log that field so later txs fill a table. **N=1 is enough** if you label it N=1.
 
 ## UI click-through
 

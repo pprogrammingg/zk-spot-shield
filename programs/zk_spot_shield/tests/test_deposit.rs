@@ -293,7 +293,12 @@ fn deposit_moves_tokens_and_records_leaf() {
     let stored: &DepositLeafAccount = bytemuck::from_bytes(&acc.data[8..]);
     assert_eq!(stored.leaf, HAPPY_LEAF);
     assert_eq!(stored.amount, 1_000);
-    assert_eq!(stored.depositor, payer.pubkey());
+    assert_eq!(acc.data.len(), 8 + 72);
+    let payer_bytes = payer.pubkey().to_bytes();
+    assert!(
+        !acc.data[8..].windows(32).any(|w| w == payer_bytes.as_ref()),
+        "leaf PDA must not store the depositor wallet"
+    );
 }
 
 #[test]
@@ -407,6 +412,7 @@ fn deposit_then_register_tip_then_settle() {
                 vault_token_b: vtb,
                 user_token_a: uta,
                 user_token_b: utb,
+                change_leaf_account: None,
                 token_program: TOKEN_PROGRAM_ID,
                 system_program: anchor_lang::system_program::ID,
             }

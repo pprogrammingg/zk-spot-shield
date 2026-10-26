@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
-use zk_spot_shield::journal::{JournalPublic, JOURNAL_BYTE_LEN};
+use zk_spot_shield::journal::JournalPublic;
 
 /// Happy-path quote: fixture spend of 100 of mint `[3u8; 32]`.
 pub const QUOTE_AMOUNT: u64 = 100;
@@ -50,7 +50,7 @@ pub fn quote() -> PaymentQuote {
 
 #[derive(Deserialize)]
 pub struct PayRequest {
-    /// Base64 (or `0x` hex) of the 104-byte settle journal.
+    /// Base64 (or `0x` hex) of a 104- or 144-byte settle journal.
     pub journal_base64: String,
 }
 
@@ -131,9 +131,6 @@ fn decode_journal_bytes(s: &str) -> Result<Vec<u8>, PayError> {
 
 /// Accept a settle journal as payment. Does **not** look at any wallet pubkey.
 pub fn accept_journal(bytes: &[u8]) -> Result<JournalPublic, PayError> {
-    if bytes.len() != JOURNAL_BYTE_LEN {
-        return Err(PayError::Journal);
-    }
     let public = JournalPublic::from_journal_bytes(bytes).ok_or(PayError::Journal)?;
     if public.requested_swap_amount != QUOTE_AMOUNT {
         return Err(PayError::Amount);

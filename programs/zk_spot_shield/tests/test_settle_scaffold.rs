@@ -19,7 +19,7 @@ use {
     solana_transaction::versioned::VersionedTransaction,
     std::path::PathBuf,
     zk_spot_shield::journal::JournalPublic,
-    zk_spot_shield::state::VaultState,
+    zk_spot_shield::state::{DepositLeafAccount, VaultState},
 };
 
 /// Match `client::SETTLE_CU_LIMIT`. Default LiteSVM budget is 200k.
@@ -50,6 +50,48 @@ fn happy_fixture() -> (Vec<u8>, Vec<u8>) {
     let proof = std::fs::read(dir.join("groth16.bin")).expect("commit groth16.bin");
     let journal = std::fs::read(dir.join("journal.bin")).expect("commit journal.bin");
     (proof, journal)
+}
+
+fn parse_vkey_bytes32_txt(s: &str) -> [u8; 32] {
+    let hex = s.trim().strip_prefix("0x").expect("0x vkey");
+    assert_eq!(hex.len(), 64);
+    let mut out = [0u8; 32];
+    for i in 0..32 {
+        out[i] = u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).expect("hex");
+    }
+    out
+}
+
+fn change_fixture() -> (Vec<u8>, Vec<u8>, [u8; 32]) {
+    let mut dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    dir.push("../../zk-circuit/fixtures/change");
+    let proof = std::fs::read(dir.join("groth16.bin")).expect("commit change groth16.bin");
+    let journal = std::fs::read(dir.join("journal.bin")).expect("commit change journal.bin");
+    let vkey = parse_vkey_bytes32_txt(
+        &std::fs::read_to_string(dir.join("vkey.bytes32.txt")).expect("change vkey"),
+    );
+    (proof, journal, vkey)
+}
+
+fn set_vkey_hash(svm: &mut LiteSVM, program_id: Pubkey, authority: &Keypair, vkey_hash: [u8; 32]) {
+    let (global_config, _) = Pubkey::find_program_address(
+        &[zk_spot_shield::constants::GLOBAL_CONFIG_SEED],
+        &program_id,
+    );
+    send_ix(
+        svm,
+        authority,
+        Instruction::new_with_bytes(
+            program_id,
+            &zk_spot_shield::instruction::SetVkeyHash { vkey_hash }.data(),
+            zk_spot_shield::accounts::SetVkeyHash {
+                authority: authority.pubkey(),
+                global_config,
+            }
+            .to_account_metas(None),
+        ),
+    )
+    .expect("set_vkey_hash");
 }
 
 fn send_ix(svm: &mut LiteSVM, payer: &Keypair, instruction: Instruction) -> Result<(), String> {
@@ -284,6 +326,7 @@ fn settle_accounts(
         vault_token_b,
         user_token_a,
         user_token_b,
+        change_leaf_account: None,
         token_program: TOKEN_PROGRAM_ID,
         system_program: anchor_lang::system_program::ID,
     }
@@ -929,4 +972,59 @@ fn deposit_300_vault_only_settle_100() {
     assert_eq!(token_amount(&svm, uta), 0, "no second debit of A");
     assert_eq!(token_amount(&svm, vta), 300);
     assert_eq!(token_amount(&svm, utb), amount);
+}
+
+#[test]
+fn settle_inserts_change_leaf_from_144_journal() {
+    let program_id = zk_spot_shield::id();
+    let payer = Keypair::new();
+    let mut svm = LiteSVM::new();
+    load_program(&mut svm, program_id);
+    svm.airdrop(&payer.pubkey(), 10_000_000_000).unwrap();
+
+    init_config_and_vault(&mut svm, program_id, &payer);
+    let (proof, journal, vkey) = change_fixture();
+    let public = JournalPublic::from_journal_bytes(&journal).expect("144 journal");
+    assert_eq!(public.change_amount, 900);
+    set_vkey_hash(&mut svm, program_id, &payer, vkey);
+
+    let (vta, vtb, uta, utb) = seed_vault_and_tokens(
+        &mut svm,
+        program_id,
+        payer.pubkey(),
+        public.asset_id_mint,
+        1_000,
+        1_000,
+        1_000,
+        0,
+    );
+    register_root(&mut svm, program_id, &payer, public.merkle_root);
+    let (clean_pda, _) =
+        zk_spot_shield::state::CleanFundsRoot::find_pda(&program_id, &public.merkle_root);
+    let (change_pda, _) = DepositLeafAccount::find_pda(&program_id, &public.change_leaf);
+    let mut accounts = settle_accounts(
+        program_id,
+        payer.pubkey(),
+        clean_pda,
+        &public.nullifier,
+        vta,
+        vtb,
+        uta,
+        utb,
+    );
+    accounts.change_leaf_account = Some(change_pda);
+
+    send_ix(
+        &mut svm,
+        &payer,
+        settle_ix(program_id, &accounts, proof, journal),
+    )
+    .expect("change-note settle");
+
+    let acc = svm.get_account(&change_pda).expect("change leaf PDA");
+    let stored: &DepositLeafAccount = bytemuck::from_bytes(&acc.data[8..]);
+    assert_eq!(stored.leaf, public.change_leaf);
+    assert_eq!(stored.amount, 900);
+    assert_eq!(stored.mint.to_bytes(), public.asset_id_mint);
+    assert_eq!(token_amount(&svm, utb), 100);
 }

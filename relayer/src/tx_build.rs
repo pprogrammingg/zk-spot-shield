@@ -47,6 +47,7 @@ impl SettleAccountKeys {
             vault_token_b: self.vault_token_b,
             user_token_a: self.user_token_a,
             user_token_b: self.user_token_b,
+            change_leaf_account: None,
             token_program: anchor_spl::token::ID,
             system_program: anchor_lang::system_program::ID,
         }
@@ -102,11 +103,12 @@ pub fn build_settle_message(
     journal: Vec<u8>,
     recent_blockhash: Hash,
 ) -> Message {
-    let ixs = vec![
-        cu_limit_ix(),
-        build_settle_ix(accounts, proof, journal),
-    ];
-    Message::new_with_blockhash(&ixs, Some(&to_sol_pubkey(accounts.fee_payer)), &recent_blockhash)
+    let ixs = vec![cu_limit_ix(), build_settle_ix(accounts, proof, journal)];
+    Message::new_with_blockhash(
+        &ixs,
+        Some(&to_sol_pubkey(accounts.fee_payer)),
+        &recent_blockhash,
+    )
 }
 
 /// Sign a settle message with the relayer fee-payer keypair only.

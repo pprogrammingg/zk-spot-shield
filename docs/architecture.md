@@ -65,7 +65,7 @@ Each phase is a separate diagram so GitHub Pages can render them.
 | **B** Deposit | 4 to 12 | Built on-chain; hosted indexer later |
 | **C** Prove | 13 to 19 | Built |
 | **D** Settle | 20 to 28 | Built: vault-only; fee payer may be a relayer |
-| **E** Leftovers | 30 to 33 | Prove treasury; change notes + backup; then hide/unlink depositor |
+| **E** Leftovers | 30 to 33 | Change notes + encrypted backup + unlink depositor from the leaf PDA; prove treasury still later |
 
 ---
 
@@ -100,7 +100,7 @@ sequenceDiagram
  Prog->>Spl: 8 Transfer user ATA to vault ATA
  Prog->>Prog: 9 Init deposit leaf PDA
  Prog->>Prog: 10 Bump vault reserve
- Note over Prog: Leaf PDA stores leaf amount mint depositor
+ Note over Prog: Leaf PDA stores leaf amount mint (no depositor pubkey)
  Prog-->>Tree: 11 Insert leaf into deposit tree
  Tree-->>Prog: 12 Protocol admin registers CleanFundsRoot tip
 ```
@@ -148,14 +148,15 @@ sequenceDiagram
  Prog->>Prog: 26 apply_vault_only_spend pay other mint
  Prog->>Spl: 27 Vault pays other mint to user
  Prog->>Prog: 28 Create nullifier PDA
- Note over Prog: Fee payer pays SOL rent; no second debit of journal mint
+ Prog->>Prog: 28b Insert change-leaf PDA if journal binds remainder
+ Note over Prog: Fee payer pays SOL rent; no second debit of journal mint; admin still registers the new tip
 ```
 
 ---
 
-### Phase E — Upcoming (steps 30 to 33)
+### Phase E — Change notes, backup, unlink (steps 30 to 33)
 
-Fee-payer settle already works in phase D (self-submit or relayer). Still to build:
+Fee-payer settle already works in phase D (self-submit or relayer). Change notes, encrypted backup, and omitting the depositor from the leaf PDA are in the client/circuit/program. CI Groth16 stays the 104-byte happy pack; a second 144-byte wrap in `fixtures/change/` is what settle uses to insert the remainder leaf. Prove-treasury remains later.
 
 ```mermaid
 sequenceDiagram
@@ -165,7 +166,7 @@ sequenceDiagram
  Rel-->>Net: 30 Pay prove credits from treasury
  Note over Rel: User fees refill PROVE and SOL
  Note over W: 32 Change note + encrypted backup
- Note over W: 33 Hide depositor / unlink recipient
+ Note over W: 33 Leaf PDA has no depositor; payout ATA may be wallet R
 ```
 
 ---
@@ -186,11 +187,11 @@ flowchart TB
  Nullifier[nullifier]
  Root[Merkle root]
  Proof[Groth16 proof]
- DepositLink[deposit tx and depositor]
+ DepositLink[deposit tx signer]
  end
  privateSide -->|zero-knowledge proof| publicSide
 ```
 
-Deposit today still links a **wallet** to a leaf on-chain. Settle hides the secret and leaf index, but the settle transaction still lists **token accounts** and often the fee payer. Hide/unlink depositor is upcoming (after note backup).
+The leaf PDA no longer stores a depositor pubkey. The **deposit transaction** still shows signer D and the SPL transfer. Settle hides the secret and leaf index, but the settle transaction still lists **token accounts** and often the fee payer. Default unlink path: deposit from wallet D, pay wallet R.
 
 See [Solana Program](solana-program.md) for accounts, instruction data vs state, and settle scenarios. See [Security](security.md) for the attack table. Folder map: [README](https://github.com/pprogrammingg/zk-spot-shield#repository).

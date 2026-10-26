@@ -215,7 +215,8 @@ export default function App() {
         <h1>ZK Spot Shield</h1>
         <p className="lede">
           Vault-only 1:1 spot settle after Groth16. This is a <strong>shielded settle</strong>, not a
-          mixer — a deposit still shows the depositor on-chain.
+          mixer — the deposit transaction still shows the signer; the leaf PDA does not store a
+          wallet pubkey.
         </p>
       </header>
 

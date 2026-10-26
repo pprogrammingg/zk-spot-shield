@@ -20,6 +20,8 @@ export type JournalView = {
   assetIdMint: Uint8Array;
   nullifier: Uint8Array;
   merkleRoot: Uint8Array;
+  changeAmount: bigint;
+  changeLeaf: Uint8Array;
 };
 
 function u64le(bytes: Uint8Array, offset: number): bigint {
@@ -55,14 +57,19 @@ export function decodeGlobalConfig(data: Uint8Array): ConfigView {
 }
 
 export function parseJournal(bytes: Uint8Array): JournalView {
-  if (bytes.length !== 104) {
-    throw new Error(`journal must be 104 bytes, got ${bytes.length}`);
+  if (bytes.length !== 104 && bytes.length !== 144) {
+    throw new Error(`journal must be 104 or 144 bytes, got ${bytes.length}`);
   }
+  const changeAmount = bytes.length === 144 ? u64le(bytes, 104) : 0n;
+  const changeLeaf =
+    bytes.length === 144 ? bytes.subarray(112, 144) : new Uint8Array(32);
   return {
     requestedSwapAmount: u64le(bytes, 0),
     assetIdMint: bytes.subarray(8, 40),
     nullifier: bytes.subarray(40, 72),
     merkleRoot: bytes.subarray(72, 104),
+    changeAmount,
+    changeLeaf,
   };
 }
 

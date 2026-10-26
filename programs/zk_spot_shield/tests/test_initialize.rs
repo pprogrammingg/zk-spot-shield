@@ -389,7 +389,10 @@ fn test_set_vkey_hash() {
         &stranger,
         Instruction::new_with_bytes(
             program_id,
-            &zk_spot_shield::instruction::SetVkeyHash { vkey_hash: [8u8; 32] }.data(),
+            &zk_spot_shield::instruction::SetVkeyHash {
+                vkey_hash: [8u8; 32],
+            }
+            .data(),
             zk_spot_shield::accounts::SetVkeyHash {
                 authority: stranger.pubkey(),
                 global_config,

@@ -14,7 +14,6 @@ pub struct DepositEvent {
     pub leaf: [u8; 32],
     pub amount: u64,
     pub mint: Pubkey,
-    pub depositor: Pubkey,
 }
 
 /// Accounts for one deposit tx: SPL custody into the vault + durable leaf PDA.
@@ -37,8 +36,8 @@ pub struct DepositShielded<'info> {
     )]
     pub vault: AccountLoader<'info, VaultState>,
 
-    /// New PDA `["deposit_leaf", leaf]` holding public leaf + amount + mint + depositor.
-    /// `init` fails if this leaf was already deposited.
+    /// New PDA `["deposit_leaf", leaf]` holding public leaf + amount + mint.
+    /// `init` fails if this leaf was already deposited. No depositor pubkey.
     #[account(
         init,
         payer = depositor,
@@ -106,15 +105,9 @@ pub fn handle_deposit_shielded(
         acc.leaf = leaf;
         acc.amount = amount;
         acc.mint = mint;
-        acc.depositor = ctx.accounts.depositor.key();
     }
 
-    emit!(DepositEvent {
-        leaf,
-        amount,
-        mint,
-        depositor: ctx.accounts.depositor.key(),
-    });
+    emit!(DepositEvent { leaf, amount, mint });
 
     Ok(())
 }

@@ -56,12 +56,15 @@ mod tests {
             compute_relayer_fee(10_000, FeeConfig { bps: 30, flat: 0 }),
             30
         );
+        assert_eq!(compute_relayer_fee(100, FeeConfig { bps: 0, flat: 5 }), 5);
         assert_eq!(
-            compute_relayer_fee(100, FeeConfig { bps: 0, flat: 5 }),
-            5
-        );
-        assert_eq!(
-            compute_relayer_fee(100, FeeConfig { bps: 10_000, flat: 0 }),
+            compute_relayer_fee(
+                100,
+                FeeConfig {
+                    bps: 10_000,
+                    flat: 0
+                }
+            ),
             100
         );
         assert_eq!(compute_relayer_fee(0, FeeConfig::default()), 0);
@@ -69,9 +72,6 @@ mod tests {
 
     #[test]
     fn fee_never_exceeds_amount() {
-        assert_eq!(
-            compute_relayer_fee(10, FeeConfig { bps: 0, flat: 999 }),
-            10
-        );
+        assert_eq!(compute_relayer_fee(10, FeeConfig { bps: 0, flat: 999 }), 10);
     }
 }

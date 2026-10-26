@@ -21,6 +21,7 @@ import {
 import {
   buildSettleTransaction,
   findCleanFundsRootPda,
+  findDepositLeafPda,
   findNullifierPda,
   findVaultPda,
   type SettleAccounts,
@@ -210,6 +211,13 @@ export async function requestShieldedSwap(
     [Buffer.from("global-config")],
     req.program.programId,
   );
+  let changeLeaf: PublicKey | undefined;
+  if (pub.changeAmount > 0n) {
+    [changeLeaf] = await findDepositLeafPda(
+      req.program.programId,
+      pub.changeLeaf,
+    );
+  }
   const accounts: SettleAccounts = {
     payer: req.feePayer,
     globalConfig,
@@ -220,6 +228,7 @@ export async function requestShieldedSwap(
     vaultTokenB: req.vaultTokenB,
     userTokenA: recipientTokenA,
     userTokenB: recipientTokenB,
+    changeLeaf,
   };
   const tx = await buildSettleTransaction(
     req.program,

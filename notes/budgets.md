@@ -8,7 +8,7 @@ Account **data** sizes match `state.rs` asserts and [`docs/solana-program.md`](.
 | --- | --- |
 | Packet / transaction size | **1232 bytes** (before lookup tables) |
 | Compute units / transaction | **1,400,000** (`client::SETTLE_CU_LIMIT`) |
-| Verifier class | **~280k** CU (SP1 Groth16) |
+| Verifier class | **~280k** CU (SP1 Groth16; Groth16 is most of settle) |
 
 ## On-chain account rent space
 
@@ -17,7 +17,7 @@ Anchor stores an **8-byte discriminator** before account data. `init` space = `8
 | Account | Data | Rent `space` | Layout |
 | --- | --- | --- | --- |
 | `VaultState` | 120 | **128** | `zero_copy` `repr(C)`; `_padding: [u8; 7]` after `bump` |
-| `DepositLeafAccount` | 104 | **112** | `zero_copy` `repr(C)`; already 8-byte aligned |
+| `DepositLeafAccount` | 72 | **80** | `zero_copy` `repr(C)`; leaf + amount + mint (no depositor) |
 | `NullifierAccount` | 32 | **40** | `zero_copy` |
 | `CleanFundsRoot` | 32 | **40** | `zero_copy` |
 | `GlobalConfig` | 65 | **73** | `Account` + `InitSpace` |
@@ -31,19 +31,24 @@ Happy-path artifacts in `zk-circuit/fixtures/happy/` ([`proving.md`](./proving.m
 | Blob | Bytes |
 | --- | --- |
 | `groth16.bin` | **356** |
-| `journal.bin` | **104** (LE `u64` amount + mint + nullifier + root; no inner serde) |
+| `journal.bin` | **104** (LE `u64` amount + mint + nullifier + root). A change-note journal is **144** (+ change amount + change leaf); not in the frozen Groth16 pack. |
 | Host `pack_settle_payload` | **468** |
 | Anchor `settle_shielded_spot` data | **476** (8-byte discriminator + Borsh vectors) |
 
 Shrinking the journal means dropping a public field (circuit, vkey, and on-chain parse).
 
-Eleven settle metas (payer, config, vault, root, nullifier, vault token A/B, user token A/B, token program, system program) ≈ **352 bytes** of pubkeys on top of ~476 bytes of data. Compute-budget instruction is separate (`client::settle_compute_budget_ixs`). Packet pressure → address lookup tables.
+Eleven settle metas for a 104-byte journal (payer, config, vault, root, nullifier, vault token A/B, user token A/B, token program, system program) ≈ **352 bytes** of pubkeys on top of ~476 bytes of data. A 144-byte change-note settle adds an optional `change_leaf_account` PDA. Compute-budget instruction is separate (`client::settle_compute_budget_ixs`). Packet pressure → address lookup tables.
 
 Proof bytes stay in **instruction data**. A lookup table only indexes **pubkeys**. Static ALT candidates: token program, system program, `global_config`, `vault`, vault token A/B. Per-settle keys (nullifier, user token accounts, `clean_funds_root`) stay as message keys. Helpers: `client::alt`.
 
-## Measured settle compute units (LiteSVM, 2026-10-20)
+## Measured settle compute units
 
-Full vault-only settle: **285,947** CU of **1,400,000**. Groth16 runs inside `settle_shielded_spot`, so it cannot be metered alone. The ~270–280k band is “total minus the small leftover.”
+Groth16 runs inside `settle_shielded_spot`, so it cannot be metered alone. The ~270–280k band is “total minus the small leftover.” **Talk / CFP:** quote the Devnet row. Do not say **285,947** unless you say LiteSVM.
+
+| Source | CU | How |
+| --- | --- | --- |
+| **Devnet cluster (N=1)** | **281,362** | `getTransaction` `meta.computeUnitsConsumed` on settle `3V7YF2UL…` (slot `513744382`). Record: [`devnet.md`](./devnet.md) |
+| **LiteSVM** (2026-10-20) | **285,947** | `settle_cu_profile_within_budget` after `anchor build` |
 
 | Band | Est. CU |
 | --- | --- |
@@ -51,9 +56,10 @@ Full vault-only settle: **285,947** CU of **1,400,000**. Groth16 runs inside `se
 | Vault → user token transfer | **~3k–8k** |
 | Nullifier account create + write | **~3k–6k** |
 | Pause / journal / root / mint checks | **~1k–3k** |
-| **Measured total** | **285,947** |
+| **LiteSVM total** | **285,947** |
+| **Devnet total (N=1)** | **281,362** |
 
-Non-verify work is about **6–16k** CU. Priority fee defaults to **0**.
+Non-verify work is about **6–16k** CU. Priority fee defaults to **0**. Tx cap is **1,400,000**.
 
 ```bash
 unset CARGO_TARGET_DIR
@@ -65,7 +71,7 @@ cargo test -p zk_spot_shield --test test_settle_scaffold settle_cu_profile --loc
 
 ## Latency (2026-10-20, this laptop)
 
-Pipeline: load fixture proof → relayer sign / HTTP 402 accept → LiteSVM confirm. Network Groth16 was **not** re-run; wall time is still [`proving.md`](./proving.md).
+Pipeline: load fixture proof → relayer sign / HTTP 402 accept → LiteSVM confirm. Network Groth16 was **not** re-run; wall time is still [`proving.md`](./proving.md). This is **not** yet a live Agent → prove → verify → settle run; that comparison vs a public USDC/x402 pay is roadmap milestone **P4**.
 
 | Stage | Wall |
 | --- | --- |
@@ -74,7 +80,8 @@ Pipeline: load fixture proof → relayer sign / HTTP 402 accept → LiteSVM conf
 | Relayer `process_intent_dry_run` | **0.59 ms** |
 | HTTP 402 `accept_journal` | **0.06 ms** |
 | SDK `requestShieldedSwap` | **6.4 ms** |
-| LiteSVM settle confirm | **84.8 ms** (**285,947** CU) |
+| LiteSVM settle confirm | **84.8 ms** (**285,947** CU, LiteSVM — not cluster) |
+| Devnet settle `3V7YF2UL…` (N=1) | **281,362** CU (`computeUnitsConsumed`; wall not re-timed) |
 | Network Groth16 wrap (not re-run) | **30.7 s** + ~0.42 `$PROVE` |
 
 With fixtures, proving is disk I/O; the bottleneck is on-chain verify. In production, remote wrap still dominates unless you already have a proof. Relayer dry-run is not cluster confirm.

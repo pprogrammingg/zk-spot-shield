@@ -32,9 +32,11 @@ export {
 } from "./depositTree.js";
 
 export {
+  CHANGE_FIXTURE_DIR,
   HAPPY_FIXTURE_DIR,
   REPO_ROOT,
   getSettleProof,
+  loadChangeProofFixture,
   loadHappyProofFixture,
   parseJournalPublic,
   type LoadProofOptions,
@@ -101,3 +103,9 @@ export {
   type PayAck,
   type PaymentQuote,
 } from "./pay402.js";
+
+export {
+  exportEncryptedNote,
+  importEncryptedNote,
+  type NoteBackupPlain,
+} from "./noteBackup.js";

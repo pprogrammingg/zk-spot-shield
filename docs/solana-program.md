@@ -13,7 +13,7 @@ Every Anchor account also carries an 8-byte type tag, so allocations are `8 + si
 | `GlobalConfig` | Borsh `Account` | `["global-config"]` | 65 B | Admin key, trusted circuit fingerprint, pause |
 | `VaultState` | zero-copy | `["spot_vault"]` | 120 B | Pair mints, reserve counters, PDA bump |
 | Vault token ATAs | SPL | Associated-token; **owner** = vault PDA | n/a | Real mint A / mint B balances |
-| `DepositLeafAccount` | zero-copy | `["deposit_leaf", leaf]` | 104 B | Public commitment + amount / mint / depositor |
+| `DepositLeafAccount` | zero-copy | `["deposit_leaf", leaf]` | 72 B | Public commitment + amount / mint (no depositor pubkey) |
 | `CleanFundsRoot` | zero-copy | `["clean_funds_root", root]` | 32 B | One account per approved Merkle root |
 | `NullifierAccount` | zero-copy | `["nullifier", nullifier]` | 32 B | One account per spent nullifier |
 
@@ -37,7 +37,7 @@ flowchart TB
 
 The **bump** lets the program `invoke_signed` as the vault PDA for token payouts. The **protocol admin** on config signs pause / register / vkey rotate — not SPL payouts. Anchor `has_one = authority` gates those admin instructions.
 
-Deposit leaf PDAs are unique (`init` fails on replay). Account data stores the public leaf plus amount, mint, and **depositor**, so deposit privacy is imperfect today. Nullifier seeds omit the wallet so the spend-tag address does not dox the user. Existence = already spent. `CleanFundsRoot` uses the same existence pattern for approved tree tips so in-flight proofs against older registered roots can still settle.
+Deposit leaf PDAs are unique (`init` fails on replay). Account data stores the public leaf plus amount and mint — **no depositor pubkey**. The deposit transaction still shows the signer. Nullifier seeds omit the wallet so the spend-tag address does not dox the user. Existence = already spent. `CleanFundsRoot` uses the same existence pattern for approved tree tips so in-flight proofs against older registered roots can still settle. After a partial spend, settle inserts a change-leaf PDA when the journal is 144 bytes and binds `change_leaf`; the protocol admin still registers the new Merkle tip.
 
 ## Instruction data vs durable state
 
@@ -89,7 +89,7 @@ SDK and UI call these same instructions. Default settle uses the committed happy
 
 The fee payer may be a relayer; it need not own the recipient token accounts.
 
-Upcoming: change notes for leftovers; full hidden recipient; encrypted note backup. See [Architecture](architecture.md) phase E.
+Change notes, encrypted backup, and omitting the depositor from the leaf PDA are in [Architecture](architecture.md) phase E. CI Groth16 stays the 104-byte happy journal; settle inserts a change-leaf PDA when the journal is the 144-byte wrap in `fixtures/change/`. Payout ATAs may belong to a different wallet than the depositor.
 
 Errors map to checks: `InvalidProof`, `MerkleRootNotFound`, `NullifierAlreadyUsed`, `ProtocolPaused`, token/vault errors, and zero-copy failures.
 
@@ -105,7 +105,7 @@ Deposit, admin registers the tree tip, then a settle with a valid proof succeeds
 | `VaultState` | Reserves updated 1:1. Journal amount/mint are instruction bytes. |
 | Vault token accounts | Deposit already moved custody in; settle pays the other mint out. |
 | `CleanFundsRoot` | Must already exist for the journal’s Merkle root. |
-| `DepositLeafAccount` | Created at deposit (leaf / amount / mint / **depositor**). |
+| `DepositLeafAccount` | Created at deposit (leaf / amount / mint). A change-leaf PDA is created on settle when the journal binds a remainder. |
 | `NullifierAccount` | Created at the end of settle from the journal nullifier. |
 | Recipient token accounts | Receive the other mint; owner need not be the fee payer. |
 

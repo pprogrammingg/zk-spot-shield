@@ -15,7 +15,9 @@ fn bytes32_to_fr(bytes: &[u8]) -> Fr {
 fn hash_fields(inputs: &[Fr]) -> [u8; 32] {
     let mut hasher =
         Poseidon::<Fr>::new_circom(inputs.len()).expect("Failed to initialize Poseidon hasher");
-    let out = hasher.hash(inputs).expect("Failed to compute Poseidon hash");
+    let out = hasher
+        .hash(inputs)
+        .expect("Failed to compute Poseidon hash");
     let be = out.into_bigint().to_bytes_be();
     be.try_into().expect("BN254 Fr encodes as 32 bytes")
 }

@@ -32,12 +32,14 @@ The chain learns the trade amount, the token, and the one-time tag. It never lea
 | Circuit, Groth16 fixtures, forged-path reject | Done |
 | Program: config, vault, roots, nullifiers, deposit | Done |
 | Vault-only 1:1 settle (proof → vault pays the other mint) | Done |
-| Relayer fee payer + HTTP 402 stub | Done |
+| Relayer fee payer + HTTP 402 stub | Done (402 still uses a fixture journal, not a live prove) |
 | TypeScript SDK + swap UI | Done (UI still needs a localnet click-through) |
-| Hidden recipient | Partial — deposit still records the depositor |
-| Change notes + encrypted note backup | Next |
-| Hide / unlink depositor | After backup |
+| Hidden recipient | Payout ATA may differ from the depositor; deposit tx still on the ledger |
+| Change notes | Circuit + settle insert; CI pack is 104 bytes, change-leaf pack is 144 bytes |
+| Encrypted note backup | SDK export/import (passphrase, AES-GCM) |
+| Hide / unlink depositor | Leaf PDA has no depositor pubkey |
 | Devnet | Live (program `74UW…`, settle `3V7YF2UL…`, tag `v1.0.0-devnet`) |
 | Extra RPC / IPFS | Later |
+| Agent → prove → verify → settle (timed vs public USDC/x402) | Later |
 
 Start with [Architecture](architecture.md) for the flow, [Solana Program](solana-program.md) for accounts and instructions, or [Tests](tests.md) for fixtures.

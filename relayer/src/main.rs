@@ -10,9 +10,7 @@ use std::sync::Arc;
 
 use solana_keypair::Keypair;
 use tracing_subscriber::EnvFilter;
-use zk_spot_shield_relayer::{
-    app_router, run_worker, AppState, FeeConfig, ProveQueue,
-};
+use zk_spot_shield_relayer::{app_router, run_worker, AppState, FeeConfig, ProveQueue};
 
 fn load_fee_payer() -> Option<Arc<Keypair>> {
     let path = std::env::var("RELAYER_FEE_PAYER").ok()?;

@@ -10,7 +10,7 @@ Who must sign each of the nine instructions. Sizes: [`budgets.md`](./budgets.md)
 | `set_vkey_hash` | `authority` | config | `has_one = authority`; rejects the all-zero hash |
 | `register_clean_funds_root` | `authority` | new root PDA | `has_one = authority` |
 | `deposit_shielded` | `depositor` | vault, leaf, token accounts | `user_token.owner == depositor` |
-| `settle_shielded_spot` | `payer` (fee payer) | vault, nullifier, token accounts | vault PDA signs the SPL payout; user token accounts need not match payer |
+| `settle_shielded_spot` | `payer` (fee payer) | vault, nullifier, token accounts, optional change-leaf PDA | vault PDA signs the SPL payout; user token accounts need not match payer |
 | `pause` / `unpause` | `authority` | config | `has_one = authority` |
 
 Settle `payer` does **not** need to own the user token accounts. Deposit still requires the token owner to sign. Test: `instruction_signer_inventory` in `constants.rs`.

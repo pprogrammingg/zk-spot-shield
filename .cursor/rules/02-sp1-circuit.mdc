@@ -16,7 +16,7 @@ alwaysApply: false
 ## Guest (`zk-circuit/guest`)
 
 - Stack-only hot path: fixed arrays (`[u8; 32]`, path depth fixed e.g. 20) — no `Vec` / heap in constraints
-- Private inputs stay in guest; public journal = amounts, mint/asset id, nullifier, merkle root
+- Private inputs stay in guest; public journal = amount, mint, nullifier, merkle root, and (when remainder > 0) change amount + change leaf
 - Commit journal via `sp1_zkvm::io::commit` only after constraints pass
 - Guest profile: aggressive opts (`opt-level = 3`, LTO) when wired
 

@@ -27,19 +27,20 @@ The crate has no zkVM dependency, so it compiles natively and its unit tests run
 
 ## `zk-circuit/guest`: the circuit
 
-The guest is short. It reads `PrivateInputs`, enforces three rules, and commits four public values.
+The guest is short. It reads `PrivateInputs`, enforces four rules, and commits the journal.
 
 1. **Solvency**: `balance >= requested_swap_amount`, otherwise panic.
-2. **Membership**: recompute `leaf = Poseidon(secret, user_address, balance)`, then hash up the 20-level path to a root. It must equal `expected_root`, otherwise panic.
-3. **Nullifier**: `Poseidon(secret, leaf, asset_id_mint)`.
+2. **Conservation**: `change_amount + spend == old balance` (`change_amount = balance - spend`). Fail closed if that identity does not hold.
+3. **Membership**: recompute `leaf = Poseidon(secret, user_address, balance)`, then hash up the 20-level path to a root. It must equal `expected_root`, otherwise panic.
+4. **Nullifier**: `Poseidon(secret, leaf, asset_id_mint)`.
 
-If every check passes, the guest commits the journal. If any check fails, the guest panics, and a panicked run cannot produce a valid proof. That is what "fail closed" means here.
+If every check passes, the guest commits the journal, including a **change leaf** `Poseidon(secret, user_address, change_amount)` when the remainder is non-zero. If any check fails, the guest panics, and a panicked run cannot produce a valid proof. That is what "fail closed" means here.
 
 Fixed-size arrays everywhere (`[u8; 32]`, a `[_; 20]` path) keep the guest free of heap allocation, which keeps the cycle count down.
 
 ## The journal: what the chain will see
 
-The journal is exactly 104 bytes. There is no recipient pubkey in it yet.
+The committed happy-path Groth16 fixture is **104 bytes** (no change note). A guest that binds a remainder note appends 40 more bytes (**144 total**). There is no recipient pubkey in it yet.
 
 | Bytes | Field | Type |
 | --- | --- | --- |
@@ -47,8 +48,10 @@ The journal is exactly 104 bytes. There is no recipient pubkey in it yet.
 | 8..40 | `asset_id_mint` | 32 bytes |
 | 40..72 | `nullifier` | 32 bytes |
 | 72..104 | `merkle_root` | 32 bytes |
+| 104..112 | `change_amount` | little-endian `u64` (144-byte journals only) |
+| 112..144 | `change_leaf` | 32 bytes (144-byte journals only) |
 
-`PublicOutputs::from_journal_bytes` decodes this layout and rejects any other length.
+`PublicOutputs::from_journal_bytes` accepts 104 or 144 bytes and rejects any other length. A 144-byte journal with `change_amount > 0` and an all-zero `change_leaf` is rejected. Groth16 public inputs **are** those journal bytes (hashed), so a 104-byte proof cannot verify a 144-byte journal. The frozen CI pack stays 104 bytes / `0x00b3a15c…35d7`. The change-note wrap lives under `zk-circuit/fixtures/change/` (144 bytes / `0x00435696…c240`).
 
 ## `zk-circuit/host`: the driver
 
@@ -63,12 +66,11 @@ A Groth16 wrap needs more memory than a typical laptop has, so real proofs go to
 
 ## Fixtures: prove once, test forever
 
-One remote proof of the happy-path input was made and saved under `zk-circuit/fixtures/happy/`:
+Remote proofs of the same toy happy-path input:
 
-| File | Contents |
-| --- | --- |
-| `groth16.bin` | 356-byte Groth16 proof |
-| `journal.bin` | 104-byte journal |
-| `vkey.bytes32.txt` | Verifying-key hash `0x00b3a15c...35d7` |
+| Pack | Journal | `vk.bytes32()` | Use |
+| --- | --- | --- | --- |
+| `zk-circuit/fixtures/happy/` | 104 bytes | `0x00b3a15c...35d7` | CI Groth16 / `VKEY_HASH` |
+| `zk-circuit/fixtures/change/` | 144 bytes | `0x00435696...c240` | Change-leaf insert tests (rotate on-chain vkey) |
 
-Tests read these bytes instead of proving again. That keeps CI offline, free, and deterministic. The bytes come from toy test values, not real funds.
+Each pack has `groth16.bin` (356 bytes), `journal.bin`, and `vkey.bytes32.txt`. Tests read these bytes instead of proving again. That keeps CI offline, free, and deterministic. The bytes come from toy test values, not real funds.

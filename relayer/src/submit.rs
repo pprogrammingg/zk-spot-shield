@@ -50,8 +50,7 @@ fn b64_decode(s: &str) -> Result<Vec<u8>, String> {
 }
 
 fn parse_pubkey(s: &str) -> Result<Pubkey, String> {
-    s.parse()
-        .map_err(|_| format!("invalid pubkey: {s}"))
+    s.parse().map_err(|_| format!("invalid pubkey: {s}"))
 }
 
 impl SettleIntent {
@@ -74,7 +73,10 @@ impl SettleIntent {
     }
 
     pub fn proof_and_journal(&self) -> Result<(Vec<u8>, Vec<u8>), String> {
-        Ok((b64_decode(&self.proof_base64)?, b64_decode(&self.journal_base64)?))
+        Ok((
+            b64_decode(&self.proof_base64)?,
+            b64_decode(&self.journal_base64)?,
+        ))
     }
 }
 
@@ -110,13 +112,7 @@ pub fn process_intent_dry_run(
     // Validate ix builds (accounts + data).
     let _ix = build_settle_ix(&keys, proof.clone(), journal.clone());
     let fee = compute_relayer_fee(intent.amount, fee_cfg);
-    let _tx = sign_settle_as_fee_payer(
-        fee_payer,
-        &keys,
-        proof,
-        journal,
-        Hash::new_unique(),
-    )?;
+    let _tx = sign_settle_as_fee_payer(fee_payer, &keys, proof, journal, Hash::new_unique())?;
     Ok(SubmitSettleResult {
         fee_payer: fee_payer.pubkey().to_string(),
         relayer_fee: fee,
@@ -229,9 +225,7 @@ mod tests {
         process_intent_dry_run(&kp, &bytes, FeeConfig::default()).unwrap();
         let sign = t2.elapsed();
 
-        eprintln!(
-            "latency fixture_load={load:?} pay402_accept={pay402:?} relayer_sign={sign:?}"
-        );
+        eprintln!("latency fixture_load={load:?} pay402_accept={pay402:?} relayer_sign={sign:?}");
         assert!(load.as_millis() < 500);
         assert!(sign.as_millis() < 2_000);
     }

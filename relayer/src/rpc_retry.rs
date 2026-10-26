@@ -33,10 +33,7 @@ pub fn backoff_delay(cfg: BackoffConfig, attempt: u32) -> Duration {
 
 /// Run `op` until it returns `Ok` or attempts are exhausted.
 /// `op` receives the 0-based attempt index.
-pub async fn with_exponential_backoff<T, E, F, Fut>(
-    cfg: BackoffConfig,
-    mut op: F,
-) -> Result<T, E>
+pub async fn with_exponential_backoff<T, E, F, Fut>(cfg: BackoffConfig, mut op: F) -> Result<T, E>
 where
     F: FnMut(u32) -> Fut,
     Fut: std::future::Future<Output = Result<T, E>>,
@@ -110,11 +107,9 @@ mod tests {
             max: Duration::from_millis(1),
             max_attempts: 3,
         };
-        let err = with_exponential_backoff(cfg, |_a| async {
-            Err::<(), &str>("fail")
-        })
-        .await
-        .unwrap_err();
+        let err = with_exponential_backoff(cfg, |_a| async { Err::<(), &str>("fail") })
+            .await
+            .unwrap_err();
         assert_eq!(err, "fail");
     }
 }

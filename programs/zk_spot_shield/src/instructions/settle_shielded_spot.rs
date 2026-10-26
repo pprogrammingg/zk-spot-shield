@@ -11,10 +11,19 @@ use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 use crate::{
     error::ErrorCode,
     journal::{JournalPublic, JOURNAL_BYTE_LEN},
-    state::{CleanFundsRoot, GlobalConfig, NullifierAccount, VaultState},
+    state::{CleanFundsRoot, DepositLeafAccount, GlobalConfig, NullifierAccount, VaultState},
     verify_sp1::{verify_sp1_groth16_v6, SP1_V6_PROOF_BYTE_LEN},
-    CLEAN_FUNDS_ROOT_SEED_PREFIX, GLOBAL_CONFIG_SEED, NULLIFIER_SEED_PREFIX, SPOT_VAULT_SEED,
+    CLEAN_FUNDS_ROOT_SEED_PREFIX, DEPOSIT_LEAF_SEED_PREFIX, GLOBAL_CONFIG_SEED,
+    NULLIFIER_SEED_PREFIX, SPOT_VAULT_SEED,
 };
+
+/// Remainder note created on settle when the journal binds a change leaf.
+#[event]
+pub struct ChangeNoteEvent {
+    pub leaf: [u8; 32],
+    pub amount: u64,
+    pub mint: Pubkey,
+}
 
 /// Happy-path fixture sizes (`notes/budgets.md`).
 pub const SETTLE_PROOF_BYTE_LEN: usize = SP1_V6_PROOF_BYTE_LEN;
@@ -87,6 +96,11 @@ pub struct SettleShieldedSpot<'info> {
     /// Recipient / user ATA for mint B.
     #[account(mut)]
     pub user_token_b: Account<'info, TokenAccount>,
+
+    /// Remainder `["deposit_leaf", change_leaf]` PDA. `None` for 104-byte journals.
+    /// CHECK: created in the handler after Groth16 verify when the journal binds a change note.
+    #[account(mut)]
+    pub change_leaf_account: Option<UncheckedAccount<'info>>,
 
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
@@ -219,12 +233,64 @@ pub fn handle_settle_shielded_spot(
         data[8..40].copy_from_slice(&public.nullifier);
     }
 
+    if let Some((change_leaf, change_amount)) = public.change_note() {
+        let change_acc = ctx
+            .accounts
+            .change_leaf_account
+            .as_ref()
+            .ok_or_else(|| error!(ErrorCode::MissingChangeLeafAccount))?;
+        let (expected, change_bump) = DepositLeafAccount::find_pda(ctx.program_id, &change_leaf);
+        require_keys_eq!(
+            change_acc.key(),
+            expected,
+            ErrorCode::InvalidChangeLeafAccount
+        );
+        require!(change_acc.data_is_empty(), ErrorCode::ChangeLeafAlreadyUsed);
+
+        let change_space = 8 + std::mem::size_of::<DepositLeafAccount>();
+        let change_lamports = Rent::get()?.minimum_balance(change_space);
+        let change_seeds: &[&[u8]] = &[
+            DEPOSIT_LEAF_SEED_PREFIX,
+            change_leaf.as_ref(),
+            &[change_bump],
+        ];
+        system_program::create_account(
+            CpiContext::new_with_signer(
+                system_program::ID,
+                CreateAccount {
+                    from: ctx.accounts.payer.to_account_info(),
+                    to: change_acc.to_account_info(),
+                },
+                &[change_seeds],
+            ),
+            change_lamports,
+            change_space as u64,
+            ctx.program_id,
+        )?;
+
+        {
+            let mut data = change_acc.try_borrow_mut_data()?;
+            let disc = DepositLeafAccount::DISCRIMINATOR;
+            data[..8].copy_from_slice(disc);
+            data[8..40].copy_from_slice(&change_leaf);
+            data[40..48].copy_from_slice(&change_amount.to_le_bytes());
+            data[48..80].copy_from_slice(asset_mint.as_ref());
+        }
+
+        emit!(ChangeNoteEvent {
+            leaf: change_leaf,
+            amount: change_amount,
+            mint: asset_mint,
+        });
+    }
+
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::journal::{JournalPublic, JOURNAL_BYTE_LEN_WITH_CHANGE};
     use anchor_lang::InstructionData;
 
     #[test]
@@ -250,5 +316,21 @@ mod tests {
     fn settle_fixture_byte_lens_match_budget_note() {
         assert_eq!(SETTLE_PROOF_BYTE_LEN, 356);
         assert_eq!(SETTLE_JOURNAL_BYTE_LEN, 104);
+    }
+
+    #[test]
+    fn change_leaf_pda_differs_from_nullifier_pda() {
+        let program_id = crate::id();
+        let change_leaf = [9u8; 32];
+        let nullifier = [7u8; 32];
+        let (leaf_pda, _) = DepositLeafAccount::find_pda(&program_id, &change_leaf);
+        let (nf_pda, _) = NullifierAccount::find_pda(&program_id, &nullifier);
+        assert_ne!(leaf_pda, nf_pda);
+        let mut journal = vec![0u8; JOURNAL_BYTE_LEN_WITH_CHANGE];
+        journal[0..8].copy_from_slice(&100u64.to_le_bytes());
+        journal[104..112].copy_from_slice(&900u64.to_le_bytes());
+        journal[112..144].copy_from_slice(&change_leaf);
+        let public = JournalPublic::from_journal_bytes(&journal).expect("144");
+        assert_eq!(public.change_note(), Some((change_leaf, 900)));
     }
 }
