@@ -46,8 +46,8 @@ pub enum CircuitReject {
 
 /// Public outputs committed to the SP1 journal (verified on-chain later).
 ///
-/// Frozen Groth16 fixtures commit the first 104 bytes only. A guest that
-/// binds a change note appends `change_amount` + `change_leaf` (144 bytes).
+/// The committed happy-path Groth16 pack is 144 bytes (`change_amount` +
+/// `change_leaf`). Spend-all still encodes 104 bytes (`change_amount = 0`).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PublicOutputs {
     pub requested_swap_amount: u64,
@@ -173,34 +173,12 @@ mod happy_fixture_tests {
             public.nullifier,
             compute_nullifier(&secret, &leaf, &[3u8; 32])
         );
-        assert_eq!(public.change_amount, 0);
-        assert_eq!(bytes.len(), PublicOutputs::JOURNAL_BYTE_LEN);
-    }
-
-    fn change_dir() -> std::path::PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../fixtures/change")
-    }
-
-    #[test]
-    fn change_journal_matches_io_hashes() {
-        let bytes = fs::read(change_dir().join("journal.bin"))
-            .expect("commit zk-circuit/fixtures/change/journal.bin from a remote Groth16 wrap");
+        assert_eq!(public.change_amount, 900);
         assert_eq!(bytes.len(), PublicOutputs::JOURNAL_BYTE_LEN_WITH_CHANGE);
-        let public = PublicOutputs::from_journal_bytes(&bytes).expect("journal layout");
         let inputs = happy_private_inputs();
         let expected = public_outputs_from_private(&inputs).expect("funded");
         assert_eq!(public, expected);
-        assert_eq!(public.change_amount, 900);
-        let groth16 = fs::read(change_dir().join("groth16.bin")).expect("groth16.bin");
-        assert_eq!(groth16.len(), 356);
-        let vkey = fs::read_to_string(change_dir().join("vkey.bytes32.txt"))
-            .expect("vkey")
-            .trim()
-            .to_string();
-        assert_eq!(
-            vkey,
-            "0x00435696d666d305172306e3895a44017e188663de9b3876970ae270345fc240"
-        );
+        assert_ne!(public.change_leaf, [0u8; 32]);
     }
 
     #[test]
@@ -218,7 +196,7 @@ mod happy_fixture_tests {
             .to_string();
         assert_eq!(
             vkey,
-            "0x00b3a15ce4c0ea94e3b0267473c6b7543a80c72d209b2c947f71886c6a5735d7"
+            "0x00435696d666d305172306e3895a44017e188663de9b3876970ae270345fc240"
         );
     }
 

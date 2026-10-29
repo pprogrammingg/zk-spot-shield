@@ -23,8 +23,6 @@ sp1-artifacts/
 !zk-circuit/fixtures/happy/*.bin
 !zk-circuit/fixtures/happy/*.txt
 !zk-circuit/fixtures/happy/*.md
-!zk-circuit/fixtures/change/*.bin
-!zk-circuit/fixtures/change/*.txt
 !zk-circuit/fixtures/change/*.md
 
 # Node

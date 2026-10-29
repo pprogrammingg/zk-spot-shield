@@ -31,13 +31,13 @@ Happy-path artifacts in `zk-circuit/fixtures/happy/` ([`proving.md`](./proving.m
 | Blob | Bytes |
 | --- | --- |
 | `groth16.bin` | **356** |
-| `journal.bin` | **104** (LE `u64` amount + mint + nullifier + root). A change-note journal is **144** (+ change amount + change leaf); not in the frozen Groth16 pack. |
-| Host `pack_settle_payload` | **468** |
-| Anchor `settle_shielded_spot` data | **476** (8-byte discriminator + Borsh vectors) |
+| `journal.bin` | **144** (LE `u64` amount + mint + nullifier + root + change amount + change leaf). Spend-all encodes **104**. |
+| Host `pack_settle_payload` | **508** (356 + 144 + 8) |
+| Anchor `settle_shielded_spot` data | **516** (8-byte discriminator + Borsh vectors) |
 
 Shrinking the journal means dropping a public field (circuit, vkey, and on-chain parse).
 
-Eleven settle metas for a 104-byte journal (payer, config, vault, root, nullifier, vault token A/B, user token A/B, token program, system program) ≈ **352 bytes** of pubkeys on top of ~476 bytes of data. A 144-byte change-note settle adds an optional `change_leaf_account` PDA. Compute-budget instruction is separate (`client::settle_compute_budget_ixs`). Packet pressure → address lookup tables.
+Twelve settle metas for a 144-byte journal (payer, config, vault, root, nullifier, vault token A/B, user token A/B, change-leaf PDA, token program, system program) ≈ **384 bytes** of pubkeys on top of ~516 bytes of data. Spend-all omits the change-leaf PDA. Compute-budget instruction is separate (`client::settle_compute_budget_ixs`). Packet pressure → address lookup tables.
 
 Proof bytes stay in **instruction data**. A lookup table only indexes **pubkeys**. Static ALT candidates: token program, system program, `global_config`, `vault`, vault token A/B. Per-settle keys (nullifier, user token accounts, `clean_funds_root`) stay as message keys. Helpers: `client::alt`.
 
@@ -82,7 +82,7 @@ Pipeline: load fixture proof → relayer sign / HTTP 402 accept → LiteSVM conf
 | SDK `requestShieldedSwap` | **6.4 ms** |
 | LiteSVM settle confirm | **84.8 ms** (**285,947** CU, LiteSVM — not cluster) |
 | Devnet settle `3V7YF2UL…` (N=1) | **281,362** CU (`computeUnitsConsumed`; wall not re-timed) |
-| Network Groth16 wrap (not re-run) | **30.7 s** + ~0.42 `$PROVE` |
+| Toy Groth16 wrap (144-byte journal, 2026-10-24) | **25.1 s** + ~0.40 `$PROVE`; **11,743,748** cycles |
 
 With fixtures, proving is disk I/O; the bottleneck is on-chain verify. In production, remote wrap still dominates unless you already have a proof. Relayer dry-run is not cluster confirm.
 

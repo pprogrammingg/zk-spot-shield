@@ -19,7 +19,9 @@ import {
   confirmSignature,
   createProgram,
   findCleanFundsRootPda,
+  findDepositLeafPda,
   findNullifierPda,
+  type SettleAccounts,
 } from "../../src/instructions.js";
 import { getSettleProof, parseJournalPublic } from "../../src/prove.js";
 
@@ -67,6 +69,35 @@ async function ensureRoot(
   return cleanFundsRoot;
 }
 
+async function settleAccountsFor(
+  program: ReturnType<typeof createProgram>,
+  bundle: Bundle,
+  payer: PublicKey,
+  pub: ReturnType<typeof parseJournalPublic>,
+  cleanFundsRoot: PublicKey,
+): Promise<SettleAccounts> {
+  const [nullifierAccount] = await findNullifierPda(
+    program.programId,
+    pub.nullifier,
+  );
+  let changeLeaf: PublicKey | undefined;
+  if (pub.changeAmount > 0n) {
+    [changeLeaf] = await findDepositLeafPda(program.programId, pub.changeLeaf);
+  }
+  return {
+    payer,
+    globalConfig: new PublicKey(bundle.globalConfig),
+    vault: new PublicKey(bundle.vault),
+    cleanFundsRoot,
+    nullifierAccount,
+    vaultTokenA: new PublicKey(bundle.vaultTokenA),
+    vaultTokenB: new PublicKey(bundle.vaultTokenB),
+    userTokenA: new PublicKey(bundle.userTokenA),
+    userTokenB: new PublicKey(bundle.userTokenB),
+    changeLeaf,
+  };
+}
+
 describe.skipIf(!run)("localnet E2E", () => {
   it("flip 1 proof byte → InvalidProof", async () => {
     const bundle = loadBundle();
@@ -85,9 +116,12 @@ describe.skipIf(!run)("localnet E2E", () => {
       new PublicKey(bundle.globalConfig),
       Buffer.from(pub.merkleRoot),
     );
-    const [nullifierAccount] = await findNullifierPda(
-      program.programId,
-      pub.nullifier,
+    const accounts = await settleAccountsFor(
+      program,
+      bundle,
+      wallet.publicKey,
+      pub,
+      cleanFundsRoot,
     );
 
     const badProof = Buffer.from(proof);
@@ -95,17 +129,7 @@ describe.skipIf(!run)("localnet E2E", () => {
 
     const tx = await buildSettleTransaction(
       program,
-      {
-        payer: wallet.publicKey,
-        globalConfig: new PublicKey(bundle.globalConfig),
-        vault: new PublicKey(bundle.vault),
-        cleanFundsRoot,
-        nullifierAccount,
-        vaultTokenA: new PublicKey(bundle.vaultTokenA),
-        vaultTokenB: new PublicKey(bundle.vaultTokenB),
-        userTokenA: new PublicKey(bundle.userTokenA),
-        userTokenB: new PublicKey(bundle.userTokenB),
-      },
+      accounts,
       badProof,
       journal,
     );
@@ -133,24 +157,17 @@ describe.skipIf(!run)("localnet E2E", () => {
       new PublicKey(bundle.globalConfig),
       otherRoot,
     );
-    const [nullifierAccount] = await findNullifierPda(
-      program.programId,
-      pub.nullifier,
+    const accounts = await settleAccountsFor(
+      program,
+      bundle,
+      wallet.publicKey,
+      pub,
+      wrongRootPda,
     );
 
     const tx = await buildSettleTransaction(
       program,
-      {
-        payer: wallet.publicKey,
-        globalConfig: new PublicKey(bundle.globalConfig),
-        vault: new PublicKey(bundle.vault),
-        cleanFundsRoot: wrongRootPda,
-        nullifierAccount,
-        vaultTokenA: new PublicKey(bundle.vaultTokenA),
-        vaultTokenB: new PublicKey(bundle.vaultTokenB),
-        userTokenA: new PublicKey(bundle.userTokenA),
-        userTokenB: new PublicKey(bundle.userTokenB),
-      },
+      accounts,
       proof,
       journal,
     );
@@ -176,9 +193,12 @@ describe.skipIf(!run)("localnet E2E", () => {
       new PublicKey(bundle.globalConfig),
       Buffer.from(pub.merkleRoot),
     );
-    const [nullifierAccount] = await findNullifierPda(
-      program.programId,
-      pub.nullifier,
+    const accounts = await settleAccountsFor(
+      program,
+      bundle,
+      wallet.publicKey,
+      pub,
+      cleanFundsRoot,
     );
 
     const userABefore = await getAccount(
@@ -192,17 +212,7 @@ describe.skipIf(!run)("localnet E2E", () => {
 
     const tx = await buildSettleTransaction(
       program,
-      {
-        payer: wallet.publicKey,
-        globalConfig: new PublicKey(bundle.globalConfig),
-        vault: new PublicKey(bundle.vault),
-        cleanFundsRoot,
-        nullifierAccount,
-        vaultTokenA: new PublicKey(bundle.vaultTokenA),
-        vaultTokenB: new PublicKey(bundle.vaultTokenB),
-        userTokenA: new PublicKey(bundle.userTokenA),
-        userTokenB: new PublicKey(bundle.userTokenB),
-      },
+      accounts,
       proof,
       journal,
     );
@@ -225,7 +235,7 @@ describe.skipIf(!run)("localnet E2E", () => {
     expect(userAAfter.amount).toBe(userABefore.amount);
     expect(userBAfter.amount).toBe(userBBefore.amount + amount);
 
-    const nf = await provider.connection.getAccountInfo(nullifierAccount);
+    const nf = await provider.connection.getAccountInfo(accounts.nullifierAccount);
     expect(nf).not.toBeNull();
     expect(nf!.owner.equals(program.programId)).toBe(true);
   });
@@ -247,24 +257,17 @@ describe.skipIf(!run)("localnet E2E", () => {
       new PublicKey(bundle.globalConfig),
       Buffer.from(pub.merkleRoot),
     );
-    const [nullifierAccount] = await findNullifierPda(
-      program.programId,
-      pub.nullifier,
+    const accounts = await settleAccountsFor(
+      program,
+      bundle,
+      wallet.publicKey,
+      pub,
+      cleanFundsRoot,
     );
 
     const tx = await buildSettleTransaction(
       program,
-      {
-        payer: wallet.publicKey,
-        globalConfig: new PublicKey(bundle.globalConfig),
-        vault: new PublicKey(bundle.vault),
-        cleanFundsRoot,
-        nullifierAccount,
-        vaultTokenA: new PublicKey(bundle.vaultTokenA),
-        vaultTokenB: new PublicKey(bundle.vaultTokenB),
-        userTokenA: new PublicKey(bundle.userTokenA),
-        userTokenB: new PublicKey(bundle.userTokenB),
-      },
+      accounts,
       proof,
       journal,
     );

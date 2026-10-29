@@ -36,7 +36,12 @@ pub struct SettleAccountKeys {
 }
 
 impl SettleAccountKeys {
-    pub fn to_anchor_accounts(&self) -> SettleAccounts {
+    pub fn to_anchor_accounts(&self, journal: &[u8]) -> SettleAccounts {
+        let change_leaf_account = zk_spot_shield::journal::JournalPublic::from_journal_bytes(journal)
+            .and_then(|p| p.change_note())
+            .map(|(leaf, _)| {
+                zk_spot_shield::state::DepositLeafAccount::find_pda(&zk_spot_shield::ID, &leaf).0
+            });
         SettleAccounts {
             payer: self.fee_payer,
             global_config: self.global_config,
@@ -47,7 +52,7 @@ impl SettleAccountKeys {
             vault_token_b: self.vault_token_b,
             user_token_a: self.user_token_a,
             user_token_b: self.user_token_b,
-            change_leaf_account: None,
+            change_leaf_account,
             token_program: anchor_spl::token::ID,
             system_program: anchor_lang::system_program::ID,
         }
@@ -81,7 +86,7 @@ pub fn build_settle_ix(
     proof: Vec<u8>,
     journal: Vec<u8>,
 ) -> Instruction {
-    let metas = accounts.to_anchor_accounts().to_account_metas(None);
+    let metas = accounts.to_anchor_accounts(&journal).to_account_metas(None);
     Instruction {
         program_id: to_sol_pubkey(zk_spot_shield::ID),
         accounts: metas

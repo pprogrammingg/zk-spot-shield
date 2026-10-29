@@ -2,11 +2,11 @@
 //!
 //! - **Runtime source:** [`happy_path_inputs`] (built with `zk-circuit-io` hashes).
 //! - **Portable dump:** `zk-circuit/fixtures/happy.json` (hex fields; must match this pack).
-//! - **104-byte CI pack:** `zk-circuit/fixtures/happy/{journal,groth16,vkey}` — frozen vkey.
-//! - **144-byte change pack:** `zk-circuit/fixtures/change/` — same toy witness, new vkey.
+//! - **Toy CI pack:** `zk-circuit/fixtures/happy/{journal,groth16,vkey}` — 144-byte journal,
+//!   spend 100 / change 900, `vk.bytes32()` `0x00435696…c240`.
 //!
 //! Corrupt-path tests clone this pack and mutate one field. Do not overwrite `happy/`
-//! when wrapping the change-note guest (`SKIP_HAPPY_FIXTURE=1`).
+//! when wrapping a live/devnet witness (`SKIP_HAPPY_FIXTURE=1` or `ARTIFACT_DIR`).
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -73,11 +73,6 @@ pub fn expected_public_outputs(inputs: &PrivateInputs) -> PublicOutputs {
 /// `zk-circuit/fixtures/happy/` — Groth16 + journal for [`happy_path_inputs`] only.
 pub fn happy_fixture_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../fixtures/happy")
-}
-
-/// `zk-circuit/fixtures/change/` — 144-byte journal Groth16 of the same toy witness.
-pub fn change_fixture_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../fixtures/change")
 }
 
 /// Portable dump of [`happy_path_inputs`] (hex). Kept in sync by unit test.
@@ -208,30 +203,13 @@ mod tests {
         assert_eq!(public.nullifier, expected.nullifier);
         let groth16 = fs::read(dir.join("groth16.bin")).expect("commit groth16.bin");
         assert_eq!(groth16.len(), 356);
-        assert_eq!(public.change_amount, 0);
-    }
-
-    #[test]
-    fn change_fixture_journal_is_144_with_change_900() {
-        let inputs = happy_path_inputs();
-        let expected = expected_public_outputs(&inputs);
-        let dir = change_fixture_dir();
-        let journal = fs::read(dir.join("journal.bin"))
-            .expect("commit zk-circuit/fixtures/change/journal.bin");
         assert_eq!(journal.len(), PublicOutputs::JOURNAL_BYTE_LEN_WITH_CHANGE);
-        let public = PublicOutputs::from_journal_bytes(&journal).expect("journal layout");
-        assert_eq!(public.requested_swap_amount, expected.requested_swap_amount);
-        assert_eq!(public.asset_id_mint, expected.asset_id_mint);
-        assert_eq!(public.merkle_root, expected.merkle_root);
-        assert_eq!(public.nullifier, expected.nullifier);
         assert_eq!(public.change_amount, 900);
         assert_eq!(public.change_leaf, expected.change_leaf);
-        let groth16 = fs::read(dir.join("groth16.bin")).expect("commit groth16.bin");
-        assert_eq!(groth16.len(), 356);
         let vkey = fs::read_to_string(dir.join("vkey.bytes32.txt")).expect("vkey");
-        assert_ne!(
+        assert_eq!(
             vkey.trim(),
-            "0x00b3a15ce4c0ea94e3b0267473c6b7543a80c72d209b2c947f71886c6a5735d7"
+            "0x00435696d666d305172306e3895a44017e188663de9b3876970ae270345fc240"
         );
     }
 

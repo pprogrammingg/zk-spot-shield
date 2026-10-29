@@ -5,7 +5,11 @@
  *
  * Usage (from repo root or sdk/):
  *   npx tsx sdk/scripts/e2e-localnet.ts
- *   npm run test:e2e   # from sdk/
+ *   npm run test:e2e     # from sdk/ — full E2E (burns the happy nullifier)
+ *   npm run demo:localnet  # SKIP_E2E=1 KEEP_VALIDATOR=1 — UI click-through
+ *
+ * SKIP_E2E=1 keeps the happy nullifier unused, preloads CleanFundsRoot from
+ * fixtures/happy/journal.bin, and writes ui/public/demo/ for the swap screen.
  */
 
 import { spawn, spawnSync } from "node:child_process";
@@ -32,7 +36,7 @@ const PROGRAM_ID = "74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G";
 const SO = join(REPO_ROOT, "target/deploy/zk_spot_shield.so");
 
 const VKEY_HASH = Buffer.from(
-  "00b3a15ce4c0ea94e3b0267473c6b7543a80c72d209b2c947f71886c6a5735d7",
+  "00435696d666d305172306e3895a44017e188663de9b3876970ae270345fc240",
   "hex",
 );
 
@@ -148,7 +152,8 @@ async function main(): Promise<void> {
 
   const reserveA = 1000n;
   const reserveB = 1000n;
-  const userA = 1000n;
+  // Public leftover A — must not equal the private note (1000) or the spend (100).
+  const userA = 777n;
   const userB = 0n;
 
   rmSync(ACCOUNTS_DIR, { recursive: true, force: true });
@@ -226,26 +231,64 @@ async function main(): Promise<void> {
     ),
   ];
 
-  writeFileSync(
-    join(ACCOUNTS_DIR, "bundle.json"),
-    JSON.stringify(
-      {
-        programId: PROGRAM_ID,
-        authority: authority.publicKey.toBase58(),
-        globalConfig: globalConfig.toBase58(),
-        vault: vault.toBase58(),
-        vaultBump,
-        mintA: mintA.toBase58(),
-        mintB: mintB.toBase58(),
-        vaultTokenA: vaultTokenA.toBase58(),
-        vaultTokenB: vaultTokenB.toBase58(),
-        userTokenA: userTokenA.toBase58(),
-        userTokenB: userTokenB.toBase58(),
-      },
-      null,
-      2,
+  const happyJournal = join(
+    REPO_ROOT,
+    "zk-circuit/fixtures/happy/journal.bin",
+  );
+  const happyProof = join(
+    REPO_ROOT,
+    "zk-circuit/fixtures/happy/groth16.bin",
+  );
+  const journalBytes = readFileSync(happyJournal);
+  if (journalBytes.length !== 144) {
+    console.error(
+      `happy journal must be 144 bytes, got ${journalBytes.length}`,
+    );
+    process.exit(1);
+  }
+  const merkleRoot = Buffer.from(journalBytes.subarray(72, 104));
+  const [cleanFundsRoot] = PublicKey.findProgramAddressSync(
+    [Buffer.from("clean_funds_root"), merkleRoot],
+    programId,
+  );
+  paths.push(
+    write(
+      cleanFundsRoot,
+      PROGRAM_ID,
+      Buffer.concat([disc("CleanFundsRoot"), merkleRoot]),
+      "clean_funds_root",
     ),
   );
+
+  const bundle = {
+    programId: PROGRAM_ID,
+    authority: authority.publicKey.toBase58(),
+    globalConfig: globalConfig.toBase58(),
+    vault: vault.toBase58(),
+    vaultBump,
+    mintA: mintA.toBase58(),
+    mintB: mintB.toBase58(),
+    vaultTokenA: vaultTokenA.toBase58(),
+    vaultTokenB: vaultTokenB.toBase58(),
+    userTokenA: userTokenA.toBase58(),
+    userTokenB: userTokenB.toBase58(),
+    merkleRoot: merkleRoot.toString("hex"),
+    cleanFundsRoot: cleanFundsRoot.toBase58(),
+  };
+  writeFileSync(
+    join(ACCOUNTS_DIR, "bundle.json"),
+    JSON.stringify(bundle, null, 2),
+  );
+
+  const demoDir = join(REPO_ROOT, "ui/public/demo");
+  mkdirSync(demoDir, { recursive: true });
+  copyFileSync(happyProof, join(demoDir, "groth16.bin"));
+  copyFileSync(happyJournal, join(demoDir, "journal.bin"));
+  writeFileSync(
+    join(demoDir, "accounts.json"),
+    JSON.stringify(bundle, null, 2),
+  );
+  console.log("==> wrote ui/public/demo/ (proof + journal + ATAs)");
 
   rmSync(LEDGER, { recursive: true, force: true });
 
@@ -316,38 +359,52 @@ async function main(): Promise<void> {
     { stdio: "inherit", env: process.env },
   );
 
-  console.log("==> npm test (unit) + vitest e2e");
-  r = spawnSync("npm", ["test"], {
-    cwd: SDK_ROOT,
-    stdio: "inherit",
-    env: process.env,
-  });
-  if (r.status !== 0) {
-    validator.kill("SIGTERM");
-    process.exit(r.status ?? 1);
-  }
-
-  r = spawnSync(
-    "npx",
-    ["vitest", "run", "--config", "vitest.e2e.config.ts"],
-    {
+  const skipE2e = process.env.SKIP_E2E === "1";
+  if (skipE2e) {
+    console.log(
+      "==> SKIP_E2E=1 — happy nullifier unused; CleanFundsRoot preloaded",
+    );
+    console.log("    UI: cd ui && npm run dev  →  Load localnet demo");
+    console.log("    Keypair: ~/.config/solana/id.json");
+  } else {
+    console.log("==> npm test (unit) + vitest e2e");
+    r = spawnSync("npm", ["test"], {
       cwd: SDK_ROOT,
       stdio: "inherit",
-      env: {
-        ...process.env,
-        RUN_E2E: "1",
-        E2E_ACCOUNTS_DIR: ACCOUNTS_DIR,
-        ANCHOR_PROVIDER_URL: "http://127.0.0.1:8899",
+      env: process.env,
+    });
+    if (r.status !== 0) {
+      validator.kill("SIGTERM");
+      process.exit(r.status ?? 1);
+    }
+
+    r = spawnSync(
+      "npx",
+      ["vitest", "run", "--config", "vitest.e2e.config.ts"],
+      {
+        cwd: SDK_ROOT,
+        stdio: "inherit",
+        env: {
+          ...process.env,
+          RUN_E2E: "1",
+          E2E_ACCOUNTS_DIR: ACCOUNTS_DIR,
+          ANCHOR_PROVIDER_URL: "http://127.0.0.1:8899",
+        },
       },
-    },
-  );
+    );
+  }
 
   if (process.env.KEEP_VALIDATOR === "1") {
+    if (!skipE2e) {
+      console.log(
+        "==> KEEP_VALIDATOR=1 after E2E — happy nullifier is already used.",
+      );
+      console.log(
+        "    For the UI demo, use npm run demo:localnet (SKIP_E2E=1).",
+      );
+    }
     console.log(
       "==> KEEP_VALIDATOR=1 — leaving validator up on http://127.0.0.1:8899",
-    );
-    console.log(
-      "    Paste the `solana confirm -v …` line from happy-path stdout into another terminal.",
     );
     console.log("    Ctrl+C here when done.");
     await new Promise<void>((resolve) => {
@@ -358,7 +415,7 @@ async function main(): Promise<void> {
       process.once("SIGINT", stop);
       process.once("SIGTERM", stop);
     });
-    process.exit(r.status ?? 1);
+    process.exit(skipE2e ? 0 : (r.status ?? 1));
   }
 
   console.log("==> stopping validator");

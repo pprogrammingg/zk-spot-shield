@@ -163,7 +163,7 @@ commit PublicOutputs { amount, mint, nullifier, merkle_root }
 
 | Check | Input shape | Assert |
 | --- | --- | --- |
-| Journal matches hashes | `journal.bin` (104 bytes) | amount=100, mint=`[3;32]`, root = Step 4, nullifier = Step 5 |
+| Journal matches hashes | `journal.bin` (144 bytes) | amount=100, change=900, mint=`[3;32]`, root = Step 4, nullifier = Step 5 |
 | Groth16 present | `groth16.bin` (356 bytes) | non-empty, not all zeros; vkey string matches wrap |
 
 No prover call. Same empty path as above.

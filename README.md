@@ -43,8 +43,8 @@ Program id (`declare_id!` / localnet / Devnet): `74UW993wrDasAMyBQ53PjHpYLK5vMkW
 | Number | Where |
 | --- | --- |
 | Live Devnet settle **281,362** CU (N=1, Groth16 is most of that); LiteSVM **285,947** CU; tx cap **1,400,000** | [`notes/budgets.md`](./notes/budgets.md) · tx in [`notes/devnet.md`](./notes/devnet.md) |
-| Public journal **104 bytes** (144 with a change note) | [`notes/budgets.md`](./notes/budgets.md) |
-| Remote Groth16 **30.7 s**; execute **11,093,598** cycles | [`notes/proving.md`](./notes/proving.md) |
+| Public journal **144 bytes** (104 on spend-all) | [`notes/budgets.md`](./notes/budgets.md) |
+| Remote Groth16 **25.1 s** / **11,743,748** cycles (toy 144-byte pack) | [`notes/proving.md`](./notes/proving.md) |
 
 ## Installation
 
@@ -120,7 +120,7 @@ cd ../relayer && cargo run -p zk-spot-shield-relayer
 cd ../ui && npm install && npm run dev
 ```
 
-The UI uses your wallet as the fee payer by default. The relayer is optional. Static build: [`ui/README.md`](./ui/README.md). No IPFS CID is published yet; hash `ui/dist` after `npm run build` when you pin one.
+Wallet is the default fee payer; relayer is optional. Localnet click-through: [`ui/README.md`](./ui/README.md) (`npm run demo:localnet`, then Load localnet demo). Do not run `sdk` `test:e2e` on that validator first — it spends the happy nullifier.
 
 ## Devnet
 

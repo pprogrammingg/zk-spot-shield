@@ -38,6 +38,7 @@ export {
   getSettleProof,
   loadChangeProofFixture,
   loadHappyProofFixture,
+  loadProofFixture,
   parseJournalPublic,
   type LoadProofOptions,
   type ProofBundle,

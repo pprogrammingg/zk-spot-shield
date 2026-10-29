@@ -104,11 +104,11 @@ mod tests {
         assert_ne!(bytes, [0u8; 32]);
         assert_eq!(
             hex_lower(&bytes),
-            "00b3a15ce4c0ea94e3b0267473c6b7543a80c72d209b2c947f71886c6a5735d7"
+            "00435696d666d305172306e3895a44017e188663de9b3876970ae270345fc240"
         );
         let rendered = format_vkey_rust_array(&bytes);
         assert!(rendered.contains("0x00"));
-        assert!(rendered.contains("0xd7"));
+        assert!(rendered.contains("0x40"));
     }
 
     #[test]

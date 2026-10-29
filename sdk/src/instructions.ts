@@ -90,9 +90,8 @@ export type SettleAccounts = {
   /** Recipient ATA mint B. */
   userTokenB: PublicKey;
   /**
-   * Remainder `DepositLeafAccount` PDA when the journal binds a change note
-   * (144-byte journal / `loadChangeProofFixture`). Omitted for the frozen
-   * 104-byte happy Groth16 fixture.
+   * Remainder `DepositLeafAccount` PDA when the journal binds a change note.
+   * Omitted on spend-all (104-byte journal).
    */
   changeLeaf?: PublicKey;
 };
@@ -115,9 +114,7 @@ export async function buildSettleIx(
       vaultTokenB: accounts.vaultTokenB,
       userTokenA: accounts.userTokenA,
       userTokenB: accounts.userTokenB,
-      ...(accounts.changeLeaf
-        ? { changeLeafAccount: accounts.changeLeaf }
-        : {}),
+      changeLeafAccount: accounts.changeLeaf ?? null,
       tokenProgram: TOKEN_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
     })

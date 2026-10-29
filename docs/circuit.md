@@ -40,7 +40,7 @@ Fixed-size arrays everywhere (`[u8; 32]`, a `[_; 20]` path) keep the guest free 
 
 ## The journal: what the chain will see
 
-The committed happy-path Groth16 fixture is **104 bytes** (no change note). A guest that binds a remainder note appends 40 more bytes (**144 total**). There is no recipient pubkey in it yet.
+The committed happy-path Groth16 fixture is **144 bytes** (spend 100, change 900). Spend-all still encodes **104 bytes** (`change_amount = 0`). There is no recipient pubkey in it yet.
 
 | Bytes | Field | Type |
 | --- | --- | --- |
@@ -51,7 +51,7 @@ The committed happy-path Groth16 fixture is **104 bytes** (no change note). A gu
 | 104..112 | `change_amount` | little-endian `u64` (144-byte journals only) |
 | 112..144 | `change_leaf` | 32 bytes (144-byte journals only) |
 
-`PublicOutputs::from_journal_bytes` accepts 104 or 144 bytes and rejects any other length. A 144-byte journal with `change_amount > 0` and an all-zero `change_leaf` is rejected. Groth16 public inputs **are** those journal bytes (hashed), so a 104-byte proof cannot verify a 144-byte journal. The frozen CI pack stays 104 bytes / `0x00b3a15c…35d7`. The change-note wrap lives under `zk-circuit/fixtures/change/` (144 bytes / `0x00435696…c240`).
+`PublicOutputs::from_journal_bytes` accepts 104 or 144 bytes and rejects any other length. A 144-byte journal with `change_amount > 0` and an all-zero `change_leaf` is rejected. Groth16 public inputs **are** those journal bytes (hashed), so a 104-byte proof cannot verify a 144-byte journal. The current guest `vk.bytes32()` is `0x00435696…c240` (CI pack and Devnet `GlobalConfig`). A live wrap still needs a journal mint that matches the vault.
 
 ## `zk-circuit/host`: the driver
 
@@ -70,7 +70,7 @@ Remote proofs of the same toy happy-path input:
 
 | Pack | Journal | `vk.bytes32()` | Use |
 | --- | --- | --- | --- |
-| `zk-circuit/fixtures/happy/` | 104 bytes | `0x00b3a15c...35d7` | CI Groth16 / `VKEY_HASH` |
-| `zk-circuit/fixtures/change/` | 144 bytes | `0x00435696...c240` | Change-leaf insert tests (rotate on-chain vkey) |
+| `zk-circuit/fixtures/happy/` | 144 bytes | `0x00435696...c240` | CI Groth16 / `VKEY_HASH` (spend 100 / change 900) |
+| Live wrap (`sp1-artifacts/`, gitignored) | 104 or 144 | same `0x00435696...c240` (same ELF) | Devnet settle; journal mint must match the vault |
 
 Each pack has `groth16.bin` (356 bytes), `journal.bin`, and `vkey.bytes32.txt`. Tests read these bytes instead of proving again. That keeps CI offline, free, and deterministic. The bytes come from toy test values, not real funds.

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Connection,
   Keypair,
@@ -10,11 +10,20 @@ import {
   bytesToHex,
   decodeBase64,
   decodeGlobalConfig,
+  decodeSplAmount,
   decodeVaultState,
   parseJournal,
+  type JournalView,
 } from "./decode.ts";
+import { loadDemoPack } from "./demo.ts";
+import { readDemoSession, writeDemoSession } from "./session.ts";
+import { accountUrl, localConfirmCmd, txUrl } from "./explorer.ts";
+import { keypairFromJsonText } from "./keypair.ts";
+import { NoteCard } from "./NoteCard.tsx";
+import { isSpendSettled, noteOldBalance } from "./noteStory.ts";
 import {
   findCleanFundsRootPda,
+  findDepositLeafPda,
   findGlobalConfigPda,
   findNullifierPda,
   findVaultPda,
@@ -33,45 +42,66 @@ type ChainView = {
   mintB: string;
   config: string;
   vault: string;
+  vkeyHash: string;
 };
 
-function explorerCluster(rpc: string): string {
-  if (rpc.includes("devnet")) return "devnet";
-  if (rpc.includes("127.0.0.1") || rpc.includes("localhost")) return "custom";
-  return "devnet";
+type TokenBalances = {
+  vaultA: string;
+  vaultB: string;
+  userA: string;
+  userB: string;
+};
+
+async function splAmount(
+  connection: Connection,
+  pk: string,
+): Promise<string> {
+  if (!pk.trim()) return "—";
+  const acc = await connection.getAccountInfo(new PublicKey(pk));
+  if (!acc) return "missing";
+  return decodeSplAmount(acc.data).toString();
 }
 
-function accountUrl(pk: string, rpc: string): string {
-  const cluster = explorerCluster(rpc);
-  if (cluster === "custom") {
-    return `https://explorer.solana.com/address/${pk}?cluster=custom&customUrl=${encodeURIComponent(rpc)}`;
-  }
-  return `https://explorer.solana.com/address/${pk}?cluster=${cluster}`;
-}
-
-function txUrl(sig: string, rpc: string): string {
-  const cluster = explorerCluster(rpc);
-  if (cluster === "custom") {
-    return `https://explorer.solana.com/tx/${sig}?cluster=custom&customUrl=${encodeURIComponent(rpc)}`;
-  }
-  return `https://explorer.solana.com/tx/${sig}?cluster=${cluster}`;
+function changeNoteJson(pub: JournalView, sig: string | null): string {
+  return JSON.stringify(
+    {
+      kind: "zk-spot-shield-change-note",
+      spent: pub.requestedSwapAmount.toString(),
+      changeAmount: pub.changeAmount.toString(),
+      changeLeafHex: bytesToHex(pub.changeLeaf),
+      nullifierHex: bytesToHex(pub.nullifier),
+      merkleRootHex: bytesToHex(pub.merkleRoot),
+      mintHex: bytesToHex(pub.assetIdMint),
+      settleSig: sig,
+      note: "Remainder is spendable after the protocol admin registers a Merkle root that includes changeLeaf.",
+    },
+    null,
+    2,
+  );
 }
 
 export default function App() {
+  const saved = readDemoSession();
   const [rpcList, setRpcList] = useState(DEFAULT_RPC_LIST);
-  const [programIdStr, setProgramIdStr] = useState(DEFAULT_PROGRAM_ID);
+  const [programIdStr, setProgramIdStr] = useState(
+    saved?.programIdStr || DEFAULT_PROGRAM_ID,
+  );
   const [relayerUrl, setRelayerUrl] = useState("");
-  const [vaultTokenA, setVaultTokenA] = useState("");
-  const [vaultTokenB, setVaultTokenB] = useState("");
-  const [userTokenA, setUserTokenA] = useState("");
-  const [userTokenB, setUserTokenB] = useState("");
-  const [proofB64, setProofB64] = useState("");
-  const [journalB64, setJournalB64] = useState("");
-  const [status, setStatus] = useState("Idle.");
+  const [vaultTokenA, setVaultTokenA] = useState(saved?.vaultTokenA ?? "");
+  const [vaultTokenB, setVaultTokenB] = useState(saved?.vaultTokenB ?? "");
+  const [userTokenA, setUserTokenA] = useState(saved?.userTokenA ?? "");
+  const [userTokenB, setUserTokenB] = useState(saved?.userTokenB ?? "");
+  const [proofB64, setProofB64] = useState(saved?.proofB64 ?? "");
+  const [journalB64, setJournalB64] = useState(saved?.journalB64 ?? "");
+  const [status, setStatus] = useState(
+    saved?.journalB64 ? "Restored the last loaded note (Vite reloads wipe in-memory state)." : "Idle.",
+  );
   const [chain, setChain] = useState<ChainView | null>(null);
+  const [balances, setBalances] = useState<TokenBalances | null>(null);
   const [walletLabel, setWalletLabel] = useState("not connected");
   const [localKp, setLocalKp] = useState<Keypair | null>(null);
-  const [txSig, setTxSig] = useState<string | null>(null);
+  const [txSig, setTxSig] = useState<string | null>(saved?.txSig ?? null);
+  const [pay402, setPay402] = useState("");
 
   const journalPreview = useMemo(() => {
     if (!journalB64.trim()) return null;
@@ -81,6 +111,44 @@ export default function App() {
       return null;
     }
   }, [journalB64]);
+
+  const settled = Boolean(
+    txSig ||
+      (journalPreview &&
+        isSpendSettled(balances?.userB, journalPreview.requestedSwapAmount)),
+  );
+
+  useEffect(() => {
+    if (!journalB64) return;
+    writeDemoSession({
+      proofB64,
+      journalB64,
+      programIdStr,
+      vaultTokenA,
+      vaultTokenB,
+      userTokenA,
+      userTokenB,
+      txSig,
+    });
+  }, [
+    proofB64,
+    journalB64,
+    programIdStr,
+    vaultTokenA,
+    vaultTokenB,
+    userTokenA,
+    userTokenB,
+    txSig,
+  ]);
+
+  useEffect(() => {
+    if (!journalB64 || !vaultTokenA) return;
+    refresh().catch(() => {
+      /* validator may still be coming up */
+    });
+    // Restore chain/balances once after a Vite full reload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function signer(): Promise<{ connection: Connection; wallet: WalletSigner; rpc: string }> {
     const { url, connection } = await connectWithFallback(rpcList);
@@ -99,6 +167,33 @@ export default function App() {
       signTransaction: (tx: Transaction) => injected.signTransaction(tx),
     };
     return { connection, wallet, rpc: url };
+  }
+
+  async function loadTokenBalances(
+    connection: Connection,
+    atas: {
+      vaultTokenA: string;
+      vaultTokenB: string;
+      userTokenA: string;
+      userTokenB: string;
+    },
+  ) {
+    if (
+      !atas.vaultTokenA ||
+      !atas.vaultTokenB ||
+      !atas.userTokenA ||
+      !atas.userTokenB
+    ) {
+      setBalances(null);
+      return;
+    }
+    const [vaultA, vaultB, userA, userB] = await Promise.all([
+      splAmount(connection, atas.vaultTokenA),
+      splAmount(connection, atas.vaultTokenB),
+      splAmount(connection, atas.userTokenA),
+      splAmount(connection, atas.userTokenB),
+    ]);
+    setBalances({ vaultA, vaultB, userA, userB });
   }
 
   async function refresh() {
@@ -123,6 +218,13 @@ export default function App() {
       mintB: v.mintB.toBase58(),
       config: config.toBase58(),
       vault: vault.toBase58(),
+      vkeyHash: bytesToHex(cfg.vkeyHash),
+    });
+    await loadTokenBalances(connection, {
+      vaultTokenA,
+      vaultTokenB,
+      userTokenA,
+      userTokenB,
     });
     setStatus(`RPC ${url}. Pause=${cfg.pauseFlag}.`);
   }
@@ -138,27 +240,68 @@ export default function App() {
     setStatus("Injected wallet connected.");
   }
 
+  function applyKeypairText(text: string) {
+    const kp = keypairFromJsonText(text);
+    setLocalKp(kp);
+    setWalletLabel(`${kp.publicKey.toBase58()} (local keypair — localnet only)`);
+    setStatus("Loaded localnet fee-payer keypair. Do not use a mainnet secret here.");
+  }
+
   function onKeyfile(file: File | undefined) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      const nums = JSON.parse(String(reader.result)) as number[];
-      const kp = Keypair.fromSecretKey(Uint8Array.from(nums));
-      setLocalKp(kp);
-      setWalletLabel(`${kp.publicKey.toBase58()} (local keypair — localnet only)`);
-      setStatus("Loaded localnet fee-payer keypair. Do not use a mainnet secret here.");
+      try {
+        applyKeypairText(String(reader.result));
+      } catch (e) {
+        setStatus(String(e));
+      }
     };
     reader.readAsText(file);
   }
 
-  async function doSelfSubmit() {
-    const proof = decodeBase64(proofB64);
-    const journal = decodeBase64(journalB64);
-    const pub = parseJournal(journal);
-    const { connection, wallet, rpc } = await signer();
+  async function loadDemo() {
+    setStatus("Loading localnet demo pack…");
+    const pack = await loadDemoPack();
+    setProgramIdStr(pack.accounts.programId);
+    setVaultTokenA(pack.accounts.vaultTokenA);
+    setVaultTokenB(pack.accounts.vaultTokenB);
+    setUserTokenA(pack.accounts.userTokenA);
+    setUserTokenB(pack.accounts.userTokenB);
+    setProofB64(pack.proofB64);
+    setJournalB64(pack.journalB64);
+    setTxSig(null);
+    setPay402("");
+    const { url, connection } = await connectWithFallback(rpcList);
+    const programId = new PublicKey(pack.accounts.programId);
+    const config = findGlobalConfigPda(programId);
+    const vault = findVaultPda(programId);
+    const cfgAcc = await connection.getAccountInfo(config);
+    const vaultAcc = await connection.getAccountInfo(vault);
+    if (!cfgAcc || !vaultAcc) {
+      throw new Error("Config or vault missing. Is npm run demo:localnet still running?");
+    }
+    const cfg = decodeGlobalConfig(cfgAcc.data);
+    const v = decodeVaultState(vaultAcc.data);
+    setChain({
+      rpc: url,
+      pauseFlag: cfg.pauseFlag,
+      reserveA: v.reserveA.toString(),
+      reserveB: v.reserveB.toString(),
+      mintA: v.mintA.toBase58(),
+      mintB: v.mintB.toBase58(),
+      config: config.toBase58(),
+      vault: vault.toBase58(),
+      vkeyHash: bytesToHex(cfg.vkeyHash),
+    });
+    await loadTokenBalances(connection, pack.accounts);
+    setStatus("Demo loaded. Note cards show the 1000 mint-A note.");
+  }
+
+  function settleKeys(pub: JournalView, payer: PublicKey) {
     const programId = new PublicKey(programIdStr);
-    const keys = {
-      payer: wallet.publicKey,
+    return {
+      payer,
       globalConfig: findGlobalConfigPda(programId),
       vault: findVaultPda(programId),
       cleanFundsRoot: findCleanFundsRootPda(programId, pub.merkleRoot),
@@ -167,7 +310,19 @@ export default function App() {
       vaultTokenB: new PublicKey(vaultTokenB),
       userTokenA: new PublicKey(userTokenA),
       userTokenB: new PublicKey(userTokenB),
+      ...(pub.changeAmount > 0n
+        ? { changeLeaf: findDepositLeafPda(programId, pub.changeLeaf) }
+        : {}),
     };
+  }
+
+  async function doSelfSubmit() {
+    const proof = decodeBase64(proofB64);
+    const journal = decodeBase64(journalB64);
+    const pub = parseJournal(journal);
+    const { connection, wallet, rpc } = await signer();
+    const programId = new PublicKey(programIdStr);
+    const keys = settleKeys(pub, wallet.publicKey);
     setStatus("Sending settle (self-submit)…");
     const sig = await submitMyself(
       connection,
@@ -178,7 +333,7 @@ export default function App() {
       wallet,
     );
     setTxSig(sig);
-    setStatus(`Submitted ${sig} via ${rpc}`);
+    setStatus(`Settled ${sig} via ${rpc}. You received ${pub.requestedSwapAmount.toString()} mint B; the ${pub.changeAmount.toString()} remainder is the gold card.`);
     await refresh();
   }
 
@@ -190,18 +345,7 @@ export default function App() {
     const journal = decodeBase64(journalB64);
     const pub = parseJournal(journal);
     const { wallet } = await signer();
-    const programId = new PublicKey(programIdStr);
-    const keys = {
-      payer: wallet.publicKey,
-      globalConfig: findGlobalConfigPda(programId),
-      vault: findVaultPda(programId),
-      cleanFundsRoot: findCleanFundsRootPda(programId, pub.merkleRoot),
-      nullifierAccount: findNullifierPda(programId, pub.nullifier),
-      vaultTokenA: new PublicKey(vaultTokenA),
-      vaultTokenB: new PublicKey(vaultTokenB),
-      userTokenA: new PublicKey(userTokenA),
-      userTokenB: new PublicKey(userTokenB),
-    };
+    const keys = settleKeys(pub, wallet.publicKey);
     const job = await submitViaRelayer(
       relayerUrl,
       toRelayerIntent(keys, proof, journal, Number(pub.requestedSwapAmount)),
@@ -209,143 +353,340 @@ export default function App() {
     setStatus(`Relayer job ${job.job_id} (${job.status}). Queue may be dry-run.`);
   }
 
+  async function quote402() {
+    const base = relayerUrl.trim().replace(/\/$/, "");
+    if (!base) throw new Error("Set Relayer URL (http://127.0.0.1:8787) first.");
+    const res = await fetch(`${base}/402/resource`);
+    const body = await res.text();
+    setPay402(`${res.status} ${body}`);
+    setStatus(res.status === 402 ? "402 quote (expected until you pay)." : `402 resource ${res.status}.`);
+  }
+
+  async function pay402WithJournal() {
+    const base = relayerUrl.trim().replace(/\/$/, "");
+    if (!base) throw new Error("Set Relayer URL (http://127.0.0.1:8787) first.");
+    if (!journalB64.trim()) throw new Error("Load the demo journal first.");
+    const res = await fetch(`${base}/402/pay`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ journal_base64: journalB64.trim() }),
+    });
+    const body = await res.text();
+    setPay402(`${res.status} ${body}`);
+    if (!res.ok) {
+      throw new Error(`402 pay failed: ${res.status} ${body}`);
+    }
+    const pub = journalPreview;
+    const nf = pub ? `0x${bytesToHex(pub.nullifier)}` : "";
+    const unlocked = await fetch(`${base}/402/resource?nullifier=${encodeURIComponent(nf)}`);
+    const unlockedBody = await unlocked.text();
+    setPay402(`${res.status} paid. Resource ${unlocked.status}: ${unlockedBody}`);
+    setStatus("402 unlocked with the settle journal (fixture path — no live prove).");
+  }
+
+  function downloadChange() {
+    if (!journalPreview || journalPreview.changeAmount === 0n) {
+      throw new Error("No change amount in the journal.");
+    }
+    const blob = new Blob([changeNoteJson(journalPreview, txSig)], {
+      type: "application/json",
+    });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "zk-spot-shield-change-900.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setStatus("Downloaded a client copy of the 900 note. The gold card is the note; this file is a backup.");
+  }
+
+  const err = status.toLowerCase().includes("error") || status.toLowerCase().includes("failed");
+  const cfgHref = chain ? accountUrl(chain.config, chain.rpc) : null;
+  const vaultHref = chain ? accountUrl(chain.vault, chain.rpc) : null;
+  const sigHref = txSig && chain ? txUrl(txSig, chain.rpc) : null;
+
   return (
     <main className="page">
       <header>
         <h1>ZK Spot Shield</h1>
         <p className="lede">
-          Vault-only 1:1 spot settle after Groth16. This is a <strong>shielded settle</strong>, not a
-          mixer — the deposit transaction still shows the signer; the leaf PDA does not store a
-          wallet pubkey.
+          One private note of mint A. You prove a spend; the vault pays mint B 1:1. Remainder
+          becomes a new note — not extra tokens in your mint-A account.
         </p>
       </header>
 
-      <section className="grid">
-        <label>
-          RPC list (fallback)
-          <textarea
-            rows={3}
-            value={rpcList}
-            onChange={(e) => setRpcList(e.target.value)}
-            placeholder="http://127.0.0.1:8899, https://api.devnet.solana.com"
+      {journalPreview ? (
+        <section className="notes">
+          <NoteCard
+            kind="spend"
+            amount={noteOldBalance(journalPreview).toString()}
+            subtitle={
+              settled
+                ? `Spent ${journalPreview.requestedSwapAmount.toString()}. This leaf is nullified; remainder is the gold card.`
+                : `Your private balance (Merkle leaf), not wallet A. Pick a spend below — this demo’s proof is fixed at ${journalPreview.requestedSwapAmount.toString()}.`
+            }
+            settled={settled}
           />
-        </label>
-        <label>
-          Program id
-          <input value={programIdStr} onChange={(e) => setProgramIdStr(e.target.value)} />
-        </label>
-        <label>
-          Relayer URL (optional)
-          <input
-            value={relayerUrl}
-            onChange={(e) => setRelayerUrl(e.target.value)}
-            placeholder="http://127.0.0.1:8787"
-          />
-        </label>
-      </section>
+          {journalPreview.changeAmount > 0n && settled && (
+            <NoteCard
+              kind="change"
+              amount={journalPreview.changeAmount.toString()}
+              subtitle="New Merkle leaf for the remainder. Not your public wallet A. Spend it after an admin root includes this leaf."
+              settled={settled}
+            >
+              <div className="row">
+                <button type="button" onClick={() => downloadChange().catch((e) => setStatus(String(e)))}>
+                  Download backup
+                </button>
+              </div>
+            </NoteCard>
+          )}
+        </section>
+      ) : (
+        <p className="muted">Load the localnet demo to see your note.</p>
+      )}
+
+      {journalPreview && (
+        <section className="trade">
+          <label>
+            Spend (mint A)
+            <input
+              value={journalPreview.requestedSwapAmount.toString()}
+              readOnly
+              title="This Groth16 fixture is bound to 100. A live prove would let you type another amount ≤ note balance."
+            />
+          </label>
+          <p className="trade-eq">→</p>
+          <label>
+            Receive (mint B, 1:1)
+            <input value={journalPreview.requestedSwapAmount.toString()} readOnly />
+          </label>
+          <label>
+            Change note after
+            <input value={journalPreview.changeAmount.toString()} readOnly />
+          </label>
+          <p className="muted help span2">
+            {settled
+              ? `${journalPreview.requestedSwapAmount.toString()} B moved vault → wallet. Vault B went down.`
+              : "Final product: you type the spend, the client proves, this note is nullified, a change note is the remainder. This demo’s proof always spends 100 / keeps 900."}
+          </p>
+        </section>
+      )}
 
       <section className="row">
-        <button type="button" onClick={() => connectInjected().catch((e) => setStatus(String(e)))}>
-          Connect wallet
+        <button type="button" className="primary" onClick={() => loadDemo().catch((e) => setStatus(String(e)))}>
+          Load localnet demo
         </button>
+        <button
+          type="button"
+          className="primary"
+          onClick={() => doSelfSubmit().catch((e) => setStatus(String(e)))}
+        >
+          {journalPreview && !settled
+            ? `Spend ${journalPreview.requestedSwapAmount.toString()}`
+            : "Submit myself"}
+        </button>
+      </section>
+      <p className="muted">
+        Load the fee payer under <strong>Fee payer</strong> before Spend. Do not Submit again if the
+        teal card already says spent.
+      </p>
+
+      <p className={err ? "err" : "status"}>{status}</p>
+      {txSig && chain && (
+        <p className="mono">
+          {sigHref ? (
+            <a href={sigHref} target="_blank" rel="noreferrer">
+              Explorer tx
+            </a>
+          ) : (
+            <>
+              Localnet signature: {txSig}
+              <br />
+              <span className="muted">{localConfirmCmd(txSig, chain.rpc)}</span>
+            </>
+          )}
+        </p>
+      )}
+
+      <details className="fold">
+        <summary>Fee payer — {walletLabel}</summary>
+        <p className="muted help">
+          Solana CLI default wallet is in a hidden folder. Choose File → <kbd>⌘⇧G</kbd> →{" "}
+          <code>~/.config/solana/id.json</code>, or paste the JSON array. Localnet only.
+        </p>
         <label className="file">
-          Localnet keypair JSON
+          Choose keypair JSON
           <input
             type="file"
             accept=".json,application/json"
             onChange={(e) => onKeyfile(e.target.files?.[0])}
           />
         </label>
-        <span className="muted">{walletLabel}</span>
-      </section>
+        <label>
+          Or paste keypair JSON
+          <textarea
+            rows={2}
+            placeholder="[1, 2, 3, …]"
+            onChange={(e) => {
+              const t = e.target.value.trim();
+              if (!t.startsWith("[")) return;
+              try {
+                applyKeypairText(t);
+              } catch {
+                /* keep typing */
+              }
+            }}
+          />
+        </label>
+        <div className="row">
+          <button type="button" onClick={() => connectInjected().catch((e) => setStatus(String(e)))}>
+            Connect wallet
+          </button>
+        </div>
+      </details>
 
-      <section>
-        <button type="button" onClick={() => refresh().catch((e) => setStatus(String(e)))}>
-          Refresh on-chain
-        </button>
-        {chain && (
+      <details className="fold">
+        <summary>
+          On-chain data
+          <button
+            type="button"
+            className="icon-btn"
+            title="Refresh"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              refresh().catch((err) => setStatus(String(err)));
+            }}
+          >
+            ↻
+          </button>
+        </summary>
+        <p className="muted help">
+          Vault token A/B = the pool. Your wallet token A/B = this fee-payer’s public SPL accounts.
+          Settle of mint A pays mint B by transferring vault B → wallet B. The 900 remainder is the
+          gold note, not extra wallet A.
+        </p>
+        {chain ? (
           <dl className="stats">
             <dt>RPC</dt>
             <dd>{chain.rpc}</dd>
             <dt>Paused</dt>
             <dd>{chain.pauseFlag ? "yes" : "no"}</dd>
-            <dt>Reserve A / B</dt>
+            <dt>Vault A / B</dt>
             <dd>
-              {chain.reserveA} / {chain.reserveB}
+              {balances ? `${balances.vaultA} / ${balances.vaultB}` : `${chain.reserveA} / ${chain.reserveB}`}
             </dd>
+            <dt>User Balance A / B</dt>
+            <dd>{balances ? `${balances.userA} / ${balances.userB}` : "— / —"}</dd>
+            <dt>Vault A account</dt>
+            <dd className="mono">{vaultTokenA || "—"}</dd>
+            <dt>Vault B account</dt>
+            <dd className="mono">{vaultTokenB || "—"}</dd>
+            <dt>User A account</dt>
+            <dd className="mono">{userTokenA || "—"}</dd>
+            <dt>User B account</dt>
+            <dd className="mono">{userTokenB || "—"}</dd>
             <dt>Mint A / B</dt>
             <dd className="mono">
               {chain.mintA} / {chain.mintB}
             </dd>
+            <dt>vkey</dt>
+            <dd className="mono">0x{chain.vkeyHash.slice(0, 16)}…</dd>
             <dt>Explorer</dt>
             <dd>
-              <a href={accountUrl(chain.config, chain.rpc)} target="_blank" rel="noreferrer">
-                GlobalConfig
-              </a>
-              {" · "}
-              <a href={accountUrl(chain.vault, chain.rpc)} target="_blank" rel="noreferrer">
-                Vault
-              </a>
+              {cfgHref && vaultHref ? (
+                <>
+                  <a href={cfgHref} target="_blank" rel="noreferrer">
+                    GlobalConfig
+                  </a>
+                  {" · "}
+                  <a href={vaultHref} target="_blank" rel="noreferrer">
+                    Vault
+                  </a>
+                </>
+              ) : (
+                <span className="muted">Localnet — public explorer cannot reach 127.0.0.1.</span>
+              )}
             </dd>
           </dl>
+        ) : (
+          <p className="muted">Load the demo or press ↻.</p>
         )}
-      </section>
+        <div className="grid">
+          <label>
+            RPC list
+            <textarea
+              rows={2}
+              value={rpcList}
+              onChange={(e) => setRpcList(e.target.value)}
+            />
+          </label>
+          <label>
+            Program id
+            <input value={programIdStr} onChange={(e) => setProgramIdStr(e.target.value)} />
+          </label>
+          <label>
+            Vault ATA A
+            <input value={vaultTokenA} onChange={(e) => setVaultTokenA(e.target.value)} />
+          </label>
+          <label>
+            Vault ATA B
+            <input value={vaultTokenB} onChange={(e) => setVaultTokenB(e.target.value)} />
+          </label>
+          <label>
+            User Balance A
+            <input value={userTokenA} onChange={(e) => setUserTokenA(e.target.value)} />
+          </label>
+          <label>
+            User Balance B
+            <input value={userTokenB} onChange={(e) => setUserTokenB(e.target.value)} />
+          </label>
+        </div>
+      </details>
 
-      <section className="grid">
-        <label>
-          Vault ATA A
-          <input value={vaultTokenA} onChange={(e) => setVaultTokenA(e.target.value)} />
-        </label>
-        <label>
-          Vault ATA B
-          <input value={vaultTokenB} onChange={(e) => setVaultTokenB(e.target.value)} />
-        </label>
-        <label>
-          Recipient ATA A
-          <input value={userTokenA} onChange={(e) => setUserTokenA(e.target.value)} />
-        </label>
-        <label>
-          Recipient ATA B
-          <input value={userTokenB} onChange={(e) => setUserTokenB(e.target.value)} />
+      <details className="fold">
+        <summary>Proof and journal bytes</summary>
+        <p className="muted help">
+          One Groth16 proof and one journal for <strong>this spend of the 1000 note</strong>. The
+          journal lists both the 100 swap and the 900 change. Not two proofs.
+        </p>
+        <label className="span2">
+          Groth16 proof (base64, 356 bytes)
+          <textarea rows={3} value={proofB64} onChange={(e) => setProofB64(e.target.value)} />
         </label>
         <label className="span2">
-          Groth16 proof (base64, 356 bytes decoded)
-          <textarea rows={4} value={proofB64} onChange={(e) => setProofB64(e.target.value)} />
+          Journal (base64, 144 bytes; 104 = spend-all)
+          <textarea rows={2} value={journalB64} onChange={(e) => setJournalB64(e.target.value)} />
         </label>
-        <label className="span2">
-          Journal (base64, 104 bytes decoded)
-          <textarea rows={3} value={journalB64} onChange={(e) => setJournalB64(e.target.value)} />
+      </details>
+
+      <details className="fold">
+        <summary>Optional: HTTP 402 (same journal, not on-chain)</summary>
+        <p className="muted help">
+          Separate from settle. Start <code>cargo run -p zk-spot-shield-relayer</code>, set the URL,
+          Quote then Pay. Unlock is keyed by nullifier.
+        </p>
+        <label>
+          Relayer URL
+          <input
+            value={relayerUrl}
+            onChange={(e) => setRelayerUrl(e.target.value)}
+            placeholder="http://127.0.0.1:8787"
+          />
         </label>
-      </section>
-
-      {journalPreview && (
-        <p className="muted">
-          Journal amount {journalPreview.requestedSwapAmount.toString()} · nullifier{" "}
-          {bytesToHex(journalPreview.nullifier).slice(0, 16)}…
-        </p>
-      )}
-
-      <section className="row">
-        <button
-          type="button"
-          className="primary"
-          onClick={() => doSelfSubmit().catch((e) => setStatus(String(e)))}
-        >
-          Submit myself
-        </button>
-        <button type="button" onClick={() => doRelayer().catch((e) => setStatus(String(e)))}>
-          Ask relayer
-        </button>
-      </section>
-
-      <p className={status.toLowerCase().includes("error") ? "err" : "status"}>{status}</p>
-      {txSig && chain && (
-        <p>
-          <a href={txUrl(txSig, chain.rpc)} target="_blank" rel="noreferrer">
-            Explorer tx
-          </a>
-        </p>
-      )}
+        <div className="row">
+          <button type="button" onClick={() => doRelayer().catch((e) => setStatus(String(e)))}>
+            Ask relayer
+          </button>
+          <button type="button" onClick={() => quote402().catch((e) => setStatus(String(e)))}>
+            Quote 402
+          </button>
+          <button type="button" onClick={() => pay402WithJournal().catch((e) => setStatus(String(e)))}>
+            Pay 402 with journal
+          </button>
+        </div>
+        {pay402 && <pre className="mono pay402-out">{pay402}</pre>}
+      </details>
     </main>
   );
 }

@@ -1,6 +1,13 @@
 [advisories]
-# Transitive via sp1-sdk → object 0.37 → ruzstd 0.8; object pins ^0.8.1 until SP1 bumps to object≥0.40.
-# Host only; we do not decode untrusted zstd. Revisit when upgrading sp1-sdk.
-# tonic 0.12 (sp1-prover) pins webpki-roots 0.26; 1.0.10 is already in the reqwest path.
-# Host TLS to Succinct only. Program/relayer do not use the 0.26 copy. Revisit on SP1/tonic bump.
-ignore = ["RUSTSEC-2026-0344", "RUSTSEC-2026-0381"]
+# Transitive pins we cannot bump without an SP1 6.5 / elliptic-curve 0.13 / tonic 0.12
+# stack Day. Program + relayer do not take these crates on the settle path.
+# Revisit when upgrading sp1-sdk (≥6.6) or k256/elliptic-curve.
+ignore = [
+    "RUSTSEC-2026-0344", # ruzstd via object; host only, no untrusted zstd
+    "RUSTSEC-2026-0381", # webpki-roots 0.26 via tonic 0.12 (sp1-prover); host TLS
+    "RUSTSEC-2026-0387", # crypto-bigint 0.5 via elliptic-curve 0.13 (k256/SP1)
+    "RUSTSEC-2026-0391", # zstd 0.13 via sp1-sdk
+    "RUSTSEC-2026-0398", # zstd-safe 7.3 via sp1-sdk
+    "RUSTSEC-2026-0403", # zstd-safe 7.3 via sp1-sdk
+    "RUSTSEC-2026-0410", # zstd-sys 2.1 via sp1-sdk; wasm allocator N/A
+]

@@ -99,22 +99,11 @@ mod tests {
             .join("../../zk-circuit/fixtures/happy/journal.bin");
         let bytes = std::fs::read(path).expect("journal.bin");
         let public = JournalPublic::from_journal_bytes(&bytes).expect("layout");
+        assert_eq!(bytes.len(), JOURNAL_BYTE_LEN_WITH_CHANGE);
         assert_eq!(public.requested_swap_amount, 100);
         assert_eq!(public.asset_id_mint, [3u8; 32]);
         assert_ne!(public.nullifier, [0u8; 32]);
         assert_ne!(public.merkle_root, [0u8; 32]);
-        assert!(public.change_note().is_none());
-    }
-
-    #[test]
-    fn change_journal_parses() {
-        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../zk-circuit/fixtures/change/journal.bin");
-        let bytes = std::fs::read(path).expect("change journal.bin");
-        assert_eq!(bytes.len(), JOURNAL_BYTE_LEN_WITH_CHANGE);
-        let public = JournalPublic::from_journal_bytes(&bytes).expect("layout");
-        assert_eq!(public.requested_swap_amount, 100);
-        assert_eq!(public.asset_id_mint, [3u8; 32]);
         assert_eq!(public.change_amount, 900);
         assert_eq!(public.change_note(), Some((public.change_leaf, 900)));
         assert_ne!(public.change_leaf, [0u8; 32]);

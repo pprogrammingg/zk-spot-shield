@@ -37,8 +37,8 @@ import {
   findDepositLeafPda,
   findGlobalConfigPda,
   findVaultPda,
-  loadHappyProofFixture,
   loadKeypairWallet,
+  loadProofFixture,
   parseJournalPublic,
   requestShieldedSwap,
 } from "../src/index.ts";
@@ -374,7 +374,7 @@ async function settleDevnet(): Promise<void> {
   requireDevnetUrl(url);
   const proofDir =
     process.env.PROOF_DIR ?? join(REPO_ROOT, "sp1-artifacts/devnet-settle");
-  const bundle = loadHappyProofFixture(proofDir);
+  const bundle = loadProofFixture(proofDir);
   const pub = parseJournalPublic(bundle.journal);
   const wallet = loadKeypairWallet();
   const provider = createLocalhostProvider({ url, wallet, setGlobal: false });

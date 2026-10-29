@@ -6,8 +6,7 @@ import {
   TransactionInstruction,
   type Connection,
 } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { SETTLE_CU_LIMIT, SETTLE_DISCRIMINATOR } from "./config.ts";
+import { SETTLE_CU_LIMIT, SETTLE_DISCRIMINATOR, TOKEN_PROGRAM_ID } from "./config.ts";
 
 export type SettleKeys = {
   payer: PublicKey;
@@ -19,6 +18,8 @@ export type SettleKeys = {
   vaultTokenB: PublicKey;
   userTokenA: PublicKey;
   userTokenB: PublicKey;
+  /** Remainder leaf PDA when the journal binds a change note. */
+  changeLeaf?: PublicKey;
 };
 
 function borshVec(bytes: Uint8Array): Uint8Array {
@@ -61,10 +62,13 @@ export function buildSettleIx(
       { pubkey: keys.vaultTokenB, isSigner: false, isWritable: true },
       { pubkey: keys.userTokenA, isSigner: false, isWritable: true },
       { pubkey: keys.userTokenB, isSigner: false, isWritable: true },
+      ...(keys.changeLeaf
+        ? [{ pubkey: keys.changeLeaf, isSigner: false, isWritable: true }]
+        : []),
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
-    data: Buffer.from(encodeSettleData(proof, journal)),
+    data: encodeSettleData(proof, journal),
   });
 }
 

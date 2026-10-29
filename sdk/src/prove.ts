@@ -19,10 +19,8 @@ export const HAPPY_FIXTURE_DIR = join(
   "zk-circuit/fixtures/happy",
 );
 
-export const CHANGE_FIXTURE_DIR = join(
-  REPO_ROOT,
-  "zk-circuit/fixtures/change",
-);
+/** @deprecated Happy pack is the 144-byte wrap. */
+export const CHANGE_FIXTURE_DIR = HAPPY_FIXTURE_DIR;
 
 export type ProofBundle = {
   proof: Buffer;
@@ -44,15 +42,13 @@ export type LoadProofOptions = {
   repoRoot?: string;
 };
 
-/** Read committed `groth16.bin` + `journal.bin`. */
-export function loadHappyProofFixture(
-  fixtureDir: string = HAPPY_FIXTURE_DIR,
-): ProofBundle {
+/** Read `groth16.bin` + `journal.bin` (104 spend-all or 144 change-note). */
+export function loadProofFixture(fixtureDir: string): ProofBundle {
   const proofPath = join(fixtureDir, "groth16.bin");
   const journalPath = join(fixtureDir, "journal.bin");
   if (!existsSync(proofPath) || !existsSync(journalPath)) {
     throw new Error(
-      `missing happy fixtures under ${fixtureDir} (need groth16.bin + journal.bin)`,
+      `missing proof fixtures under ${fixtureDir} (need groth16.bin + journal.bin)`,
     );
   }
   const proof = readFileSync(proofPath);
@@ -60,32 +56,32 @@ export function loadHappyProofFixture(
   if (proof.length !== 356) {
     throw new Error(`expected groth16.bin length 356, got ${proof.length}`);
   }
-  if (journal.length !== 104) {
-    throw new Error(`expected journal.bin length 104, got ${journal.length}`);
+  if (journal.length !== 104 && journal.length !== 144) {
+    throw new Error(
+      `expected journal.bin length 104 or 144, got ${journal.length}`,
+    );
   }
   return { proof, journal, source: "fixture" };
 }
 
-/** Read committed change-note `groth16.bin` + 144-byte `journal.bin`. */
-export function loadChangeProofFixture(
-  fixtureDir: string = CHANGE_FIXTURE_DIR,
+/** Read committed toy pack: 144-byte journal (spend 100 / change 900). */
+export function loadHappyProofFixture(
+  fixtureDir: string = HAPPY_FIXTURE_DIR,
 ): ProofBundle {
-  const proofPath = join(fixtureDir, "groth16.bin");
-  const journalPath = join(fixtureDir, "journal.bin");
-  if (!existsSync(proofPath) || !existsSync(journalPath)) {
+  const bundle = loadProofFixture(fixtureDir);
+  if (fixtureDir === HAPPY_FIXTURE_DIR && bundle.journal.length !== 144) {
     throw new Error(
-      `missing change fixtures under ${fixtureDir} (need groth16.bin + journal.bin)`,
+      `expected happy journal.bin length 144, got ${bundle.journal.length}`,
     );
   }
-  const proof = readFileSync(proofPath);
-  const journal = readFileSync(journalPath);
-  if (proof.length !== 356) {
-    throw new Error(`expected groth16.bin length 356, got ${proof.length}`);
-  }
-  if (journal.length !== 144) {
-    throw new Error(`expected journal.bin length 144, got ${journal.length}`);
-  }
-  return { proof, journal, source: "fixture" };
+  return bundle;
+}
+
+/** @deprecated Alias of {@link loadHappyProofFixture}. */
+export function loadChangeProofFixture(
+  fixtureDir: string = HAPPY_FIXTURE_DIR,
+): ProofBundle {
+  return loadHappyProofFixture(fixtureDir);
 }
 
 /**

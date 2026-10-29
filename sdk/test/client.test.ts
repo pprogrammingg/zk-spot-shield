@@ -109,11 +109,11 @@ describe("SDK surface", () => {
     const body = Buffer.alloc(65);
     const authority = Keypair.generate().publicKey;
     authority.toBuffer().copy(body, 0);
-    body.fill(0xb3, 32, 64);
+    body.fill(0x43, 32, 64);
     body[64] = 1;
     const decoded = decodeGlobalConfig(Buffer.concat([disc, body]));
     expect(decoded.authority.equals(authority)).toBe(true);
-    expect(Buffer.from(decoded.vkeyHash)[0]).toBe(0xb3);
+    expect(Buffer.from(decoded.vkeyHash)[0]).toBe(0x43);
     expect(decoded.pauseFlag).toBe(true);
   });
 });

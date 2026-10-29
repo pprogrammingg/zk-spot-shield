@@ -9,7 +9,21 @@ npm test
 npm run dev
 ```
 
-On **localnet**, load `~/.config/solana/id.json` in the keypair control. Do not use a mainnet secret. Paste the sample proof and journal (base64) from `zk-circuit/fixtures/happy/`. Token account addresses come from a localnet init (the SDK end-to-end bundle).
+On **localnet**, do **not** run `npm run test:e2e` first — that spends the happy nullifier. Use the demo validator (root unused):
+
+```bash
+# terminal 1 — leave running
+cd sdk && npm run demo:localnet
+
+# terminal 2
+cd ui && npm run dev
+```
+
+**Load localnet demo.** Teal card = private note of 1000 mint A. Gold card = 900 **change note** after spend 100 (not extra tokens in the mint-A ATA). Fee payer: `~/.config/solana/id.json` (Finder hides `.config` — ⌘⇧G). Relayer URL empty. Expect user B `0 → 100`, vault B `1000 → 900`. One Groth16 + one 144-byte journal.
+
+Optional 402: `cargo run -p zk-spot-shield-relayer`, Relayer URL `http://127.0.0.1:8787`. Quote is still 100 of mint `0x03…03`.
+
+This screen is a human click-through of one fixture settle. Agent vs wallet vs relayer: [`roadmap.md`](../roadmap.md) 402 track. Toy pack stays localnet; Devnet needs a mint-matched wrap.
 
 ## Static build
 

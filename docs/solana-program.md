@@ -89,7 +89,7 @@ SDK and UI call these same instructions. Default settle uses the committed happy
 
 The fee payer may be a relayer; it need not own the recipient token accounts.
 
-Change notes, encrypted backup, and omitting the depositor from the leaf PDA are in [Architecture](architecture.md) phase E. CI Groth16 stays the 104-byte happy journal; settle inserts a change-leaf PDA when the journal is the 144-byte wrap in `fixtures/change/`. Payout ATAs may belong to a different wallet than the depositor.
+Change notes, encrypted backup, and omitting the depositor from the leaf PDA are in [Architecture](architecture.md) phase E. The toy Groth16 journal is 144 bytes; settle inserts a change-leaf PDA when `change_amount > 0`. Payout ATAs may belong to a different wallet than the depositor.
 
 Errors map to checks: `InvalidProof`, `MerkleRootNotFound`, `NullifierAlreadyUsed`, `ProtocolPaused`, token/vault errors, and zero-copy failures.
 

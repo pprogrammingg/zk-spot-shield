@@ -19,7 +19,7 @@ use crate::tx_build::{build_settle_ix, sign_settle_as_fee_payer, SettleAccountKe
 pub struct SettleIntent {
     /// Base64 Groth16 proof (356 bytes decoded for happy fixture).
     pub proof_base64: String,
-    /// Base64 journal (104 bytes for happy fixture).
+    /// Base64 journal (144 bytes for happy fixture; 104 on spend-all).
     pub journal_base64: String,
     pub global_config: String,
     pub vault: String,

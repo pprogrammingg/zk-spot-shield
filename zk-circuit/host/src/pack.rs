@@ -160,8 +160,10 @@ mod tests {
         let (p2, j2) = unpack_settle_payload(&packed).expect("unpack fixture blob");
         assert_eq!(p2, proof);
         assert_eq!(p2.len(), 356);
+        assert_eq!(j2.len(), 144);
         let public = PublicOutputs::from_journal_bytes(&j2).expect("journal layout");
         assert_eq!(public.requested_swap_amount, inputs.requested_swap_amount);
+        assert_eq!(public.change_amount, 900);
         assert_eq!(public.asset_id_mint, inputs.asset_id_mint);
         assert_eq!(public.merkle_root, inputs.expected_root);
         assert_ne!(public.nullifier, [0u8; 32]);

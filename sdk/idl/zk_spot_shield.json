@@ -10,7 +10,7 @@
     {
       "name": "deposit_shielded",
       "docs": [
-        "transfer SPL into vault and record a public leaf commitment PDA."
+        "Transfer SPL into vault and record a public leaf commitment PDA."
       ],
       "discriminator": [
         153,
@@ -60,8 +60,8 @@
         {
           "name": "deposit_leaf",
           "docs": [
-            "New PDA `[\"deposit_leaf\", leaf]` holding public leaf + amount + mint + depositor.",
-            "`init` fails if this leaf was already deposited."
+            "New PDA `[\"deposit_leaf\", leaf]` holding public leaf + amount + mint.",
+            "`init` fails if this leaf was already deposited. No depositor pubkey."
           ],
           "writable": true,
           "pda": {
@@ -646,6 +646,14 @@
           "writable": true
         },
         {
+          "name": "change_leaf_account",
+          "docs": [
+            "Remainder `[\"deposit_leaf\", change_leaf]` PDA. `None` on spend-all (104-byte journal)."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
@@ -774,6 +782,19 @@
   ],
   "events": [
     {
+      "name": "ChangeNoteEvent",
+      "discriminator": [
+        56,
+        108,
+        208,
+        226,
+        159,
+        49,
+        84,
+        87
+      ]
+    },
+    {
       "name": "DepositEvent",
       "discriminator": [
         120,
@@ -892,9 +913,52 @@
       "code": 6020,
       "name": "InvalidVkeyHash",
       "msg": "Verifying-key hash must be non-zero."
+    },
+    {
+      "code": 6021,
+      "name": "MissingChangeLeafAccount",
+      "msg": "Change-note journal requires an empty deposit-leaf PDA."
+    },
+    {
+      "code": 6022,
+      "name": "InvalidChangeLeafAccount",
+      "msg": "Change-leaf account is not the PDA for the journal change leaf."
+    },
+    {
+      "code": 6023,
+      "name": "ChangeLeafAlreadyUsed",
+      "msg": "Change-leaf PDA already exists."
     }
   ],
   "types": [
+    {
+      "name": "ChangeNoteEvent",
+      "docs": [
+        "Remainder note created on settle when the journal binds a change leaf."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "leaf",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
     {
       "name": "CleanFundsRoot",
       "docs": [
@@ -947,10 +1011,6 @@
           {
             "name": "mint",
             "type": "pubkey"
-          },
-          {
-            "name": "depositor",
-            "type": "pubkey"
           }
         ]
       }
@@ -958,7 +1018,8 @@
     {
       "name": "DepositLeafAccount",
       "docs": [
-        "PDA seeds: `[\"deposit_leaf\", leaf]` — public leaf commitment after a deposit."
+        "PDA seeds: `[\"deposit_leaf\", leaf]` — public leaf commitment after a deposit.",
+        "No wallet pubkey: uniqueness is the leaf; the deposit tx still sits on the ledger."
       ],
       "serialization": "bytemuck",
       "repr": {
@@ -982,10 +1043,6 @@
           },
           {
             "name": "mint",
-            "type": "pubkey"
-          },
-          {
-            "name": "depositor",
             "type": "pubkey"
           }
         ]
@@ -1094,7 +1151,7 @@
     {
       "name": "VKEY_HASH",
       "docs": [
-        "SP1 `vk.bytes32()` for the frozen happy-path guest ELF.",
+        "SP1 `vk.bytes32()` for the current guest ELF (change-note journal).",
         "Source: `zk-circuit/fixtures/happy/vkey.bytes32.txt` / `notes/proving.md`.",
         "Rebuild guest → re-prove → update this array, the fixture, and the notes."
       ],
@@ -1104,7 +1161,7 @@
           32
         ]
       },
-      "value": "[0, 179, 161, 92, 228, 192, 234, 148, 227, 176, 38, 116, 115, 198, 183, 84, 58, 128, 199, 45, 32, 155, 44, 148, 127, 113, 136, 108, 106, 87, 53, 215]"
+      "value": "[0, 67, 86, 150, 214, 102, 211, 5, 23, 35, 6, 227, 137, 90, 68, 1, 126, 24, 134, 99, 222, 155, 56, 118, 151, 10, 226, 112, 52, 95, 194, 64]"
     }
   ]
 }

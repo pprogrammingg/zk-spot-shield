@@ -6,11 +6,11 @@
 /// Solana packet data size limit (legacy / v0 message body budget).
 pub const PACKET_DATA_SIZE: usize = 1232;
 
-/// Anchor settle ix data: 8-byte disc + Borsh `Vec` proof (356) + journal (104).
-pub const SETTLE_IX_DATA_LEN: usize = 8 + 4 + 356 + 4 + 104; // 476
+/// Anchor settle ix data: 8-byte disc + Borsh `Vec` proof (356) + journal (144).
+pub const SETTLE_IX_DATA_LEN: usize = 8 + 4 + 356 + 4 + 144; // 516
 
-/// Accounts in `SettleShieldedSpot` (payer … system_program).
-pub const SETTLE_ACCOUNT_KEYS: usize = 11;
+/// Accounts in `SettleShieldedSpot` including optional change-leaf PDA.
+pub const SETTLE_ACCOUNT_KEYS: usize = 12;
 
 /// Static keys that belong in a settle ALT (reuse across many settles).
 /// Per-settle keys (nullifier PDA, user ATAs, clean-root) stay as static message keys
@@ -24,7 +24,7 @@ pub const SETTLE_ALT_STATIC_SLOT_LABELS: &[&str] = &[
     "vault_token_b",
 ];
 
-/// How many of the 11 settle keys we model as ALT-indexed (static set above).
+/// How many of the 12 settle keys we model as ALT-indexed (static set above).
 pub const SETTLE_ALT_INDEXED_KEYS: usize = 6;
 
 /// Rough legacy message byte cost for a settle tx (1 signer, CU-limit ix + settle ix).
@@ -34,13 +34,13 @@ pub fn estimate_legacy_settle_message_bytes(settle_ix_data_len: usize) -> usize 
     const SIG_LEN: usize = 64;
     const HEADER: usize = 3;
     const BLOCKHASH: usize = 32;
-    // Keys: payer + program + compute-budget program + 11 settle accounts
+    // Keys: payer + program + compute-budget program + 12 settle accounts
     // (some overlap in reality; treat as upper bound).
     let num_keys = 1 + 1 + 1 + SETTLE_ACCOUNT_KEYS;
     let keys = num_keys * 32;
     // CU limit ix: program idx + empty accounts + ~5 data bytes
     let cu_ix = 1 + 1 + 1 + 5;
-    // Settle ix: program idx + 11 account idxs + data
+    // Settle ix: program idx + 12 account idxs + data
     let settle_ix = 1 + 1 + SETTLE_ACCOUNT_KEYS + settle_ix_data_len;
     SIG_LEN + HEADER + keys + BLOCKHASH + cu_ix + settle_ix
 }
@@ -50,7 +50,7 @@ pub fn estimate_v0_settle_message_bytes_with_alt(settle_ix_data_len: usize) -> u
     const SIG_LEN: usize = 64;
     const HEADER: usize = 3;
     const BLOCKHASH: usize = 32;
-    // Remaining static keys: payer, program, compute-budget, + (11 - 6) settle keys
+    // Remaining static keys: payer, program, compute-budget, + (12 - 6) settle keys
     let static_keys = 1 + 1 + 1 + (SETTLE_ACCOUNT_KEYS - SETTLE_ALT_INDEXED_KEYS);
     let keys = static_keys * 32;
     // One lookup table meta: table key (32) + writable/readonly index lists (~1 + n)
@@ -66,7 +66,7 @@ mod tests {
 
     #[test]
     fn settle_ix_data_matches_budget_note() {
-        assert_eq!(SETTLE_IX_DATA_LEN, 476);
+        assert_eq!(SETTLE_IX_DATA_LEN, 516);
     }
 
     #[test]

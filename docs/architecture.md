@@ -61,7 +61,7 @@ Each phase is a separate diagram so GitHub Pages can render them.
 
 | Phase | Steps | Status |
 | --- | --- | --- |
-| **A** Connect | 1 to 3 | Built (`ui/` + SDK); polish later |
+| **A** Connect | 1 to 3 | Built (`ui/` + SDK). Localnet demo pack loads the 144-byte happy proof + ATAs |
 | **B** Deposit | 4 to 12 | Built on-chain; hosted indexer later |
 | **C** Prove | 13 to 19 | Built |
 | **D** Settle | 20 to 28 | Built: vault-only; fee payer may be a relayer |
@@ -156,7 +156,7 @@ sequenceDiagram
 
 ### Phase E — Change notes, backup, unlink (steps 30 to 33)
 
-Fee-payer settle already works in phase D (self-submit or relayer). Change notes, encrypted backup, and omitting the depositor from the leaf PDA are in the client/circuit/program. CI Groth16 stays the 104-byte happy pack; a second 144-byte wrap in `fixtures/change/` is what settle uses to insert the remainder leaf. Prove-treasury remains later.
+Fee-payer settle already works in phase D (self-submit or relayer). Change notes, encrypted backup, and omitting the depositor from the leaf PDA are in the client/circuit/program. The toy Groth16 pack is 144 bytes (spend 100 / keep 900); settle inserts the remainder leaf PDA. Prove-treasury remains later.
 
 ```mermaid
 sequenceDiagram

@@ -1,6 +1,13 @@
+import { PublicKey } from "@solana/web3.js";
+
 /** Default program id (`declare_id!` / Anchor.toml / Devnet). */
 export const DEFAULT_PROGRAM_ID =
   "74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G";
+
+/** SPL Token program. Hardcoded so the UI never loads `@solana/spl-token` in the browser. */
+export const TOKEN_PROGRAM_ID = new PublicKey(
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+);
 
 export const DEFAULT_RPC_LIST = "http://127.0.0.1:8899";
 
@@ -15,4 +22,5 @@ export const SEEDS = {
   spotVault: new TextEncoder().encode("spot_vault"),
   nullifier: new TextEncoder().encode("nullifier"),
   cleanFundsRoot: new TextEncoder().encode("clean_funds_root"),
+  depositLeaf: new TextEncoder().encode("deposit_leaf"),
 } as const;

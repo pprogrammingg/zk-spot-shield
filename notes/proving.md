@@ -58,37 +58,7 @@ WITNESS_JSON=.devnet-witness.json ARTIFACT_DIR=sp1-artifacts/devnet-settle \
 
 ## Happy-path wrap (CI fixture)
 
-| Field | Value |
-| --- | --- |
-| Date (UTC) | 2026-09-14T02:36Z |
-| Circuit version | v6.1.0 (SP1 6.5 host) |
-| Execute cycles | 11,093,598 |
-| Groth16 wall time | 30.7 s |
-| Proof length | 356 bytes |
-| Journal | 104 bytes (little-endian `u64` amount + mint + nullifier + root) |
-| Quoted base fee | 0.4168 `$PROVE` |
-| Max price per proving unit | 0.7900 `$PROVE` |
-| Request | [0x6af4…d4a8](https://explorer.succinct.xyz/request/0x6af4b9d854a22672c20045c61d23c6a5193a6cbea4cb5ecdfa6c8e37c51ad4a8) |
-
-**Verifying key** (`vk.bytes32()`):
-
-```text
-0x00b3a15ce4c0ea94e3b0267473c6b7543a80c72d209b2c947f71886c6a5735d7
-```
-
-Same key as Rust `VKEY_HASH` in `programs/zk_spot_shield/src/constants.rs`.
-
-Live guest after the change-note circuit (`SP1_PROVER=cpu` execute, 2026-10-22): **11,743,748** cycles, remainder `change=900`.
-
-## Change-note wrap (144-byte journal)
-
-Same toy witness as the happy pack. **Did not** overwrite `fixtures/happy/`. CI still uses the 104-byte proof / `0x00b3a15c…35d7`. LiteSVM change-leaf insert rotates `GlobalConfig.vkey_hash` to this key.
-
-```bash
-SKIP_HAPPY_FIXTURE=1 ARTIFACT_DIR=sp1-artifacts/change \
- SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info \
- cargo run -p zk-circuit-host --features network --release
-```
+Toy witness: spend **100**, keep change **900**. This is `VKEY_HASH` / `fixtures/happy/`.
 
 | Field | Value |
 | --- | --- |
@@ -97,11 +67,18 @@ SKIP_HAPPY_FIXTURE=1 ARTIFACT_DIR=sp1-artifacts/change \
 | Execute cycles | 11,743,748 |
 | Groth16 wall time | 25.1 s |
 | Proof length | 356 bytes |
-| Journal | 144 bytes (legacy 104 + LE `u64` change amount + 32-byte change leaf); amount `100`; change `900` |
+| Journal | 144 bytes (amount + mint + nullifier + root + change amount + change leaf); amount `100`; change `900` |
 | Quoted base fee | 0.4032 `$PROVE` |
 | Max price per proving unit | 0.7600 `$PROVE` |
 | Request | [0x3cf7…5e65](https://explorer.succinct.xyz/request/0x3cf702a04e3296db58c5f6411140d8af9686d8f69de5ad0e719300ab69e55e65) |
-| `vk.bytes32()` | `0x00435696d666d305172306e3895a44017e188663de9b3876970ae270345fc240` |
-| Artifacts | `zk-circuit/fixtures/change/{groth16,journal}.bin` and `vkey.bytes32.txt` |
+| Artifacts | `zk-circuit/fixtures/happy/{groth16,journal}.bin` and `vkey.bytes32.txt` |
 
-Public bytes (commit these, not `sp1-datas/`): `zk-circuit/fixtures/happy/{groth16,journal}.bin` and `vkey.bytes32.txt`, plus the change pack above. On-chain packing uses `groth16.bin` (`proof.bytes()`), not the SDK suitcase `proof.bin`.
+**Verifying key** (`vk.bytes32()`):
+
+```text
+0x00435696d666d305172306e3895a44017e188663de9b3876970ae270345fc240
+```
+
+Same key as Rust `VKEY_HASH` in `programs/zk_spot_shield/src/constants.rs`. Devnet `GlobalConfig` was rotated to this hash (`set_vkey_hash` `ZvnaL9f…`). Localnet / local UI demo this pack (mint `0x03…03`). A live wrap still needs vault mint `DNNk…` and stays in `sp1-artifacts/` (`SKIP_HAPPY_FIXTURE=1` / `ARTIFACT_DIR`).
+
+Public bytes (commit these, not `sp1-datas/`): `zk-circuit/fixtures/happy/{groth16,journal}.bin` and `vkey.bytes32.txt`. On-chain packing uses `groth16.bin` (`proof.bytes()`), not the SDK suitcase `proof.bin`.

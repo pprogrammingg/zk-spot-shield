@@ -28,3 +28,13 @@ export function findCleanFundsRootPda(
     programId,
   )[0];
 }
+
+export function findDepositLeafPda(
+  programId: PublicKey,
+  leaf: Uint8Array,
+): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [SEEDS.depositLeaf, leaf],
+    programId,
+  )[0];
+}

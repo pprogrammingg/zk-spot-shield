@@ -7,15 +7,8 @@ import {
 } from "../src/prove.js";
 
 describe("prove bridge", () => {
-  it("loads committed happy groth16 + journal", () => {
+  it("loads committed happy groth16 + 144-byte journal", () => {
     const bundle = loadHappyProofFixture();
-    expect(bundle.source).toBe("fixture");
-    expect(bundle.proof.length).toBe(356);
-    expect(bundle.journal.length).toBe(104);
-  });
-
-  it("loads committed change groth16 + 144-byte journal", () => {
-    const bundle = loadChangeProofFixture();
     expect(bundle.source).toBe("fixture");
     expect(bundle.proof.length).toBe(356);
     expect(bundle.journal.length).toBe(144);
@@ -25,12 +18,18 @@ describe("prove bridge", () => {
     expect(pub.changeLeaf.every((b) => b === 0)).toBe(false);
   });
 
+  it("loadChangeProofFixture aliases the happy pack", () => {
+    const bundle = loadChangeProofFixture();
+    expect(bundle.journal.length).toBe(144);
+    expect(parseJournalPublic(bundle.journal).changeAmount).toBe(900n);
+  });
+
   it("getSettleProof defaults to fixtures", async () => {
     const bundle = await getSettleProof();
     expect(bundle.source).toBe("fixture");
     const pub = parseJournalPublic(bundle.journal);
     expect(pub.requestedSwapAmount).toBe(100n);
     expect(pub.assetIdMint.equals(Buffer.alloc(32, 3))).toBe(true);
-    expect(pub.changeAmount).toBe(0n);
+    expect(pub.changeAmount).toBe(900n);
   });
 });

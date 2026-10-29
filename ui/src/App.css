@@ -65,6 +65,13 @@ button.primary {
   color: var(--accent);
 }
 
+.icon-btn {
+  margin-left: 0.5rem;
+  padding: 0.15rem 0.45rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
 .file input {
   margin-top: 0.25rem;
 }
@@ -81,13 +88,14 @@ button.primary {
 
 .stats {
   display: grid;
-  grid-template-columns: 8rem 1fr;
-  gap: 0.35rem 0.75rem;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 1rem;
   margin-top: 0.75rem;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0.85rem 1rem;
+  align-items: baseline;
 }
 
 .stats dt {
@@ -105,12 +113,172 @@ button.primary {
   word-break: break-all;
 }
 
+.help {
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.notes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1.5rem 0 1rem;
+}
+
+.note-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  padding: 1.2rem 1.3rem 1.35rem;
+  min-height: 11rem;
+  isolation: isolate;
+  box-shadow:
+    0 14px 36px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.note-card.spend {
+  color: #10231e;
+  background:
+    radial-gradient(120% 90% at 0% 0%, #e8fff6 0%, transparent 55%),
+    linear-gradient(145deg, #c5f6e4 0%, #7ee0c3 42%, #2f7d6a 100%);
+}
+
+.note-card.change {
+  color: #1a1408;
+  background:
+    radial-gradient(120% 90% at 100% 0%, #fff6d6 0%, transparent 52%),
+    linear-gradient(145deg, #f7e7b4 0%, #e8c07a 44%, #b07a1e 100%);
+}
+
+.note-card.spent {
+  color: var(--muted);
+  background: linear-gradient(145deg, #2a3140, #161b22);
+  box-shadow: none;
+  filter: grayscale(0.25);
+}
+
+.note-card.preview {
+  opacity: 0.62;
+}
+
+.glare {
+  pointer-events: none;
+  position: absolute;
+  inset: -40% -20%;
+  background: linear-gradient(
+    115deg,
+    transparent 36%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 64%
+  );
+  animation: glare 7.5s ease-in-out infinite;
+}
+
+.note-kicker,
+.note-amount,
+.note-sub {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+}
+
+.note-kicker {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.note-amount {
+  font-size: 2.4rem;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  margin: 0.35rem 0 0.25rem;
+}
+
+.note-sub {
+  font-size: 0.88rem;
+  line-height: 1.4;
+  opacity: 0.88;
+}
+
+.note-card .row {
+  position: relative;
+  z-index: 1;
+  margin: 0.85rem 0 0;
+}
+
+.trade {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr 1fr;
+  gap: 0.75rem 1rem;
+  align-items: end;
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+}
+
+.trade-eq {
+  margin: 0 0 0.45rem;
+  font-size: 1.25rem;
+  color: var(--muted);
+}
+
+.trade input {
+  font-variant-numeric: tabular-nums;
+}
+
+.fold {
+  margin: 0.85rem 0;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.fold summary {
+  cursor: pointer;
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.pay402-out {
+  white-space: pre-wrap;
+  margin: 0.75rem 0 0;
+  max-height: 12rem;
+  overflow: auto;
+}
+
 a {
   color: var(--accent);
 }
 
+@keyframes glare {
+  0%,
+  68% {
+    transform: translateX(-130%) rotate(8deg);
+  }
+  86% {
+    transform: translateX(130%) rotate(8deg);
+  }
+  100% {
+    transform: translateX(130%) rotate(8deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glare {
+    animation: none;
+    opacity: 0.15;
+  }
+}
+
 @media (max-width: 640px) {
-  .grid {
+  .grid,
+  .notes,
+  .trade {
     grid-template-columns: 1fr;
   }
 }

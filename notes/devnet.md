@@ -138,7 +138,7 @@ Local process only. `/health` returned `{"status":"ok","service":"zk-spot-shield
 
 ## Live settle
 
-Custody is on-chain (1.0 of each mint, 6 decimals, into vault ATAs). Live settle used a network Groth16 whose journal mint is vault `mint_a` (`DNNk…`), amount `100000`. Guest ELF rebuilt (Poseidon reduces 32-byte keys into BN254 Fr); on-chain `vkey_hash` rotated with `set_vkey_hash`. Happy fixture (`0x0303…03`) was not overwritten.
+Custody is on-chain (1.0 of each mint, 6 decimals, into vault ATAs). Live settle used a network Groth16 whose journal mint is vault `mint_a` (`DNNk…`), amount `100000`. On-chain `vkey_hash` is now the **current guest** (`0x00435696…`, same as `constants::VKEY_HASH`). The Oct 22 proof (old ELF) will no longer verify. A new Devnet settle still needs a mint-matched wrap (`DNNk…`), not the toy `0x03…03` journal.
 
 ```bash
 cd sdk
@@ -158,8 +158,10 @@ Network prove whose journal `asset_id_mint` is vault `mint_a` or `mint_b`, amoun
 | Leaf A (hex) | `2376354f46c91e6ddf5851b57e3bc6444a62035fc046afa599dd7e8e3d5d7014` |
 | Leaf B (hex) | `15c538a26305c6f989f281b98625f05b167eb906fd2d02b13fa2d4c622593784` |
 | `reserve_a` / `reserve_b` after settle | `1000000` / `900000` (spent mint A; vault-only decrements payout mint B) |
-| On-chain `vkey_hash` | `0x00d6c588a6e51b5715930c0d9495cb6c0c87e8e32fd2775b0a371df81aca6991` |
-| `set_vkey_hash` tx | `CVVahBk8B7Z4k7GcuLUBnqLpa6Mp7zJjtUb6FrK5vLjY9xjMNCMs4Gm2dzp6L3MNzgVFWg2PpERUC4a6wds27LN` |
+| On-chain `vkey_hash` (current guest) | `0x00435696d666d305172306e3895a44017e188663de9b3876970ae270345fc240` |
+| `set_vkey_hash` tx (current) | `ZvnaL9fygEo5XM4QZdGcRDEcKtx1Nnb1MUNuFZkNyRifHnRxz6cHdg1ejTPeeMtWiLLJo3BzAKM7br9wdDfmVwU` |
+| Previous `vkey_hash` (Oct 22 wrap) | `0x00d6c588a6e51b5715930c0d9495cb6c0c87e8e32fd2775b0a371df81aca6991` |
+| Previous `set_vkey_hash` tx | `CVVahBk8B7Z4k7GcuLUBnqLpa6Mp7zJjtUb6FrK5vLjY9xjMNCMs4Gm2dzp6L3MNzgVFWg2PpERUC4a6wds27LN` |
 | Live `CleanFundsRoot` | `5ATcjDGsM8WPHbjQSFACPWAaraNZ5NNLGHkBTfW6cNwD` |
 | Register live root tx | `3ho3tpmfzRydf6UiiaDRGxD8LW64Hche2vz53YmdBX9T7VSu7hWMTPJrhB7dmTnui9gwNPeEd85is7EK5CZPSa2e` |
 | Merkle root (hex) | `08d4c239e1f6b3afcdbf68dd8e6b36e853fc6a418bb85b05dc8d14b23acad818` |

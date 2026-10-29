@@ -10,7 +10,7 @@ use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::{
     error::ErrorCode,
-    journal::{JournalPublic, JOURNAL_BYTE_LEN},
+    journal::{JournalPublic, JOURNAL_BYTE_LEN_WITH_CHANGE},
     state::{CleanFundsRoot, DepositLeafAccount, GlobalConfig, NullifierAccount, VaultState},
     verify_sp1::{verify_sp1_groth16_v6, SP1_V6_PROOF_BYTE_LEN},
     CLEAN_FUNDS_ROOT_SEED_PREFIX, DEPOSIT_LEAF_SEED_PREFIX, GLOBAL_CONFIG_SEED,
@@ -27,7 +27,7 @@ pub struct ChangeNoteEvent {
 
 /// Happy-path fixture sizes (`notes/budgets.md`).
 pub const SETTLE_PROOF_BYTE_LEN: usize = SP1_V6_PROOF_BYTE_LEN;
-pub const SETTLE_JOURNAL_BYTE_LEN: usize = JOURNAL_BYTE_LEN;
+pub const SETTLE_JOURNAL_BYTE_LEN: usize = JOURNAL_BYTE_LEN_WITH_CHANGE;
 
 /// Journal layout: amount(8) | mint(32) | nullifier(32) | merkle_root(32).
 const JOURNAL_NULLIFIER_OFFSET: usize = 8 + 32;
@@ -97,7 +97,7 @@ pub struct SettleShieldedSpot<'info> {
     #[account(mut)]
     pub user_token_b: Account<'info, TokenAccount>,
 
-    /// Remainder `["deposit_leaf", change_leaf]` PDA. `None` for 104-byte journals.
+    /// Remainder `["deposit_leaf", change_leaf]` PDA. `None` on spend-all (104-byte journal).
     /// CHECK: created in the handler after Groth16 verify when the journal binds a change note.
     #[account(mut)]
     pub change_leaf_account: Option<UncheckedAccount<'info>>,
@@ -315,7 +315,7 @@ mod tests {
     #[test]
     fn settle_fixture_byte_lens_match_budget_note() {
         assert_eq!(SETTLE_PROOF_BYTE_LEN, 356);
-        assert_eq!(SETTLE_JOURNAL_BYTE_LEN, 104);
+        assert_eq!(SETTLE_JOURNAL_BYTE_LEN, 144);
     }
 
     #[test]

@@ -89,3 +89,11 @@ export function encodeBase64(bytes: Uint8Array): string {
   for (const b of bytes) s += String.fromCharCode(b);
   return btoa(s);
 }
+
+/** SPL Token account `amount` (u64 LE at offset 64). */
+export function decodeSplAmount(data: Uint8Array): bigint {
+  if (data.length < 72) {
+    throw new Error(`token account too small: ${data.length}`);
+  }
+  return u64le(data, 64);
+}

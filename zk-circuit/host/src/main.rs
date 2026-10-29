@@ -170,7 +170,7 @@ async fn main() {
     );
 
     // Default host copies into fixtures/happy/. Set SKIP_HAPPY_FIXTURE=1 (or
-    // ARTIFACT_DIR) so a change-note wrap cannot clobber the frozen 104-byte CI pack.
+    // ARTIFACT_DIR) so a live/devnet wrap cannot clobber the toy CI pack.
     let skip_happy = std::env::var("SKIP_HAPPY_FIXTURE").ok().as_deref() == Some("1")
         || std::env::var("ARTIFACT_DIR").is_ok();
     if !custom_witness && !skip_happy {

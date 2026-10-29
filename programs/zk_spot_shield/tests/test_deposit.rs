@@ -396,6 +396,9 @@ fn deposit_then_register_tip_then_settle() {
     let (nullifier_account, _) =
         zk_spot_shield::state::NullifierAccount::find_pda(&program_id, &public.nullifier);
     let (vault, _) = VaultState::find_pda(&program_id);
+    let change_leaf_account = public
+        .change_note()
+        .map(|(leaf, _)| zk_spot_shield::state::DepositLeafAccount::find_pda(&program_id, &leaf).0);
     send_ix(
         &mut svm,
         &payer,
@@ -412,7 +415,7 @@ fn deposit_then_register_tip_then_settle() {
                 vault_token_b: vtb,
                 user_token_a: uta,
                 user_token_b: utb,
-                change_leaf_account: None,
+                change_leaf_account,
                 token_program: TOKEN_PROGRAM_ID,
                 system_program: anchor_lang::system_program::ID,
             }
