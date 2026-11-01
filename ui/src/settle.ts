@@ -18,7 +18,7 @@ export type SettleKeys = {
   vaultTokenB: PublicKey;
   userTokenA: PublicKey;
   userTokenB: PublicKey;
-  /** Remainder leaf PDA when the journal binds a change note. */
+  /** Remainder leaf PDA, or omit for spend-all (slot is the program id). */
   changeLeaf?: PublicKey;
 };
 
@@ -62,9 +62,11 @@ export function buildSettleIx(
       { pubkey: keys.vaultTokenB, isSigner: false, isWritable: true },
       { pubkey: keys.userTokenA, isSigner: false, isWritable: true },
       { pubkey: keys.userTokenB, isSigner: false, isWritable: true },
-      ...(keys.changeLeaf
-        ? [{ pubkey: keys.changeLeaf, isSigner: false, isWritable: true }]
-        : []),
+      {
+        pubkey: keys.changeLeaf ?? programId,
+        isSigner: false,
+        isWritable: keys.changeLeaf != null,
+      },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],

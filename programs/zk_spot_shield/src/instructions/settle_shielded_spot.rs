@@ -97,7 +97,8 @@ pub struct SettleShieldedSpot<'info> {
     #[account(mut)]
     pub user_token_b: Account<'info, TokenAccount>,
 
-    /// Remainder `["deposit_leaf", change_leaf]` PDA. `None` on spend-all (104-byte journal).
+    /// Remainder `["deposit_leaf", change_leaf]` PDA. Spend-all still occupies this
+    /// slot with the program id (Anchor `Option` None). Do not omit the account.
     /// CHECK: created in the handler after Groth16 verify when the journal binds a change note.
     #[account(mut)]
     pub change_leaf_account: Option<UncheckedAccount<'info>>,

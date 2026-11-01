@@ -86,7 +86,19 @@ pub fn build_settle_ix(
     proof: Vec<u8>,
     journal: Vec<u8>,
 ) -> Instruction {
-    let metas = accounts.to_anchor_accounts(&journal).to_account_metas(None);
+    let mut metas = accounts.to_anchor_accounts(&journal).to_account_metas(None);
+    // Anchor `Option` None still occupies this slot with the program id.
+    // Omitting it makes System land on `token_program` (0xbc0).
+    if metas.get(9).map(|m| m.pubkey) == Some(anchor_spl::token::ID) {
+        metas.insert(
+            9,
+            anchor_lang::prelude::AccountMeta {
+                pubkey: zk_spot_shield::ID,
+                is_signer: false,
+                is_writable: false,
+            },
+        );
+    }
     Instruction {
         program_id: to_sol_pubkey(zk_spot_shield::ID),
         accounts: metas
@@ -161,6 +173,13 @@ mod tests {
         ));
         let ix = build_settle_ix(&keys, vec![1; 356], vec![2; 104]);
         assert_eq!(ix.program_id, to_sol_pubkey(zk_spot_shield::ID));
+        assert_eq!(ix.accounts.len(), 12);
+        assert_eq!(ix.accounts[9].pubkey, to_sol_pubkey(zk_spot_shield::ID));
+        assert!(!ix.accounts[9].is_writable);
+        assert_eq!(
+            ix.accounts[10].pubkey,
+            to_sol_pubkey(anchor_spl::token::ID)
+        );
         assert_eq!(ix.accounts[0].pubkey, kp.pubkey());
         assert!(ix.accounts[0].is_signer);
         assert!(ix.accounts[0].is_writable);

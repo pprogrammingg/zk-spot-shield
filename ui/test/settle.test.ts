@@ -36,7 +36,19 @@ describe("UI settle encoding", () => {
     );
     expect(ix.keys[0]?.isSigner).toBe(true);
     expect(ix.keys[0]?.pubkey.equals(payer)).toBe(true);
+    expect(ix.keys).toHaveLength(12);
     expect(ix.keys[9]?.pubkey.equals(changeLeaf)).toBe(true);
+    const spendAll = buildSettleIx(
+      new PublicKey(DEFAULT_PROGRAM_ID),
+      { ...keys, changeLeaf: undefined },
+      new Uint8Array(356),
+      new Uint8Array(104),
+    );
+    expect(spendAll.keys).toHaveLength(12);
+    expect(spendAll.keys[9]?.pubkey.equals(new PublicKey(DEFAULT_PROGRAM_ID))).toBe(
+      true,
+    );
+    expect(spendAll.keys[9]?.isWritable).toBe(false);
     const intent = toRelayerIntent(keys, new Uint8Array(8), new Uint8Array(8), 100);
     expect(intent.amount).toBe(100);
     expect(intent.user_token_a).toBe(keys.userTokenA.toBase58());

@@ -6,9 +6,9 @@ Each engineering Day is 1.5 hours (3 × 25 min). Mark `[x]` only when that item 
 
 ## Now
 
-**Day 82** — One Devnet agent buy (CLI or UI). Journal mint is vault `DNNk…`, not toy `0x03…03`. Paste the settle signature in [`notes/devnet.md`](notes/devnet.md).
+**P0** — Same quote paid publicly (Devnet USDC / x402). Both rows in [`notes/budgets.md`](notes/budgets.md).
 
-Localnet CLI + UI already loop (`cd sdk && npm run agent`). Program `74UW…` is live. Do not Groth16 a note whose nullifier PDA already exists.
+Agent Devnet loop is recorded (eleven `SettleShieldedSpot` sigs in [`notes/devnet.md`](notes/devnet.md)). All notes spent. Do not Groth16 a note whose nullifier PDA already exists.
 
 ---
 
@@ -18,11 +18,9 @@ Do in this order. Do not pull a parked item mid-session.
 
 | # | Day | What |
 | --- | --- | --- |
-| 1 | **82** | First Devnet agent settle (open) |
-| 2 | **83** | Repeat Devnet buys until no note covers the quote. Grey cards match on-chain nullifiers |
-| 3 | **P0** | Same quote paid publicly (Devnet USDC / x402). Both rows in `notes/budgets.md` |
-| 4 | **67–68** | Devnet UI checklist + automated on-chain tests |
-| 5 | **Write-1** | Circuit article (engineering pause) |
+| 1 | **P0** | Public USDC / x402 pay of the same quote (open) |
+| 2 | **67–68** | Devnet UI checklist + automated on-chain tests |
+| 3 | **Write-1** | Circuit article (engineering pause) |
 
 ---
 
@@ -47,8 +45,8 @@ The **agent** holds notes and loops 402 → Groth16 → settle → `POST /402/pa
 | --- | --- |
 | **P1** 402 unlocks on a settle journal (fixture) | Done (Day 50) |
 | **P2** swap UI | Done (Days 66, 81) |
-| **P4** Devnet agent loop | Days **82–83**. Groth16 is on the path. Do not fake a proof |
-| **P0** public USDC compare | After 83 |
+| **P4** Devnet agent loop | Done (Days 82–83). Eleven settle sigs; no note covers a further buy |
+| **P0** public USDC compare | Now |
 | **P3** Stripe MPP | Parked |
 
 Dates: Stripe Sessions CFP **3 Nov**; Agentic Payments Hackathon **13–15 Nov**.
@@ -69,7 +67,7 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
 
 ## Done (archive below)
 
-Days **0–81**: Month 1–2, deposit, relayer, P1, benches, audit, Devnet 58–64, public README, UI, change notes, backup, unlink, localnet agent. Checklists stay so Exit text is searchable.
+Days **0–83**: Month 1–2, deposit, relayer, P1, benches, audit, Devnet 58–64, public README, UI, change notes, backup, unlink, localnet + Devnet agent. Checklists stay so Exit text is searchable.
 
 ---
 
@@ -429,7 +427,7 @@ Recorded cluster: `https://api.devnet.solana.com`. Tables: [`notes/devnet.md`](n
 
 ## Month 3+ buffer: Public artifact, UI, change notes, backup, unlink, agent (Sessions 65–83)
 
-Days **65–81** done. **Now is Day 82.** Toy pack stays localnet. No AMM.
+Days **65–83** done. **Now is P0.** Toy pack stays localnet. No AMM.
 
 ### Phase 15: Public shield artifact (1 session) — done
 
@@ -454,9 +452,9 @@ Ship a swap screen. Relayer optional.
   - [x] Optional UI copy: “shielded settle” vs clear note that deposit still shows depositor on-chain until a later privacy Day
   - [x] *Exit:* Localnet click-through: vault B `1000 → 900`, recipient B `0 → 100`, tx `4vS2MTi6…`. Fixture only (spend 100 read-only; no Deposit button). This is P2 — not P4.
 
-### Phase 17: Devnet UI walkthrough + tests (2 sessions) — after Day 83
+### Phase 17: Devnet UI walkthrough + tests (2 sessions) — after P0
 
-Do not start instead of Day 82–83.
+Do not start instead of P0.
 
 - [ ] **Day 67 — Manual Devnet walkthrough**
   - [ ] Point the Day 66 UI at Devnet (program id + RPC from Days 58–61); fund a wallet if needed
@@ -545,7 +543,7 @@ Deposit still writes the user’s wallet on `DepositLeafAccount`. Settle still l
   - [x] Architecture phase E, glossary, `docs/security.md` A22: what is still linkable (deposit tx, unique amounts, token-account graph)
   - [x] *Exit:* Matches Days 77–78. Phase E + A22: leaf PDA has no depositor; settle may pay wallet R; still linkable = deposit tx, unique amounts, token-account graph. LiteSVM + e2e already green.
 
-### Phase 22: Agentic buy loop — Days 80–81 done; **82 open**
+### Phase 22: Agentic buy loop — done
 
 Same wallet for CLI and UI. Relayer is merchant + optional SOL fee payer, not the agent. `$PROVE` is Succinct credits in gitignored `.env`.
 
@@ -559,15 +557,15 @@ Same wallet for CLI and UI. Relayer is merchant + optional SOL fee payer, not th
   - [x] Deposit / buy / balances via agent loopback (`127.0.0.1:8790`)
   - [x] *Exit:* Same loop as Day 80 from the swap UI
 
-- [ ] **Day 82 — First Devnet agent buy**
+- [x] **Day 82 — First Devnet agent buy**
   - [x] Mint-matched wrap (`DNNk…`). Toy `0x03…03` is localnet only
   - [x] `AGENT_CLUSTER=devnet` loads vault `DNNk…` / `Hfgiz…` and the wallet’s ATAs
   - [x] Nullifier sync at boot, before buy, and every 60s (skip notes whose PDA already exists)
-  - [ ] *Exit:* One CLI or UI buy on Devnet; settle signature in `notes/devnet.md`
+  - [x] *Exit:* Settle `3CpfyWL6…` (and five more) in `notes/devnet.md`
 
-- [ ] **Day 83 — Devnet loop until notes cannot cover**
-  - [ ] Repeat buys; grey cards match on-chain nullifiers after restart
-  - [ ] *Exit:* Two or more Devnet settle signatures in `notes/devnet.md`
+- [x] **Day 83 — Devnet loop**
+  - [x] Repeat buys until no unspent note covers a quote; all 11 notes spent
+  - [x] *Exit:* Eleven Devnet settle signatures in `notes/devnet.md`
 
 ---
 

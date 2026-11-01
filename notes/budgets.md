@@ -37,7 +37,7 @@ Happy-path artifacts in `zk-circuit/fixtures/happy/` ([`proving.md`](./proving.m
 
 Shrinking the journal means dropping a public field (circuit, vkey, and on-chain parse).
 
-Twelve settle metas for a 144-byte journal (payer, config, vault, root, nullifier, vault token A/B, user token A/B, change-leaf PDA, token program, system program) ≈ **384 bytes** of pubkeys on top of ~516 bytes of data. Spend-all omits the change-leaf PDA. Compute-budget instruction is separate (`client::settle_compute_budget_ixs`). Packet pressure → address lookup tables.
+Twelve settle metas (payer, config, vault, root, nullifier, vault token A/B, user token A/B, change-leaf PDA **or** program-id sentinel, token program, system program) ≈ **384 bytes** of pubkeys on top of ~516 bytes of data. Spend-all (104-byte journal) still uses all 12 slots — the change slot is the program id. Omitting it makes System land on `token_program` (`0xbc0`). Compute-budget instruction is separate (`client::settle_compute_budget_ixs`). Packet pressure → address lookup tables.
 
 Proof bytes stay in **instruction data**. A lookup table only indexes **pubkeys**. Static ALT candidates: token program, system program, `global_config`, `vault`, vault token A/B. Per-settle keys (nullifier, user token accounts, `clean_funds_root`) stay as message keys. Helpers: `client::alt`.
 

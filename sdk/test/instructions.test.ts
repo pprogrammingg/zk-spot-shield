@@ -73,7 +73,7 @@ describe("instruction wrappers", () => {
     expect(alt[1].equals(SystemProgram.programId)).toBe(true);
   });
 
-  it("change leaf sits before Token program; spend-all omits it", async () => {
+  it("change leaf sits before Token program; spend-all uses program-id sentinel", async () => {
     const wallet = new Wallet(Keypair.generate());
     const provider = createLocalhostProvider({ wallet, setGlobal: false });
     const program = createProgram(provider);
@@ -105,10 +105,12 @@ describe("instruction wrappers", () => {
       program,
       base,
       Buffer.alloc(356, 1),
-      Buffer.alloc(144, 2),
+      Buffer.alloc(104, 2),
     );
-    expect(without.keys).toHaveLength(11);
-    expect(without.keys[9]?.pubkey.equals(TOKEN_PROGRAM_ID)).toBe(true);
-    expect(without.keys[10]?.pubkey.equals(SystemProgram.programId)).toBe(true);
+    expect(without.keys).toHaveLength(12);
+    expect(without.keys[9]?.pubkey.equals(program.programId)).toBe(true);
+    expect(without.keys[9]?.isWritable).toBe(false);
+    expect(without.keys[10]?.pubkey.equals(TOKEN_PROGRAM_ID)).toBe(true);
+    expect(without.keys[11]?.pubkey.equals(SystemProgram.programId)).toBe(true);
   });
 });

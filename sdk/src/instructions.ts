@@ -103,14 +103,14 @@ export type SettleAccounts = {
   userTokenB: PublicKey;
   /**
    * Remainder `DepositLeafAccount` PDA when the journal binds a change note.
-   * Omitted on spend-all (104-byte journal).
+   * Spend-all still occupies this slot with the program id (Anchor `Option` None).
    */
   changeLeaf?: PublicKey;
 };
 
 /**
- * Explicit metas. `changeLeaf` sits before Token program when the journal
- * binds a remainder note. Spend-all omits that account.
+ * Explicit metas. `changeLeaf` sits before Token program. Spend-all passes
+ * `program.programId` in that slot — omitting it makes System land on `token_program` (0xbc0).
  */
 export async function buildSettleIx(
   program: Program,
@@ -128,18 +128,14 @@ export async function buildSettleIx(
     { pubkey: accounts.vaultTokenB, isSigner: false, isWritable: true },
     { pubkey: accounts.userTokenA, isSigner: false, isWritable: true },
     { pubkey: accounts.userTokenB, isSigner: false, isWritable: true },
-  ];
-  if (accounts.changeLeaf) {
-    keys.push({
-      pubkey: accounts.changeLeaf,
+    {
+      pubkey: accounts.changeLeaf ?? program.programId,
       isSigner: false,
-      isWritable: true,
-    });
-  }
-  keys.push(
+      isWritable: accounts.changeLeaf != null,
+    },
     { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-  );
+  ];
   const data = Buffer.concat([
     SETTLE_DISCRIMINATOR,
     borshBytes(Buffer.from(proof)),

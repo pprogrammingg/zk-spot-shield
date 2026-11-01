@@ -38,8 +38,8 @@ The chain learns the trade amount, the token, and the one-time tag. It never lea
 | Change notes | 144-byte pack (spend 100 / keep 900). Second spend needs an admin root |
 | Encrypted note backup | Done (wipe → restore → localnet settle) |
 | Hide / unlink depositor | Done. Leaf PDA has no depositor pubkey. Settle can pay a different wallet. Deposit tx still on the ledger |
-| Devnet | Live (`74UW…`, settle `3V7YF2UL…`). Agent: `AGENT_CLUSTER=devnet`. First agent settle still open |
+| Devnet | Live (`74UW…`). SDK settle `3V7YF2UL…`. Eleven agent settles in `notes/devnet.md` |
 | Extra RPC / IPFS | Parked |
-| Agent 402 → prove → verify → settle | Localnet CLI + UI (`cd sdk && npm run agent`). Devnet wrap uses mint `DNNk…`. Repeat buys until notes cannot cover the quote is next |
+| Agent 402 → prove → verify → settle | Localnet + Devnet (`cd sdk && npm run agent`). Notes exhausted. Next is a public USDC / x402 pay of the same quote |
 
 Start with [Architecture](architecture.md) for the flow, [Solana Program](solana-program.md) for accounts and instructions, or [Tests](tests.md) for fixtures.

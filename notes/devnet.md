@@ -180,7 +180,7 @@ solana confirm -v 3V7YF2ULaHULbnSJinSTahDw5gJSMGkvB2GuQyLevnzh9A15d4yoEcXNbCMfvb
 
 Or `getTransaction` and print `meta.computeUnitsConsumed`. Optional: after `sendAndConfirm`, log that field so later txs fill a table. **N=1 is enough** if you label it N=1.
 
-## Agent (Day 82)
+## Agent settles
 
 Same CLI/UI as localnet. Vault mint A is `DNNk…` (6 decimals). Do **not** prove with toy `0x03…03`.
 
@@ -198,9 +198,28 @@ npm run agent
 cd ui && npm run dev
 ```
 
-Agent **3** opens the UI with `?cluster=devnet`. On-chain ATAs and notes poll from the agent (`GET /status`). Deposit / Buy use the agent. Type token amounts (`33` = 33 A; mint has 6 decimals). Wallet must already hold that SPL (and SOL for fees). The first Groth16 on this cluster is the Day 82 Exit — paste the settle sig here.
+Agent **3** opens the UI with `?cluster=devnet`. Deposit / Buy use the agent. Type whole token amounts (`33` = 33 A). State file: gitignored `sdk/.agent-state-devnet.json`.
 
-State file: gitignored `sdk/.agent-state-devnet.json` (not the localnet notes).
+Wallet `9sLGgV…`. Eleven `SettleShieldedSpot` txs (Status Ok). Distinct from the SDK settle `3V7YF2UL…` above. All 11 notes spent (`spent: true`); no unspent note covers a buy.
+
+| # | Signature | CU |
+| --- | --- | --- |
+| 1 | [`3CpfyWL6…Ek87h`](https://explorer.solana.com/tx/3CpfyWL6BuE62zxrMu9VKFjf9hFEf7u6Y8iSXWFVsHnkr6Rqch7VhC92m8VSVSphwJNoVjkjpMQ6eTtqgmDEk87h?cluster=devnet) | 294,537 |
+| 2 | [`25PKqmaH…oQWBy`](https://explorer.solana.com/tx/25PKqmaH1WFyYgMfccPbQkvhHTAFtfBRTx8isBJvJ4EFfv1emtLRPSZhNUGJjFVvb9btMBhRmt5panxfMfVoQWBy?cluster=devnet) | 297,541 |
+| 3 | [`petW4Kmj…7XZKb`](https://explorer.solana.com/tx/petW4Kmj9Nin87Espc3CYazY5r9eQzc7nZbfWsaQu1xK4ZKiCvEHDB7orbKUSUDJ8wPyi6QEtrJzfDueGq7XZKb?cluster=devnet) | 293,046 |
+| 4 | [`nQQ9fgu8…NRpBu`](https://explorer.solana.com/tx/nQQ9fgu8EkK5QxADZiRYsaUobvhMdcBr9wuKj4bb6PzZR5qhQpvTeLqfaatHjSfnbNvJGPpELYg2JoLggJNRpBu?cluster=devnet) | 296,042 |
+| 5 | [`2vFkhR9S…mfpyjs`](https://explorer.solana.com/tx/2vFkhR9SZQr7GUtXrgmfKwKsxDYGMoRndvMMUgSXhzpUcbQJbANaKB1bTK6AJdMiA3NF26AEPAhwPyexvxmfpyjs?cluster=devnet) | 294,580 |
+| 6 | [`26eDe1zK…ALbYi7`](https://explorer.solana.com/tx/26eDe1zKZ4FqcvutkUPoA4o4eXS8TVnwu1Lm1gxJY5WDK1Seqx3SMBZMJuQcnvpNtNZsdMmFPhm65RTq6GALbYi7?cluster=devnet) | 299,035 |
+| 7 | [`FcReL2PK…WBfG3`](https://explorer.solana.com/tx/FcReL2PKAoukUxFe7QaGtUtyANHVdcjT9zEwsiVpCTMuLvgnP3dnnQphNbosGos5oLNheQnqRkbE859oPgWBfG3?cluster=devnet) | 289,831 |
+| 8 | [`2EKYyCBY…VLLtYn`](https://explorer.solana.com/tx/2EKYyCBYATbZ78MsbnQdGKKHJFYh5UBsnEChgtJ9RH5Ev4SCdoiREuAG2sPoWHiNfqzscHYXr2xzUnZ6K5VLLtYn?cluster=devnet) | 288,309 |
+| 9 | [`4TdRCF6h…26SW1M`](https://explorer.solana.com/tx/4TdRCF6h516goiwuRZaXab3C2mgZMGxxEdvFW68nBAzJgu1tkhQU4vbuibx2Sb5HWhgk8kHPzDvkARXUn326SW1M?cluster=devnet) | 291,302 |
+| 10 | [`52M1V6f5…ypLyea`](https://explorer.solana.com/tx/52M1V6f529xnFrzihPjVtGBxnifoGXyejsGkrqRBkSGZpFw7XqtE1SkCCqg1ibmYu7o3zuztsrhp35pLKUypLyea?cluster=devnet) | 288,324 |
+| 11 | [`3op3aRxp…i1N8gC`](https://explorer.solana.com/tx/3op3aRxpaH8dYhykV35egXULhCCijiviYLVTUZoiikVqHqDtvkJkyZDqkvA9go5vKGQZTVC1Kx5Mt6Ye5Si1N8gC?cluster=devnet) | 288,314 |
+
+```bash
+solana confirm -v 3CpfyWL6BuE62zxrMu9VKFjf9hFEf7u6Y8iSXWFVsHnkr6Rqch7VhC92m8VSVSphwJNoVjkjpMQ6eTtqgmDEk87h \
+  --url https://api.devnet.solana.com
+```
 
 ## UI click-through
 
