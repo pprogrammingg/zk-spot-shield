@@ -34,6 +34,32 @@ function isDemoAccounts(v: unknown): v is DemoAccounts {
   );
 }
 
+export type AgentNotePublic = {
+  leafIndex: number;
+  balance: string;
+  spent: boolean;
+  leafPrefix: string;
+};
+
+export async function loadAgentNotesPublic(
+  fetchFn: typeof fetch = fetch,
+): Promise<AgentNotePublic[]> {
+  const res = await fetchFn(`${demoAssetUrl("agent-notes.json")}?t=${Date.now()}`);
+  if (!res.ok) return [];
+  const v = (await res.json()) as { notes?: unknown };
+  if (!Array.isArray(v.notes)) return [];
+  return v.notes.filter((n): n is AgentNotePublic => {
+    if (!n || typeof n !== "object") return false;
+    const o = n as Record<string, unknown>;
+    return (
+      typeof o.leafIndex === "number" &&
+      typeof o.balance === "string" &&
+      typeof o.spent === "boolean" &&
+      typeof o.leafPrefix === "string"
+    );
+  });
+}
+
 export async function loadDemoPack(
   fetchFn: typeof fetch = fetch,
 ): Promise<DemoPack> {

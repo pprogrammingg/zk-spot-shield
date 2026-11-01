@@ -35,6 +35,9 @@
 
 # Day 38 localnet scratch
 sdk/.e2e-accounts/
+sdk/.agent-state.json
+sdk/.agent-state-devnet.json
+sdk/.agent-state/
 ui/public/demo/
 /test-ledger-e2e/
 /**/test-ledger-e2e/

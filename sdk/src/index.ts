@@ -3,6 +3,7 @@
  */
 
 export {
+  DEVNET_URL,
   LOCALNET_URL,
   createLocalhostProvider,
   defaultWalletPath,
@@ -28,6 +29,7 @@ export {
 export {
   DepositTree,
   privateInputsFromDeposit,
+  proofInputsForExistingNote,
   type DepositNote,
 } from "./depositTree.js";
 
@@ -110,3 +112,76 @@ export {
   importEncryptedNote,
   type NoteBackupPlain,
 } from "./noteBackup.js";
+
+export {
+  AGENT_HELP,
+  BACK_HINT,
+  DEFAULT_UI_URL,
+  balanceUiUrl,
+  collapseRepeats,
+  discoverUiOrigin,
+  openBrowser,
+  isBackToMenu,
+  parseAgentCommand,
+  parseAmount,
+  parseYesNo,
+  uiUrl,
+  type AgentCommand,
+} from "./agentCmd.js";
+
+export {
+  DEVNET_DECIMALS,
+  LOCALNET_DECIMALS,
+  decimalsForCluster,
+  formatTokenAmount,
+  parseTokenAmount,
+} from "./tokenAmount.js";
+
+export {
+  AGENT_HTTP_PORTS,
+  DEFAULT_AGENT_HTTP_HOST,
+  DEFAULT_AGENT_HTTP_PORT,
+  parseBuyBody,
+  startAgentHttp,
+  withAgentBuyGate,
+  type AgentBuyErrJson,
+  type AgentBuyFn,
+  type AgentBuyOkJson,
+  type AgentDepositFn,
+  type AgentDepositOkJson,
+  type AgentStatusFn,
+  type AgentStatusJson,
+  type AgentStatusNote,
+} from "./agentHttp.js";
+
+export {
+  appendLeafHex,
+  defaultStatePath,
+  emptyAgentState,
+  formatNotesTable,
+  loadAgentState,
+  markSpent,
+  noteFromParts,
+  pickSpendableNote,
+  publicNotesSnapshot,
+  publishUiNotes,
+  saveAgentState,
+  storedToDepositNote,
+  type AgentState,
+  type PublicNoteView,
+  type StoredNote,
+} from "./agentStore.js";
+
+export {
+  BuyTimer,
+  formatBuyWalletTiming,
+  formatClock,
+  formatDuration,
+  type BuyLap,
+} from "./agentTiming.js";
+
+export {
+  buildWitnessFile,
+  writeWitnessJson,
+  type AgentWitnessFile,
+} from "./agentWitness.js";

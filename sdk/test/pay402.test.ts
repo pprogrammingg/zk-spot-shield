@@ -2,7 +2,12 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { journalToPayBody, parseJournalPublic, resourceUrl } from "../src/index.js";
+import {
+  journalToPayBody,
+  parseJournalPublic,
+  quoteUrl,
+  resourceUrl,
+} from "../src/index.js";
 
 describe("402 client helpers", () => {
   it("pay body is journal-only (no wallet)", () => {
@@ -20,5 +25,14 @@ describe("402 client helpers", () => {
     const url = resourceUrl("http://127.0.0.1:8787", pub.nullifier.toString("hex"));
     expect(url).toContain("nullifier=0x");
     expect(url).not.toContain("wallet");
+    expect(quoteUrl("http://127.0.0.1:8787")).toBe(
+      "http://127.0.0.1:8787/402/resource",
+    );
+    expect(
+      quoteUrl("http://127.0.0.1:8787", {
+        amount: 100000,
+        mintHex: "0xabab",
+      }),
+    ).toContain("amount=100000");
   });
 });

@@ -6,6 +6,7 @@ import { createLocalhostProvider } from "../src/provider.js";
 import {
   SETTLE_ALT_STATIC_LABELS,
   SETTLE_CU_LIMIT,
+  buildSettleIx,
   buildSettleTransaction,
   createProgram,
   findCleanFundsRootPda,
@@ -70,5 +71,44 @@ describe("instruction wrappers", () => {
     const alt = settleAltStaticAddresses(accounts);
     expect(alt[0].equals(TOKEN_PROGRAM_ID)).toBe(true);
     expect(alt[1].equals(SystemProgram.programId)).toBe(true);
+  });
+
+  it("change leaf sits before Token program; spend-all omits it", async () => {
+    const wallet = new Wallet(Keypair.generate());
+    const provider = createLocalhostProvider({ wallet, setGlobal: false });
+    const program = createProgram(provider);
+    const [globalConfig] = await findGlobalConfigPda(program.programId);
+    const [vault] = await findVaultPda(program.programId);
+    const changeLeaf = Keypair.generate().publicKey;
+    const base = {
+      payer: wallet.publicKey,
+      globalConfig,
+      vault,
+      cleanFundsRoot: Keypair.generate().publicKey,
+      nullifierAccount: Keypair.generate().publicKey,
+      vaultTokenA: Keypair.generate().publicKey,
+      vaultTokenB: Keypair.generate().publicKey,
+      userTokenA: Keypair.generate().publicKey,
+      userTokenB: Keypair.generate().publicKey,
+    };
+    const withChange = await buildSettleIx(
+      program,
+      { ...base, changeLeaf },
+      Buffer.alloc(356, 1),
+      Buffer.alloc(144, 2),
+    );
+    expect(withChange.keys).toHaveLength(12);
+    expect(withChange.keys[9]?.pubkey.equals(changeLeaf)).toBe(true);
+    expect(withChange.keys[10]?.pubkey.equals(TOKEN_PROGRAM_ID)).toBe(true);
+
+    const without = await buildSettleIx(
+      program,
+      base,
+      Buffer.alloc(356, 1),
+      Buffer.alloc(144, 2),
+    );
+    expect(without.keys).toHaveLength(11);
+    expect(without.keys[9]?.pubkey.equals(TOKEN_PROGRAM_ID)).toBe(true);
+    expect(without.keys[10]?.pubkey.equals(SystemProgram.programId)).toBe(true);
   });
 });

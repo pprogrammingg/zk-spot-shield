@@ -24,6 +24,10 @@ import {
   type SettleAccounts,
 } from "../../src/instructions.js";
 import { getSettleProof, parseJournalPublic } from "../../src/prove.js";
+import {
+  exportEncryptedNote,
+  importEncryptedNote,
+} from "../../src/noteBackup.js";
 
 const run = process.env.RUN_E2E === "1";
 const accountsDir =
@@ -37,6 +41,9 @@ type Bundle = {
   vaultTokenB: string;
   userTokenA: string;
   userTokenB: string;
+  /** Day 78: payout ATA owner ≠ depositor D (`authority`). */
+  recipient?: string;
+  recipientTokenB?: string;
 };
 
 function loadBundle(): Bundle {
@@ -93,9 +100,54 @@ async function settleAccountsFor(
     vaultTokenA: new PublicKey(bundle.vaultTokenA),
     vaultTokenB: new PublicKey(bundle.vaultTokenB),
     userTokenA: new PublicKey(bundle.userTokenA),
-    userTokenB: new PublicKey(bundle.userTokenB),
+    userTokenB: new PublicKey(bundle.recipientTokenB ?? bundle.userTokenB),
     changeLeaf,
   };
+}
+
+/** Day 76: wipe in-memory note, restore from encrypted blob, then spend. */
+async function restoreHappyNoteFromBackup(
+  journal: Buffer,
+): Promise<void> {
+  const pub = parseJournalPublic(journal);
+  let live:
+    | {
+        secret: Uint8Array;
+        userAddress: Uint8Array;
+        balance: bigint;
+        assetIdMint: Uint8Array;
+        leafIndex: number;
+      }
+    | undefined = {
+    secret: new Uint8Array(32).fill(1),
+    userAddress: new Uint8Array(32).fill(2),
+    balance: 1000n,
+    assetIdMint: new Uint8Array(pub.assetIdMint),
+    leafIndex: 0,
+  };
+  const blob = await exportEncryptedNote(live, "day76-passphrase");
+  live = undefined;
+  const restored = await importEncryptedNote(blob, "day76-passphrase");
+  if (live !== undefined) {
+    throw new Error("in-memory note was not wiped");
+  }
+  expect(restored.balance).toBe(1000n);
+  expect(restored.leafIndex).toBe(0);
+  expect(restored.secret[0]).toBe(1);
+  expect(restored.userAddress[0]).toBe(2);
+  expect(
+    Buffer.from(restored.assetIdMint).equals(Buffer.from(pub.assetIdMint)),
+  ).toBe(true);
+}
+
+function accountOmitsWallet(data: Buffer, wallet: PublicKey): void {
+  const body = data.subarray(8);
+  const pk = wallet.toBytes();
+  for (let i = 0; i + 32 <= body.length; i++) {
+    if (body.subarray(i, i + 32).equals(pk)) {
+      throw new Error(`PDA body contains wallet ${wallet.toBase58()}`);
+    }
+  }
 }
 
 describe.skipIf(!run)("localnet E2E", () => {
@@ -176,7 +228,7 @@ describe.skipIf(!run)("localnet E2E", () => {
     );
   });
 
-  it("happy path: settle moves token balances", async () => {
+  it("happy path: restore backup then settle pays recipient R", async () => {
     const bundle = loadBundle();
     const wallet = loadKeypairWallet();
     const provider = createLocalhostProvider({
@@ -186,6 +238,7 @@ describe.skipIf(!run)("localnet E2E", () => {
     });
     const program = createProgram(provider);
     const { proof, journal } = await getSettleProof();
+    await restoreHappyNoteFromBackup(journal);
     const pub = parseJournalPublic(journal);
     const cleanFundsRoot = await ensureRoot(
       program,
@@ -201,14 +254,12 @@ describe.skipIf(!run)("localnet E2E", () => {
       cleanFundsRoot,
     );
 
+    const payoutB = new PublicKey(bundle.recipientTokenB ?? bundle.userTokenB);
     const userABefore = await getAccount(
       provider.connection,
       new PublicKey(bundle.userTokenA),
     );
-    const userBBefore = await getAccount(
-      provider.connection,
-      new PublicKey(bundle.userTokenB),
-    );
+    const userBBefore = await getAccount(provider.connection, payoutB);
 
     const tx = await buildSettleTransaction(
       program,
@@ -218,7 +269,6 @@ describe.skipIf(!run)("localnet E2E", () => {
     );
     const sig = await provider.sendAndConfirm(tx);
     await confirmSignature(provider.connection, sig);
- // Ready-to-paste for demo slide "What's in the tx" (use with KEEP_VALIDATOR=1).
     const rpc = process.env.ANCHOR_PROVIDER_URL ?? "http://127.0.0.1:8899";
     console.log(`\nsolana confirm -v ${sig} --url ${rpc}`);
 
@@ -227,17 +277,26 @@ describe.skipIf(!run)("localnet E2E", () => {
       provider.connection,
       new PublicKey(bundle.userTokenA),
     );
-    const userBAfter = await getAccount(
-      provider.connection,
-      new PublicKey(bundle.userTokenB),
-    );
- // vault-only: no second debit of journal mint A.
+    const userBAfter = await getAccount(provider.connection, payoutB);
     expect(userAAfter.amount).toBe(userABefore.amount);
     expect(userBAfter.amount).toBe(userBBefore.amount + amount);
+    if (bundle.recipient) {
+      expect(userBAfter.owner.equals(new PublicKey(bundle.recipient))).toBe(
+        true,
+      );
+    }
 
     const nf = await provider.connection.getAccountInfo(accounts.nullifierAccount);
     expect(nf).not.toBeNull();
     expect(nf!.owner.equals(program.programId)).toBe(true);
+    accountOmitsWallet(nf!.data, wallet.publicKey);
+    if (accounts.changeLeaf) {
+      const leafAcc = await provider.connection.getAccountInfo(
+        accounts.changeLeaf,
+      );
+      expect(leafAcc).not.toBeNull();
+      accountOmitsWallet(leafAcc!.data, wallet.publicKey);
+    }
   });
 
   it("replay → NullifierAlreadyUsed", async () => {

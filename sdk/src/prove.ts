@@ -40,6 +40,13 @@ export type LoadProofOptions = {
   fixtureDir?: string;
   /** Host cwd (repo root). */
   repoRoot?: string;
+  /** Gitignored witness JSON (`leaves_hex` + `leaf_index` for a multi-leaf tree). */
+  witnessJson?: string;
+  /**
+   * Host writes groth16/journal here. When set, skip copying into
+   * `fixtures/happy/` and load this pack instead.
+   */
+  artifactDir?: string;
 };
 
 /** Read `groth16.bin` + `journal.bin` (104 spend-all or 144 change-note). */
@@ -87,8 +94,8 @@ export function loadChangeProofFixture(
 /**
  * Prove bridge entrypoint.
  * - Default / CI: fixtures
- * - `invokeHost: true` or `PROVE_BRIDGE_HOST=1`: spawn host network prove, then reload fixtures
- *   (host copies artifacts into `zk-circuit/fixtures/happy/`).
+ * - `invokeHost: true` or `PROVE_BRIDGE_HOST=1`: spawn host network prove
+ *   (happy pack unless `artifactDir` / `witnessJson` are set).
  */
 export async function getSettleProof(
   opts: LoadProofOptions = {},
@@ -98,11 +105,34 @@ export async function getSettleProof(
   if (!invoke) {
     return loadHappyProofFixture(opts.fixtureDir);
   }
-  await runHostGroth16Prove(opts.repoRoot ?? REPO_ROOT);
+  await runHostGroth16Prove(opts);
+  if (opts.artifactDir) {
+    const proofPath = join(opts.artifactDir, "groth16.bin");
+    if (!existsSync(proofPath)) {
+      throw new Error(
+        "host skipped Groth16 — set SP1_USE_NETWORK=1 SP1_GROTH16=1 in root .env ($PROVE is Succinct credits, not a Solana key)",
+      );
+    }
+    const bundle = loadProofFixture(opts.artifactDir);
+    return { ...bundle, source: "host" };
+  }
   return loadHappyProofFixture(opts.fixtureDir ?? HAPPY_FIXTURE_DIR);
 }
 
-function runHostGroth16Prove(repoRoot: string): Promise<void> {
+function runHostGroth16Prove(opts: LoadProofOptions): Promise<void> {
+  const repoRoot = opts.repoRoot ?? REPO_ROOT;
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    SP1_USE_NETWORK: "1",
+    SP1_PROVER: "network",
+    SP1_GROTH16: "1",
+    RUST_LOG: process.env.RUST_LOG ?? "info",
+  };
+  if (opts.witnessJson) env.WITNESS_JSON = opts.witnessJson;
+  if (opts.artifactDir) {
+    env.ARTIFACT_DIR = opts.artifactDir;
+    env.SKIP_HAPPY_FIXTURE = "1";
+  }
   return new Promise((resolve, reject) => {
     const child = spawn(
       "cargo",
@@ -116,13 +146,7 @@ function runHostGroth16Prove(repoRoot: string): Promise<void> {
       ],
       {
         cwd: repoRoot,
-        env: {
-          ...process.env,
-          SP1_USE_NETWORK: "1",
-          SP1_PROVER: "network",
-          SP1_GROTH16: "1",
-          RUST_LOG: process.env.RUST_LOG ?? "info",
-        },
+        env,
         stdio: "inherit",
       },
     );

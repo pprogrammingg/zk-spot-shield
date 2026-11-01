@@ -21,9 +21,9 @@ cd ui && npm run dev
 
 **Load localnet demo.** Teal card = private note of 1000 mint A. Gold card = 900 **change note** after spend 100 (not extra tokens in the mint-A ATA). Fee payer: `~/.config/solana/id.json` (Finder hides `.config` — ⌘⇧G). Relayer URL empty. Expect user B `0 → 100`, vault B `1000 → 900`. One Groth16 + one 144-byte journal.
 
-Optional 402: `cargo run -p zk-spot-shield-relayer`, Relayer URL `http://127.0.0.1:8787`. Quote is still 100 of mint `0x03…03`.
+Optional 402: `cargo run -p zk-spot-shield-relayer`, Relayer URL `http://127.0.0.1:8787`. Default quote is 100 of mint `0x03…03`. Pass `?amount=` and `?mint=0x…` (vault mint A on Devnet) to set the price.
 
-This screen is a human click-through of one fixture settle. Agent vs wallet vs relayer: [`roadmap.md`](../roadmap.md) 402 track. Toy pack stays localnet; Devnet needs a mint-matched wrap.
+This screen is a human click-through of one fixture settle. **Localnet | Devnet** in the header picks RPC (`?cluster=`). Localnet auto-loads the demo pack (teal 1000 fixture). Both clusters **poll** On-chain data: vault + user ATAs (Devnet every 15s, localnet 8s) and CLI notes from the running agent `GET /status` (`127.0.0.1:8790`, every 4s, no Solana RPC). Nullifier sync is the agent (boot, before buy, every 60s) — not the UI poll. Vault, user, and note-card balances are on-chain whole units (no decimal split). Agent **3** Balance opens the matching cluster. **Deposit Token A** / **Buy Token B** POST integers to that agent — same paths as CLI `2` / `1`. While Groth16 runs, the chosen note card turns orange with **Locked for Spending ....**; after settle it greys out. **Load localnet demo** is localnet-only. Devnet agent: `AGENT_CLUSTER=devnet`.
 
 ## Static build
 

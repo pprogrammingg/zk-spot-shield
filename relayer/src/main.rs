@@ -4,12 +4,14 @@
 //! - `RELAYER_BIND` default `127.0.0.1:8787`
 //! - `RELAYER_FEE_PAYER` path to JSON keypair (optional; dry-run settle when set)
 //! - `RELAYER_FEE_BPS` / `RELAYER_FEE_FLAT` (fee stub)
+//! - `QUOTE_AMOUNT` / `QUOTE_MINT` (0x-hex) — default 402 price (fixture 100 / `0x03…03`)
 
 use std::net::SocketAddr;
 use std::sync::Arc;
 
 use solana_keypair::Keypair;
 use tracing_subscriber::EnvFilter;
+use zk_spot_shield_relayer::pay402::{listen_banner, QuoteSlot};
 use zk_spot_shield_relayer::{app_router, run_worker, AppState, FeeConfig, ProveQueue};
 
 fn load_fee_payer() -> Option<Arc<Keypair>> {
@@ -42,10 +44,11 @@ async fn main() {
     let app = app_router(AppState {
         queue,
         pay: zk_spot_shield_relayer::PayLedger::default(),
+        quote: QuoteSlot::from_env(),
     });
     let bind = std::env::var("RELAYER_BIND").unwrap_or_else(|_| "127.0.0.1:8787".into());
     let addr: SocketAddr = bind.parse().expect("RELAYER_BIND host:port");
-    tracing::info!(%addr, "zk-spot-shield-relayer listening");
+    tracing::info!("{}", listen_banner(&addr.to_string()));
     let listener = tokio::net::TcpListener::bind(addr).await.expect("bind");
     axum::serve(listener, app).await.expect("serve");
 }

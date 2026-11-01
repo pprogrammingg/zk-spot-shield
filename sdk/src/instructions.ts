@@ -22,6 +22,18 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 /** Match Rust `client::SETTLE_CU_LIMIT` / LiteSVM settle tests. */
 export const SETTLE_CU_LIMIT = 1_400_000;
 
+/** Anchor disc for `settle_shielded_spot`. */
+export const SETTLE_DISCRIMINATOR = Buffer.from([
+  233, 96, 13, 60, 148, 116, 38, 171,
+]);
+
+function borshBytes(bytes: Buffer): Buffer {
+  const out = Buffer.alloc(4 + bytes.length);
+  out.writeUInt32LE(bytes.length, 0);
+  bytes.copy(out, 4);
+  return out;
+}
+
 /** Optional micro-lamports per CU; 0 omits the price ix. */
 export const SETTLE_CU_PRICE_MICRO_LAMPORTS = 0;
 
@@ -96,29 +108,48 @@ export type SettleAccounts = {
   changeLeaf?: PublicKey;
 };
 
+/**
+ * Explicit metas. `changeLeaf` sits before Token program when the journal
+ * binds a remainder note. Spend-all omits that account.
+ */
 export async function buildSettleIx(
   program: Program,
   accounts: SettleAccounts,
   proof: Buffer | Uint8Array,
   journal: Buffer | Uint8Array,
 ): Promise<TransactionInstruction> {
-  return program.methods
-    .settleShieldedSpot(Buffer.from(proof), Buffer.from(journal))
-    .accountsPartial({
-      payer: accounts.payer,
-      globalConfig: accounts.globalConfig,
-      vault: accounts.vault,
-      cleanFundsRoot: accounts.cleanFundsRoot,
-      nullifierAccount: accounts.nullifierAccount,
-      vaultTokenA: accounts.vaultTokenA,
-      vaultTokenB: accounts.vaultTokenB,
-      userTokenA: accounts.userTokenA,
-      userTokenB: accounts.userTokenB,
-      changeLeafAccount: accounts.changeLeaf ?? null,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      systemProgram: SystemProgram.programId,
-    })
-    .instruction();
+  const keys = [
+    { pubkey: accounts.payer, isSigner: true, isWritable: true },
+    { pubkey: accounts.globalConfig, isSigner: false, isWritable: false },
+    { pubkey: accounts.vault, isSigner: false, isWritable: true },
+    { pubkey: accounts.cleanFundsRoot, isSigner: false, isWritable: false },
+    { pubkey: accounts.nullifierAccount, isSigner: false, isWritable: true },
+    { pubkey: accounts.vaultTokenA, isSigner: false, isWritable: true },
+    { pubkey: accounts.vaultTokenB, isSigner: false, isWritable: true },
+    { pubkey: accounts.userTokenA, isSigner: false, isWritable: true },
+    { pubkey: accounts.userTokenB, isSigner: false, isWritable: true },
+  ];
+  if (accounts.changeLeaf) {
+    keys.push({
+      pubkey: accounts.changeLeaf,
+      isSigner: false,
+      isWritable: true,
+    });
+  }
+  keys.push(
+    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+  );
+  const data = Buffer.concat([
+    SETTLE_DISCRIMINATOR,
+    borshBytes(Buffer.from(proof)),
+    borshBytes(Buffer.from(journal)),
+  ]);
+  return new TransactionInstruction({
+    programId: program.programId,
+    keys,
+    data,
+  });
 }
 
 /** CU budget ixs + settle ix (legacy tx; ALT wiring is address list helpers). */

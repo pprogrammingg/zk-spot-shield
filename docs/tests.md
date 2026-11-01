@@ -6,7 +6,7 @@
 | Circuit I/O tests | `cargo test -p zk-circuit-io --lib` | Poseidon, Merkle, recorded journal and proof | Yes |
 | Client / relayer | `cargo test -p client --lib` and `cargo test -p zk-spot-shield-relayer --lib` | Compute budget, fee payer dry-run, HTTP 402 | Relayer yes |
 | Program integration | `anchor build` + LiteSVM | Deposit and vault-only settle against a `.so` | Yes |
-| SDK / UI | `cd sdk && npm test` / `cd ui && npm test` | Journal decode, settle encoding, RPC fallback | Local |
+| SDK / UI | `cd sdk && npm test` / `cd ui && npm test` | Journal decode, settle encoding, RPC fallback, agent HELP/store/witness | Local |
 | Host tests | `cargo test -p zk-circuit-host --lib` | Fixture matches inputs; forged path rejected | Local only |
 | Devnet | `DEVNET_ONCHAIN=1` in `sdk/` | Live cluster reads | Opt-in; skip in CI |
 

@@ -33,6 +33,8 @@ Prints `vk.bytes32()` hex and a Rust `[u8; 32]` for `GlobalConfig` / `VKEY_HASH`
 
 Gitignored `.devnet-witness.json` + `WITNESS_JSON` / `ARTIFACT_DIR`. Do **not** copy that wrap into `zk-circuit/fixtures/happy/`.
 
+One-leaf JSON is enough for a single deposit. A second leaf or a change note needs `leaves_hex` (append order) and `leaf_index` so the host rebuilds the same tree the admin registered. The agent CLI writes that file under gitignored `sp1-artifacts/agent-cli/`.
+
 ```bash
 WITNESS_JSON=.devnet-witness.json cargo run -p zk-circuit-host --release
 WITNESS_JSON=.devnet-witness.json ARTIFACT_DIR=sp1-artifacts/devnet-settle \

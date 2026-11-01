@@ -43,3 +43,7 @@ node_modules/
 # MkDocs build output
 site/
 .venv-docs/
+
+# Agent CLI notes (secrets)
+sdk/.agent-state.json
+sdk/.agent-state/

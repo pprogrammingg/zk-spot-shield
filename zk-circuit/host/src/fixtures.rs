@@ -99,6 +99,12 @@ struct WitnessFile {
     requested_swap_amount: u64,
     #[serde(default)]
     expected_leaf_hex: Option<String>,
+    /// Append-order leaves. When set, rebuild this tree instead of a one-leaf tree.
+    #[serde(default)]
+    leaves_hex: Option<Vec<String>>,
+    /// Index of the spent note. Required when `leaves_hex` is set.
+    #[serde(default)]
+    leaf_index: Option<u32>,
 }
 
 fn parse_hex32(s: &str) -> [u8; 32] {
@@ -111,7 +117,8 @@ fn parse_hex32(s: &str) -> [u8; 32] {
     out
 }
 
-/// One-leaf tree from a gitignored witness JSON (hex fields). Never logs the secret.
+/// Witness JSON (hex fields). One-leaf by default; `leaves_hex` + `leaf_index`
+/// rebuilds a multi-leaf tree (change-note / second deposit). Never logs the secret.
 pub fn inputs_from_witness_json(path: &Path) -> PrivateInputs {
     let raw = fs::read_to_string(path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
     let w: WitnessFile = serde_json::from_str(&raw).expect("witness json");
@@ -127,7 +134,21 @@ pub fn inputs_from_witness_json(path: &Path) -> PrivateInputs {
         );
     }
     let mut tree = DepositTree::new();
-    let idx = tree.insert(leaf).expect("insert");
+    let idx = if let Some(leaves) = w.leaves_hex.as_ref() {
+        assert!(!leaves.is_empty(), "leaves_hex must be non-empty");
+        let leaf_index = w.leaf_index.expect("leaf_index required with leaves_hex") as usize;
+        for h in leaves {
+            tree.insert(parse_hex32(h)).expect("insert");
+        }
+        let at = tree.leaf_at(leaf_index).expect("leaf_index out of range");
+        assert_eq!(
+            at, leaf,
+            "leaf at leaf_index does not match compute_leaf (wrong secret/address/balance)"
+        );
+        leaf_index
+    } else {
+        tree.insert(leaf).expect("insert")
+    };
     private_inputs_from_deposit(
         secret,
         user_address,
@@ -331,5 +352,46 @@ mod tests {
         assert_eq!(got.expected_root, expected.expected_root);
         assert_eq!(got.asset_id_mint, expected.asset_id_mint);
         assert_eq!(got.requested_swap_amount, 100);
+    }
+
+    #[test]
+    fn witness_json_two_leaves_spends_second() {
+        let secret = [5u8; 32];
+        let user = [6u8; 32];
+        let mint = [3u8; 32];
+        let leaf0 = compute_leaf(&[1u8; 32], &[2u8; 32], 1000);
+        let leaf1 = compute_leaf(&secret, &user, 200);
+        let mut tree = DepositTree::new();
+        tree.insert(leaf0).expect("leaf0");
+        tree.insert(leaf1).expect("leaf1");
+        let want_root = tree.root();
+        let path = std::env::temp_dir().join("zkss-witness-two-leaf.json");
+        fs::write(
+            &path,
+            format!(
+                r#"{{
+              "secret_hex": "{}",
+              "user_address_hex": "{}",
+              "asset_id_mint_hex": "{}",
+              "balance": 200,
+              "requested_swap_amount": 50,
+              "leaves_hex": ["{}", "{}"],
+              "leaf_index": 1
+            }}"#,
+                super::hex32(&secret),
+                super::hex32(&user),
+                super::hex32(&mint),
+                super::hex32(&leaf0),
+                super::hex32(&leaf1),
+            ),
+        )
+        .unwrap();
+        let got = inputs_from_witness_json(&path);
+        assert_eq!(got.expected_root, want_root);
+        assert_eq!(got.balance, 200);
+        assert_eq!(got.requested_swap_amount, 50);
+        let public = public_outputs_from_private(&got).expect("guest rules");
+        assert_eq!(public.change_amount, 150);
+        assert_eq!(public.change_leaf, compute_leaf(&secret, &user, 150));
     }
 }

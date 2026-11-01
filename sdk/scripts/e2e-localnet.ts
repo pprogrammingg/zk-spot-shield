@@ -149,6 +149,9 @@ async function main(): Promise<void> {
   const vaultTokenB = Keypair.generate().publicKey;
   const userTokenA = Keypair.generate().publicKey;
   const userTokenB = Keypair.generate().publicKey;
+  // Day 78: settle pays wallet R, not depositor D (`authority`).
+  const recipient = Keypair.generate();
+  const recipientTokenB = Keypair.generate().publicKey;
 
   const reserveA = 1000n;
   const reserveB = 1000n;
@@ -229,6 +232,16 @@ async function main(): Promise<void> {
       packToken(Buffer.from(mintB.toBytes()), authBuf, userB),
       "user_token_b",
     ),
+    write(
+      recipientTokenB,
+      TOKEN,
+      packToken(
+        Buffer.from(mintB.toBytes()),
+        Buffer.from(recipient.publicKey.toBytes()),
+        0n,
+      ),
+      "recipient_token_b",
+    ),
   ];
 
   const happyJournal = join(
@@ -272,6 +285,8 @@ async function main(): Promise<void> {
     vaultTokenB: vaultTokenB.toBase58(),
     userTokenA: userTokenA.toBase58(),
     userTokenB: userTokenB.toBase58(),
+    recipient: recipient.publicKey.toBase58(),
+    recipientTokenB: recipientTokenB.toBase58(),
     merkleRoot: merkleRoot.toString("hex"),
     cleanFundsRoot: cleanFundsRoot.toBase58(),
   };

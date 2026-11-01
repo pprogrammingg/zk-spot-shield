@@ -7,6 +7,7 @@ import {
   computeLeaf,
   hexToBytes32,
   privateInputsFromDeposit,
+  proofInputsForExistingNote,
   verifyMerklePath,
 } from "../src/index.js";
 
@@ -59,6 +60,34 @@ describe("DepositTree", () => {
     );
     expect(out.leafIndex).toBe(0);
     expect(Buffer.from(out.expectedRoot).toString("hex")).toBe(
+      happy.expected_root.slice(2),
+    );
+  });
+
+  it("fromLeaves + proofInputsForExistingNote do not insert", async () => {
+    const tree = await DepositTree.create();
+    const leaf = await computeLeaf(
+      hexToBytes32(happy.secret),
+      hexToBytes32(happy.user_address),
+      happy.balance,
+    );
+    tree.insert(leaf);
+    const restored = await DepositTree.fromLeaves(tree.toLeaves());
+    expect(restored.length).toBe(1);
+    const packed = await proofInputsForExistingNote(
+      {
+        secret: hexToBytes32(happy.secret),
+        userAddress: hexToBytes32(happy.user_address),
+        balance: happy.balance,
+        assetIdMint: hexToBytes32(happy.asset_id_mint),
+      },
+      restored,
+      100,
+      0,
+    );
+    expect(packed.leafIndex).toBe(0);
+    expect(restored.length).toBe(1);
+    expect(Buffer.from(packed.expectedRoot).toString("hex")).toBe(
       happy.expected_root.slice(2),
     );
   });

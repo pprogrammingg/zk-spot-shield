@@ -53,6 +53,26 @@ export class DepositTree {
     return l ? Uint8Array.from(l) : undefined;
   }
 
+  /** Copy of leaves in insert order (for witness JSON / agent store). */
+  toLeaves(): Uint8Array[] {
+    return this.leaves.map((l) => Uint8Array.from(l));
+  }
+
+  /** Rebuild from append-order leaves. */
+  static async fromLeaves(leaves: Uint8Array[]): Promise<DepositTree> {
+    const tree = await DepositTree.create();
+    for (const leaf of leaves) {
+      tree.insert(leaf);
+    }
+    return tree;
+  }
+
+  indexOf(leaf: Uint8Array): number {
+    if (leaf.length !== 32) throw new Error("leaf must be 32 bytes");
+    const want = Buffer.from(leaf);
+    return this.leaves.findIndex((l) => Buffer.from(l).equals(want));
+  }
+
   async path(index: number): Promise<MerklePathEntry[]> {
     if (index < 0 || index >= this.leaves.length) {
       throw new Error("index out of range");
@@ -120,4 +140,35 @@ export async function privateInputsFromDeposit(
     typeof note.balance === "number" ? BigInt(note.balance) : note.balance;
   if (bal < swap) throw new Error("swap exceeds balance");
   return { leaf, leafIndex, merklePath, expectedRoot };
+}
+
+/** Path + root for a leaf already in `tree` (does not insert). */
+export async function proofInputsForExistingNote(
+  note: DepositNote,
+  tree: DepositTree,
+  requestedSwapAmount: number | bigint,
+  leafIndex?: number,
+): Promise<{
+  leaf: Uint8Array;
+  leafIndex: number;
+  merklePath: MerklePathEntry[];
+  expectedRoot: Uint8Array;
+}> {
+  const leaf = await computeLeaf(note.secret, note.userAddress, note.balance);
+  const idx = leafIndex ?? tree.indexOf(leaf);
+  if (idx < 0) throw new Error("note leaf is not in the tree");
+  const at = tree.leafAt(idx);
+  if (!at || !Buffer.from(at).equals(Buffer.from(leaf))) {
+    throw new Error("note leaf does not match tree at leafIndex");
+  }
+  const swap =
+    typeof requestedSwapAmount === "number"
+      ? BigInt(requestedSwapAmount)
+      : requestedSwapAmount;
+  const bal =
+    typeof note.balance === "number" ? BigInt(note.balance) : note.balance;
+  if (bal < swap) throw new Error("swap exceeds balance");
+  const merklePath = await tree.path(idx);
+  const expectedRoot = await tree.root();
+  return { leaf, leafIndex: idx, merklePath, expectedRoot };
 }

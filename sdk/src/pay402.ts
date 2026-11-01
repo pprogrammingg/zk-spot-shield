@@ -1,6 +1,7 @@
 /**
  * Client helpers for the relayer HTTP 402 shielded payer.
  * Payment credential is the settle **journal** (nullifier path), not a wallet.
+ * Relayer logs quote vs journal MATCH/MISS; receipt is the nullifier.
  */
 
 export type PaymentQuote = {
@@ -8,6 +9,9 @@ export type PaymentQuote = {
   mint_hex: string;
   pay_via: string;
   hint: string;
+  http_status?: number;
+  unlock?: string;
+  contrast?: string;
 };
 
 export type PaidResource = {
@@ -21,8 +25,19 @@ export type PayAck = {
   amount: number;
 };
 
-export function quoteUrl(base: string): string {
-  return `${base.replace(/\/$/, "")}/402/resource`;
+export function quoteUrl(
+  base: string,
+  opts?: { amount?: number | string; mintHex?: string },
+): string {
+  const path = `${base.replace(/\/$/, "")}/402/resource`;
+  const p = new URLSearchParams();
+  if (opts?.amount != null) p.set("amount", String(opts.amount));
+  if (opts?.mintHex) {
+    const m = opts.mintHex.startsWith("0x") ? opts.mintHex : `0x${opts.mintHex}`;
+    p.set("mint", m);
+  }
+  const q = p.toString();
+  return q ? `${path}?${q}` : path;
 }
 
 export function payUrl(base: string): string {

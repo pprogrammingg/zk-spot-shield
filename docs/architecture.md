@@ -61,11 +61,11 @@ Each phase is a separate diagram so GitHub Pages can render them.
 
 | Phase | Steps | Status |
 | --- | --- | --- |
-| **A** Connect | 1 to 3 | Built (`ui/` + SDK). Localnet demo pack loads the 144-byte happy proof + ATAs |
+| **A** Connect | 1 to 3 | Built (`ui/` + SDK). Localnet | Devnet toggle (`?cluster=`). Localnet demo pack is the 144-byte happy proof. Both clusters poll the agent (`GET /status`, 4s, no RPC) for ATAs and teal notes. Vault/user balances poll Solana (Devnet 15s / localnet 8s). Agent syncs nullifiers at boot, before buy, and every 60s. A buy in flight paints the chosen note orange (**Locked for Spending ....**); spent notes grey out. UI balances are on-chain whole units. UI deposit + buy POST to the agent loopback (`127.0.0.1:8790`), not the relayer |
 | **B** Deposit | 4 to 12 | Built on-chain; hosted indexer later |
 | **C** Prove | 13 to 19 | Built |
 | **D** Settle | 20 to 28 | Built: vault-only; fee payer may be a relayer |
-| **E** Leftovers | 30 to 33 | Change notes + encrypted backup + unlink depositor from the leaf PDA; prove treasury still later |
+| **E** Leftovers | 30 to 33 | Change notes + encrypted backup + unlink depositor from the leaf PDA; prove treasury still later. Relayer is the 402 merchant (terminal banners: quote vs journal vs nullifier; no wallet on the receipt) |
 
 ---
 
@@ -76,9 +76,9 @@ sequenceDiagram
  participant U as User
  participant W as WebSDK
  participant Ph as Phantom
- U->>W: 1 Open web app
+ U->>W: 1 Open web app or agent CLI
  U->>Ph: 2 Connect wallet
- Ph-->>W: 3 Pubkey ready for SDK
+ Ph-->>W: 3 Pubkey ready for SDK (deposit + SOL; notes stay with the agent)
 ```
 
 ---

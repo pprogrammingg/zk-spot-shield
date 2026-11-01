@@ -4,10 +4,29 @@
   padding: 2rem 1.25rem 4rem;
 }
 
+.page > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
 h1 {
   margin: 0 0 0.4rem;
   font-weight: 600;
   letter-spacing: -0.02em;
+}
+
+.cluster {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.cluster button[aria-pressed="true"] {
+  background: #1d3b34;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .lede {
@@ -120,8 +139,9 @@ button.primary {
 
 .notes {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.5rem), 16rem));
+  justify-content: start;
+  gap: 0.85rem;
   margin: 1.5rem 0 1rem;
 }
 
@@ -129,8 +149,8 @@ button.primary {
   position: relative;
   overflow: hidden;
   border-radius: 18px;
-  padding: 1.2rem 1.3rem 1.35rem;
-  min-height: 11rem;
+  padding: 1rem 1.15rem 1.1rem;
+  min-height: 8.25rem;
   isolation: isolate;
   box-shadow:
     0 14px 36px rgba(0, 0, 0, 0.38),
@@ -151,11 +171,29 @@ button.primary {
     linear-gradient(145deg, #f7e7b4 0%, #e8c07a 44%, #b07a1e 100%);
 }
 
+.note-card.locked {
+  color: #1a1408;
+  background:
+    radial-gradient(120% 90% at 0% 0%, #fff6c8 0%, transparent 55%),
+    linear-gradient(145deg, #ffd36a 0%, #f0b429 48%, #e08a12 100%);
+  filter: none;
+}
+
 .note-card.spent {
   color: var(--muted);
   background: linear-gradient(145deg, #2a3140, #161b22);
   box-shadow: none;
   filter: grayscale(0.25);
+}
+
+.note-lock {
+  position: relative;
+  z-index: 1;
+  margin: 0.4rem 0 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #000;
+  letter-spacing: 0.01em;
 }
 
 .note-card.preview {
@@ -176,31 +214,27 @@ button.primary {
 }
 
 .note-kicker,
-.note-amount,
-.note-sub {
+.note-amount {
   position: relative;
   z-index: 1;
   margin: 0;
 }
 
 .note-kicker {
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  opacity: 0.8;
+  opacity: 0.72;
 }
 
 .note-amount {
-  font-size: 2.4rem;
-  font-weight: 650;
-  letter-spacing: -0.04em;
-  margin: 0.35rem 0 0.25rem;
-}
-
-.note-sub {
-  font-size: 0.88rem;
-  line-height: 1.4;
-  opacity: 0.88;
+  font-size: 3rem;
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+  margin: 0.45rem 0 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .note-card .row {
@@ -210,24 +244,32 @@ button.primary {
 }
 
 .trade {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr 1fr;
-  gap: 0.75rem 1rem;
-  align-items: end;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
   margin: 0 0 1.25rem;
   padding: 0.85rem 1rem;
   border: 1px dashed var(--line);
   border-radius: 10px;
 }
 
-.trade-eq {
-  margin: 0 0 0.45rem;
-  font-size: 1.25rem;
-  color: var(--muted);
+.buy-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: stretch;
+  margin-top: 0.35rem;
 }
 
-.trade input {
+.buy-row input {
+  flex: 1 1 10rem;
+  min-width: 8rem;
+  font-size: 1.15rem;
   font-variant-numeric: tabular-nums;
+}
+
+.buy-row button {
+  flex: 0 0 auto;
 }
 
 .fold {
@@ -276,9 +318,7 @@ a {
 }
 
 @media (max-width: 640px) {
-  .grid,
-  .notes,
-  .trade {
+  .grid {
     grid-template-columns: 1fr;
   }
 }

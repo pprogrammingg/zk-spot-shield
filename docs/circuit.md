@@ -74,3 +74,5 @@ Remote proofs of the same toy happy-path input:
 | Live wrap (`sp1-artifacts/`, gitignored) | 104 or 144 | same `0x00435696...c240` (same ELF) | Devnet settle; journal mint must match the vault |
 
 Each pack has `groth16.bin` (356 bytes), `journal.bin`, and `vkey.bytes32.txt`. Tests read these bytes instead of proving again. That keeps CI offline, free, and deterministic. The bytes come from toy test values, not real funds.
+
+Live wraps (`WITNESS_JSON` + `ARTIFACT_DIR`) must not overwrite `fixtures/happy/`. Omit `leaves_hex` for a one-leaf tree. Pass `leaves_hex` + `leaf_index` when the tree has more than one leaf (second deposit or a change note).

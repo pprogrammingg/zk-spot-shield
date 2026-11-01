@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { decodeSplAmount, encodeBase64, parseJournal } from "../src/decode.ts";
-import { demoAssetUrl, loadDemoPack } from "../src/demo.ts";
+import { demoAssetUrl, loadAgentNotesPublic, loadDemoPack } from "../src/demo.ts";
 
 describe("localnet demo pack", () => {
   it("reads SPL token amounts at offset 64", () => {
@@ -42,5 +42,23 @@ describe("localnet demo pack", () => {
     expect(pack.proofB64).toBe(encodeBase64(proof));
     expect(parseJournal(journal).requestedSwapAmount).toBe(100n);
     expect(pack.accounts.programId).toBe(accounts.programId);
+  });
+
+  it("loadAgentNotesPublic ignores secrets and 404", async () => {
+    const empty = await loadAgentNotesPublic(async () => new Response("", { status: 404 }));
+    expect(empty).toEqual([]);
+    const notes = await loadAgentNotesPublic(async () =>
+      new Response(
+        JSON.stringify({
+          notes: [
+            { leafIndex: 0, balance: "333", spent: false, leafPrefix: "2308b649d7e1" },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+    expect(notes).toEqual([
+      { leafIndex: 0, balance: "333", spent: false, leafPrefix: "2308b649d7e1" },
+    ]);
   });
 });

@@ -53,6 +53,12 @@
 **Fee payer**
 : The signer charged the transaction fee. On settle this may be a relayer; it need not own the recipient token accounts. Not necessarily the same as the rent payer for a new account.
 
+**Depositor**
+: The wallet that signs `deposit_shielded` and the SPL transfer into the vault. That **transaction** still shows this signer. The leaf PDA does **not** store this pubkey (leaf / amount / mint only).
+
+**Recipient**
+: The owner of the payout ATAs on settle. May be a different wallet than the depositor. The settle transaction still lists those token accounts.
+
 **`init`**
 : Anchor account constraint that creates a new account in this instruction, allocates `space` bytes, and makes this program its owner. Fails if the account already exists, which is what makes the nullifier check atomic.
 

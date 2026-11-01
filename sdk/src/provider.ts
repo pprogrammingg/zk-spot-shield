@@ -18,6 +18,8 @@ import { join } from "node:path";
 /** Local validator RPC (Agave / solana-test-validator default). */
 export const LOCALNET_URL = "http://127.0.0.1:8899";
 
+export const DEVNET_URL = "https://api.devnet.solana.com";
+
 export type LocalhostProviderOptions = {
   /** Override RPC URL (still typically localhost). */
   url?: string;

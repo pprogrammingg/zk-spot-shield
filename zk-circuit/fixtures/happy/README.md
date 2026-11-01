@@ -23,6 +23,6 @@ SP1_USE_NETWORK=1 SP1_PROVER=network SP1_GROTH16=1 RUST_LOG=info \
 
 Writes `groth16.bin` (356 bytes), `journal.bin` (144 bytes), and `vkey.bytes32.txt`. If guest/io change, prove again and refresh `happy.json` if inputs change. Numbers: [`notes/proving.md`](../../../notes/proving.md).
 
-A live Devnet wrap (arbitrary amounts, vault mint) must use `SKIP_HAPPY_FIXTURE=1 ARTIFACT_DIR=…` so it does not clobber this toy pack. Then `set_vkey_hash` to that wrap’s `vk.bytes32()`.
+A live wrap (arbitrary amounts, vault mint, or a multi-leaf tree) must use `SKIP_HAPPY_FIXTURE=1 ARTIFACT_DIR=…` so it does not clobber this toy pack. `WITNESS_JSON` may include `leaves_hex` + `leaf_index`. Then `set_vkey_hash` to that wrap’s `vk.bytes32()` if the ELF changed.
 
 Default CI does **not** wrap. Host `--lib` checks that `happy.json` and `journal.bin` match `happy_path_inputs()`.

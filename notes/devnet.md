@@ -77,15 +77,16 @@ First deploy used a new keypair (`74UW…`). Source is synced; dump SHA-256 matc
 | Program id | `74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G` |
 | `.so` SHA-256 (first pin upgrade) | `f9030f956eb2e2d967254c99355f2c49bd47215401aae8b3b082ca11ec473277` |
 | Upgrade tx (pin) | `5bwFz3PfNHzBHNHmTznvLtt1ySvJLHZdrkR6wvyPN76ENMVN7JZxfno61jvGz6MN5vKPb5vLPxoDVY53Q3fbMAfn` |
-| Current `.so` SHA-256 | `b14e59e6cd0ecd67de4cc46c912f123749d81ee02046e7956945384be74c8c9e` |
+| Current `.so` SHA-256 | `22c9cf61994a8e5e05b420e259a20041f2a131bf212f37e57175ed39d7c12c02` |
+| Upgrade tx (change-leaf settle accounts) | `Pue1Vi2kzBfaL2J7QnfUufocfgJkYzjLmh3iFuBRoNxMp3C9b8RzMAmzVhVJK3KPJP2TJ8B9miMczC6ZmbuYFMv` |
 | Upgrade tx (mints) | `3dDJRMHZxD7YcwnaH62J2Tk98kKToeXRoYGPk36ggtE5GNdXnJH5aRy6LXCkoSE6yqy1Lw67gb2uQfiodR3wQtak` |
 | Upgrade tx (vkey) | `3rAxUJn5QLvajNuvEu8rVvXvN5cz4R5CSGC4kfuq3j8mEnhmwC9nXVWVetkYoPhhtfXj1fjFcHc2wKsXUMG9qsh9` |
 | Upgrade authority | `9sLGgVEotwD8gJgL5HhJdP7w61zeCrJ25NNkJPM3BAaX` |
 | ProgramData | `9t5Z4LnoQxpnwb11g8hqDnhMrVzmH77oaLofSCQVgQr2` |
 | IDL metadata | `HkAVd4rm1uHtKo1VSXS9wcF1MzsBbzDNtU83gZKZGajv` |
-| Last deployed slot | extend +10 KB then resume buffer `H1gP…` |
+| Last deployed slot | `516835265` |
 | Explorer (program) | https://explorer.solana.com/address/74UW993wrDasAMyBQ53PjHpYLK5vMkWbRRWFZ7kCmM3G?cluster=devnet |
-| Explorer (upgrade tx) | https://explorer.solana.com/tx/3rAxUJn5QLvajNuvEu8rVvXvN5cz4R5CSGC4kfuq3j8mEnhmwC9nXVWVetkYoPhhtfXj1fjFcHc2wKsXUMG9qsh9?cluster=devnet |
+| Explorer (upgrade tx) | https://explorer.solana.com/tx/Pue1Vi2kzBfaL2J7QnfUufocfgJkYzjLmh3iFuBRoNxMp3C9b8RzMAmzVhVJK3KPJP2TJ8B9miMczC6ZmbuYFMv?cluster=devnet |
 
 ## Init config and roots
 
@@ -178,6 +179,28 @@ solana confirm -v 3V7YF2ULaHULbnSJinSTahDw5gJSMGkvB2GuQyLevnzh9A15d4yoEcXNbCMfvb
 ```
 
 Or `getTransaction` and print `meta.computeUnitsConsumed`. Optional: after `sendAndConfirm`, log that field so later txs fill a table. **N=1 is enough** if you label it N=1.
+
+## Agent (Day 82)
+
+Same CLI/UI as localnet. Vault mint A is `DNNk…` (6 decimals). Do **not** prove with toy `0x03…03`.
+
+```bash
+# terminal 1 — relayer (402 merchant)
+cargo run -p zk-spot-shield-relayer
+
+# terminal 2 — agent on Devnet
+cd sdk
+AGENT_CLUSTER=devnet \
+ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
+npm run agent
+
+# terminal 3
+cd ui && npm run dev
+```
+
+Agent **3** opens the UI with `?cluster=devnet`. On-chain ATAs and notes poll from the agent (`GET /status`). Deposit / Buy use the agent. Type token amounts (`33` = 33 A; mint has 6 decimals). Wallet must already hold that SPL (and SOL for fees). The first Groth16 on this cluster is the Day 82 Exit — paste the settle sig here.
+
+State file: gitignored `sdk/.agent-state-devnet.json` (not the localnet notes).
 
 ## UI click-through
 

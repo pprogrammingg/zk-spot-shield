@@ -1,95 +1,75 @@
-# ZK-Shielded Spot Settlement Engine — Session Roadmap
+# ZK Spot Shield — Session Roadmap
 
-Calibrated for **~83 sessions** (Days **0–79** engineering + **3 writing checkpoints**). Each engineering Day is 1.5 hours (3 × 25 min). Writing checkpoints are full sessions, not design sprints.
-
-Mark `[x]` only when that item is done. A Day is **done** only when its *Exit* passes.
+Each engineering Day is 1.5 hours (3 × 25 min). Mark `[x]` only when that item is done. A Day is **done** only when its Exit passes. One Day per session.
 
 ---
 
-## Build priority calendar (do not reorder)
+## Now
 
-Product: a **bot** proves → verifies → settles a shielded A→B pay; we time that loop here and compare it to a **public** USDC / x402 pay. Days 36–50 and 63–64, 66, 69, 73–75 are done. Architecture phases A–E match this file.
+**Day 82** — One Devnet agent buy (CLI or UI). Journal mint is vault `DNNk…`, not toy `0x03…03`. Paste the settle signature in [`notes/devnet.md`](notes/devnet.md).
 
-Follow this table — not “whatever Day number looks fun.”
-
-| Rank | Priority | Calendar home | Why |
-| --- | --- | --- | --- |
-| **1** | **Relayer fee payer + fee economics** | **Days 46–47** ✓ | Relayer signs settle as fee payer; `notes/relayer-economics.md` |
-| **2** | **Vault-only shielded settle** | **Day 48** ✓ | Vault pays the other mint only — no second user→vault of journal mint |
-| **3** | **SDK + recipient hooks** | **Day 49** ✓ | Deposit-backed settle; recipient ATA ≠ depositor |
-| **4** | **Shielded 402 payer (P1)** | **Day 50** ✓ | 402 unlocks on a settle journal (fixture, no `$PROVE`) |
-| — | **Live Devnet swap (SDK)** | **Day 63** ✓ | Settle `3V7YF2UL…`; journal mint `DNNk…`; `reserve_b` 1e6 → 9e5 |
-| — | **Docs + `v1.0.0-devnet` tag** | **Day 64** ✓ | Tag on `30c35d7`; `notes/devnet.md` |
-| **Now** | **Encrypted note backup** | **Day 76** | Wipe → restore → spend the restored note on localnet |
-| **7** | **Hide / unlink depositor** | **Days 77–79** | After backup. **77** still needs LiteSVM after `anchor build` |
-| **8** | **Uncensorable UI / extra RPC** | **Days 70–72** | Self-submit + RPC fallback are in `ui/`. CID / Pages wait |
-| **Later** | **Agent loop + public compare** | **P0 + P4** | After Day **76** unless we re-rank. See [402 track](#track-private-agent-payments-over-http-402) |
-| — | **Relayer on Devnet RPC** | **Day 62** skip | UI self-submit is enough |
-| — | AMM curve (“100 A → 50 B”) | Not a Day | Stay **1:1 spot** |
-| — | Same-mint deposit/withdraw pool | Parked | Not ahead of 73–79 |
-
-**Next: Day 76**, then **77–79**. Park **67–68** (mint-matched Devnet wrap) and **70–72** (CID). Skip **62**. Do not pull **P4** ahead of 76. No AMM.
+Localnet CLI + UI already loop (`cd sdk && npm run agent`). Program `74UW…` is live. Do not Groth16 a note whose nullifier PDA already exists.
 
 ---
 
-## Track: private agent payments over HTTP 402
+## Next
 
-A **bot (the agent)** buys Token B with shielded Token A. Stripe MPP / x402 do that job with a **public** wallet transfer. Here the chain sees amount + nullifier, not which note or the leftover balance.
+Do in this order. Do not pull a parked item mid-session.
 
-| Role | Job |
-| --- | --- |
-| **Agent** | Process. Holds notes (`secret` + balance). Loops 402 → prove → settle → pay. **Not a wallet.** |
-| **Wallet** | Phantom / local keypair. Deposits mint A and/or pays the SOL fee. Not the agent. |
-| **Relayer** | Merchant: `GET /402/resource` (402), `POST /402/pay` (unlock). Optional SOL fee payer. Does not pick the note. |
-| **P2 UI** | Human click-through of one fixture settle (`ui/`, Day 66). Keep it. Not the agent. |
-
-**P4 loop** (demo aim, after Day 76): `GET /402/resource` → remote Groth16 (show the wait) → on-chain verify → vault-only 1:1 settle → `POST /402/pay` → keep the change note → repeat until notes cannot cover the quote.
-
-Blockers: `relayer/src/pay402.rs` quote is still **100 / mint `[3u8; 32]`**; GET has no amount query. Second spend needs admin `register_clean_funds_root` (Day 74 inserts the change-leaf PDA only). Toy mint `0x03…03` is localnet. Devnet deposit waits on Day **67**.
-
-| Step | Status |
-| --- | --- |
-| Prove | Built — `notes/proving.md` (~25 s Groth16). Not wired to 402 |
-| Verify | Built — ~286k CU in `notes/budgets.md` |
-| Settle | Built — Devnet `3V7YF2UL…` |
-| Latency table | Fixture → relayer → LiteSVM. Live P4 is Groth16-dominated |
-
-P4 Exit is the same quote paid two ways, both rows in `notes/budgets.md`:
-
-| Path | Chain sees | Record |
+| # | Day | What |
 | --- | --- | --- |
-| **P0** public | Wallet, amount, mint (Devnet USDC / x402) | Quote → confirm, fee |
-| **P4** shielded | Amount, mint, nullifier, root | Prove wall + `$PROVE`; verify CU; settle; 402 unlock |
+| 1 | **82** | First Devnet agent settle (open) |
+| 2 | **83** | Repeat Devnet buys until no note covers the quote. Grey cards match on-chain nullifiers |
+| 3 | **P0** | Same quote paid publicly (Devnet USDC / x402). Both rows in `notes/budgets.md` |
+| 4 | **67–68** | Devnet UI checklist + automated on-chain tests |
+| 5 | **Write-1** | Circuit article (engineering pause) |
 
-- [ ] **P0** — Public 402: pay Devnet USDC, server checks the tx. Mondays. No Stripe needed.
-- [x] **P1** — Day 50: 402 unlocks on a **journal** (fixture, no `$PROVE`).
-- [x] **P2** — Day 66 Vite UI. Keep. One 1000→100/900 click-through.
-- [ ] **P3** — Optional Stripe MPP sandbox of the P4 loop (`machine-payments@stripe.com` when there is a real user).
-- [ ] **P4** — Scripted agent loop after Day 76 + P0 numbers. Do not fake Groth16. Day 66 click-through is not this Exit.
+---
 
-| When | Show |
+## Parked
+
+| Item | Why |
 | --- | --- |
-| Nov 3 | Stripe Sessions CFP: speaking clip. Optional fixture recording. **P4 is not a CFP blocker.** |
-| Nov 13–15 | Agentic Payments Hackathon — P1/P2 if P4 is not Exit |
-| Weekly | Colosseum update: shipped / next |
+| **70–72** IPFS CID / second host | Self-submit already works |
+| **P3** Stripe MPP sandbox | After a real user |
+| **Day 62** relayer send on Devnet | Agent/UI self-submit is enough |
+| AMM / same-mint pool | Stay 1:1 spot |
 
-Funding (Colosseum Eternal) only if users appear. Job offer is the primary outcome.
+Relayer = 402 merchant + optional SOL fee payer, **not** the agent. `$PROVE` is Succinct credits in gitignored `.env`, not a Solana wallet.
+
+---
+
+## 402 track
+
+The **agent** holds notes and loops 402 → Groth16 → settle → `POST /402/pay`. The **wallet** deposits A and may pay SOL. The **relayer** quotes 402 and unlocks on a **nullifier**, not a payer pubkey.
+
+| Milestone | Status |
+| --- | --- |
+| **P1** 402 unlocks on a settle journal (fixture) | Done (Day 50) |
+| **P2** swap UI | Done (Days 66, 81) |
+| **P4** Devnet agent loop | Days **82–83**. Groth16 is on the path. Do not fake a proof |
+| **P0** public USDC compare | After 83 |
+| **P3** Stripe MPP | Parked |
+
+Dates: Stripe Sessions CFP **3 Nov**; Agentic Payments Hackathon **13–15 Nov**.
 
 ---
 
 ## Session rhythm (3 × 25)
 
-These P1/P2/P3 are **25-minute blocks**, not the 402 milestones.
-
 ```
-[P1 25m] Context + design: reopen yesterday's artifact, name today's exit criteria.
-[P2 25m] Build: implement the core of today's deliverable.
-[P3 25m] Prove: compile, run the smallest meaningful test, commit.
+[25m] Reopen yesterday's artifact. Name today's Exit.
+[25m] Build that Exit.
+[25m] Tests on crates you touched. Suggest a commit subject.
 ```
 
-**After commit (2 min):** post a Colosseum project update (Updates → Post an update): what shipped today, one line on what's next. Add a 1-min video when the week's update is due.
+Do not split a Day across sessions. If you finish early, deepen tests or docs for **that** Day.
 
-Do not split a Day across sessions. If you finish early, deepen tests or docs for *that* deliverable — do not pull tomorrow's Day forward mid-session. If the leftover is writing, you may start that checkpoint’s **LinkedIn draft only** (not a new diagram set).
+---
+
+## Done (archive below)
+
+Days **0–81**: Month 1–2, deposit, relayer, P1, benches, audit, Devnet 58–64, public README, UI, change notes, backup, unlink, localnet agent. Checklists stay so Exit text is searchable.
 
 ---
 
@@ -217,7 +197,7 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
 - [x] **Day 20 — Checkpoint**
   - [x] Tag `v0.1-month1` *(create after Month 1 commit: `git tag v0.1-month1` — README documents the command)*
   - [x] README section: execute locally; Groth16 via remote prover (not this laptop’s Docker wrap)
-  - [x] *Exit:* Tag + README commands exist. **Next session is Write-1** (circuit article + LinkedIn), not Day 21.
+  - [x] *Exit:* Tag + README commands exist.
 
 ---
 
@@ -306,13 +286,13 @@ Do not split a Day across sessions. If you finish early, deepen tests or docs fo
   - [x] PDA `seeds`/`bump`/`has_one` pass (`clean_funds_root` seeds on settle; `has_one` + `Unauthorized` on register)
   - [x] Strip noisy `msg!` (pause / settle success / verify debug logs)
   - [x] Tag `v0.2-month2`
-  - [x] *Exit:* Tag exists. **Next session is Write-2** (settle article + LinkedIn), then **Day 41 deposit** (not relayer — see priority calendar).
+  - [x] *Exit:* Tag exists.
 
 ---
 
 ## Month 3: Deposit, Relayer, P1 402, Benchmarks, Audit & Devnet (Sessions 41–64)
 
-Order is fixed by the [Build priority calendar](#build-priority-calendar-do-not-reorder): deposit through P1 and bench/audit are **done**. Devnet **58–64** recorded (live settle + `v1.0.0-devnet`). Skip 62 send. **Next: Days 73–75**. Match [Architecture](docs/architecture.md) phases A–E.
+Deposit through P1, benches, audit, and Devnet **58–64** are done (`v1.0.0-devnet`, settle `3V7YF2UL…`). Skip 62 send. Match [Architecture](docs/architecture.md) phases A–E.
 
 ### Phase 9: Deposit → leaf → registered root (3 sessions) — done
 
@@ -331,11 +311,11 @@ Couples vault custody + Merkle leaf + `CleanFundsRoot` so settle is not fixture-
 - [x] **Day 43 — Register root from deposit tip**
   - [x] Protocol admin (or deposit pipeline) registers tip as `CleanFundsRoot`
   - [x] E2E: deposit → register → prove → settle (still may use recorded Groth16 if live prove is heavy)
-  - [x] *Exit:* Settle succeeds against a root that came from a real deposit, not only the fixture tree. **Next: Phase 10 relayer.**
+  - [x] *Exit:* Settle succeeds against a root that came from a real deposit, not only the fixture tree.
 
-### Phase 10: Relayer, vault-only settle & Client SDK (6 sessions)
+### Phase 10: Relayer, vault-only settle & Client SDK (6 sessions) — done
 
-Aligned with Architecture **phase E** (upcoming) and remaining ranks 1–3.
+Aligned with Architecture phase E. Relayer is merchant + optional fee payer.
 
 - [x] **Day 44 — Relayer scaffold**
   - [x] `relayer/` Axum (or Actix) service skeleton + health endpoint
@@ -352,7 +332,7 @@ Aligned with Architecture **phase E** (upcoming) and remaining ranks 1–3.
   - [x] bps (or flat) fee from payout / deposit to refill **relayer SOL** (and, when wired, Succinct **prove credits**)
   - [x] Exponential backoff on send/confirm
   - [x] Short `notes/relayer-economics.md`: user fee → treasury → SOL + $PROVE (Architecture phase E)
-  - [x] *Exit:* Failed RPC retries; fee path stubbed with tests. **Next was Day 48 vault-only settle.**
+  - [x] *Exit:* Failed RPC retries; fee path stubbed with tests.
 
 - [x] **Day 48 — Vault-only shielded settle (product gap)**
   - [x] Settle no longer SPL-transfers journal mint from the payer’s ATA into the vault after deposit funded custody
@@ -364,16 +344,16 @@ Aligned with Architecture **phase E** (upcoming) and remaining ranks 1–3.
   - [x] `generateProofInputs`, `requestShieldedSwap`, `getVaultReserves`; WebSocket/`CleanFundsRoot` sync helper as needed
   - [x] Optional: settle account metas for **recipient ATA ≠ depositor** (hidden-destination groundwork; full unlink may need fresh ATA + relayer submit)
   - [x] Usage examples in package README; point at Architecture phases C–E
-  - [x] *Exit:* SDK drives deposit-backed **vault-only** settle; relayer can be fee payer. **Next session is Day 50 (P1).**
+  - [x] *Exit:* SDK drives deposit-backed **vault-only** settle; relayer can be fee payer.
 
-### Phase 11: Shielded 402 payer (1 session) — priority 4 on calendar / demo rank 1
+### Phase 11: Shielded 402 payer (1 session) — done
 
 - [x] **Day 50 — P1 shielded payer on localnet**
   - [x] Agent (or script) hits paid endpoint → `402` quote → pays via ZK Spot Shield settle (nullifier path), not a public wallet transfer as the privacy story
   - [x] Prefer relayer fee payer (Day 46) + vault-only settle (Day 48) when available
   - [x] *Exit:* One paid request (HTTP 402 + fixture journal); credential is amount + nullifier. **P1** checked. Quote still 100 / `[3u8; 32]` (`pay402.rs`).
 
-### Phase 12: Benchmarking (3 sessions)
+### Phase 12: Benchmarking (3 sessions) — done
 
 - [x] **Day 51 — E2E latency**
   - [x] Prove → relayer → confirm; write numbers to `notes/budgets.md`
@@ -381,17 +361,17 @@ Aligned with Architecture **phase E** (upcoming) and remaining ranks 1–3.
 - [x] **Day 52 — Prove hardware + on-chain CU breakdown**
   - [x] CPU vs GPU prove times
   - [x] CU split (verify / checks / SPL)
-  - [x] *Exit:* Numbers live in `notes/` (or Day 29/18 docs); Day 65 README will link them
+  - [x] *Exit:* Numbers live in `notes/` (or Day 29/18 docs); README links them
 
 - [x] **Day 53 — Payload + throughput**
   - [x] Minimize journal bytes
   - [x] Concurrent localnet submission smoke
 
-### Phase 13: Security Audit Readiness (4 sessions)
+### Phase 13: Security Audit Readiness (4 sessions) — done
 
 - [x] **Day 54 — Threat model doc**
   - [x] Circuit soundness, replay, pause, protocol admin, root registry, deposit unbacked-leaf (A18)
-  - [x] *Exit:* A named doc (`docs/security.md`) a reviewer can open; Day 65 README links it
+  - [x] *Exit:* `docs/security.md` exists; README links it
 
 - [x] **Day 55 — Layout + signer audit**
   - [x] `#[repr(C)]` / padding review
@@ -404,9 +384,9 @@ Aligned with Architecture **phase E** (upcoming) and remaining ranks 1–3.
 - [x] **Day 57 — Bytecode freeze prep**
   - [x] Reproducible build notes; record program hash procedure
 
-### Phase 14: Devnet Launch (remaining **1** session: 64 tag)
+### Phase 14: Devnet Launch — done
 
-Program + SDK on Devnet. **No browser UI yet** (that is Day 66). Day 65 README already exists. Finished-product Devnet tests are Days 67–68 (after 63). Skip Day 62.
+Program + SDK on Devnet. Skip Day 62 send. UI is Days 66 / 81. On-chain Devnet tests remain Days 67–68 (after Day 83).
 
 Recorded cluster: `https://api.devnet.solana.com`. Tables: [`notes/devnet.md`](notes/devnet.md).
 
@@ -438,20 +418,20 @@ Recorded cluster: `https://api.devnet.solana.com`. Tables: [`notes/devnet.md`](n
   - [x] Poseidon 32-byte inputs reduce into BN254 Fr; admin `set_vkey_hash`
   - [x] Groth16 journal mint = vault `mint_a` (`DNNk…`); wrap in `sp1-artifacts/devnet-settle/`
   - [x] `settle_shielded_spot` `3V7YF2UL…`; `reserve_a`/`reserve_b` = 1000000 / 900000
-  - [x] *Exit:* settle signature in `notes/devnet.md`. **Not** a browser product (UI is Day 66+)
+  - [x] *Exit:* settle signature in `notes/devnet.md`
 
 - [x] **Day 64 — Docs + `v1.0.0-devnet`** (after 63 Exit only)
   - [x] README + `notes/devnet.md` tables for 58–63; current program hash recorded
   - [x] Tag `v1.0.0-devnet` on `30c35d7` (live settle recorded)
-  - [x] *Exit:* A stranger can deploy/init from docs. Browser product + Devnet UI tests are Days 66–68. **Next: Day 73**
+  - [x] *Exit:* A stranger can deploy/init from docs.
 
 ---
 
-## Month 3+ buffer: Public artifact, basic UI, then change notes + backup + unlink (Sessions 65–79)
+## Month 3+ buffer: Public artifact, UI, change notes, backup, unlink, agent (Sessions 65–83)
 
-Follow the [calendar](#build-priority-calendar-do-not-reorder). **Next: Day 76**, then **77–79**. Devnet **58–64** recorded (`74UW…`, settle `3V7YF2UL…`). No AMM. No Devnet Phantom deposit until Day **67**.
+Days **65–81** done. **Now is Day 82.** Toy pack stays localnet. No AMM.
 
-### Phase 15: Public shield artifact (1 session) — **before UI**
+### Phase 15: Public shield artifact (1 session) — done
 
 Assemble what already exists (execute, Groth16 or honest block, threat model, CU) into **one** repo front door. A staff engineer should understand the system from README + linked notes without a browser app.
 
@@ -460,11 +440,11 @@ Assemble what already exists (execute, Groth16 or honest block, threat model, CU
   - [x] Link Day 54 threat model (circuit, replay, pause, protocol admin, root registry, deposit)
   - [x] Link CU notes (Days 18 / 29 / 52): verifier budget, measured settle CU if you have it
   - [x] How to build program + run `--lib` tests; program id / Devnet pointers if Days 58–64 ran
-  - [x] *Exit:* A cold reader can follow README → execute → (Groth16 **or** documented block) → threat model → CU numbers. **No UI this Day.** Clone-and-read is the deliverable. **Write-3** is the public-artifact article. (Current next session is **Days 73–75** change notes.)
+  - [x] *Exit:* A cold reader can follow README → execute → (Groth16 **or** documented block) → threat model → CU numbers. No UI this Day.
 
-### Phase 16: Basic swap UI (1 session)
+### Phase 16: Basic swap UI (1 session) — done
 
-Ship a normal swap screen first. Relayer and a local HTTPS/static server are allowed. This is **not** the uncensorable phase.
+Ship a swap screen. Relayer optional.
 
 - [x] **Day 66 — Basic swap UI**
   - [x] Minimal web UI: wallet connect, show vault reserves / clean root / pause, swap amount + asset (1:1 spot — not AMM), submit settle (via relayer **or** wallet as fee payer)
@@ -474,11 +454,11 @@ Ship a normal swap screen first. Relayer and a local HTTPS/static server are all
   - [x] Optional UI copy: “shielded settle” vs clear note that deposit still shows depositor on-chain until a later privacy Day
   - [x] *Exit:* Localnet click-through: vault B `1000 → 900`, recipient B `0 → 100`, tx `4vS2MTi6…`. Fixture only (spend 100 read-only; no Deposit button). This is P2 — not P4.
 
-### Phase 17: Finished product on Devnet — see it and test it (2 sessions) — after 58–64; does not block 73–76
+### Phase 17: Devnet UI walkthrough + tests (2 sessions) — after Day 83
 
-Needs Day **61** Exit (done) and a Day **63** settle. Skip until the settle signature is in `notes/devnet.md`. Do **not** start this instead of Day 63.
+Do not start instead of Day 82–83.
 
-- [ ] **Day 67 — Manual Devnet walkthrough (see the end product)**
+- [ ] **Day 67 — Manual Devnet walkthrough**
   - [ ] Point the Day 66 UI at Devnet (program id + RPC from Days 58–61); fund a wallet if needed
   - [ ] Human checklist in `notes/devnet.md`: connect wallet → read on-chain vault/root in the UI → submit (or dry-run + one live settle if a proof is available) → open Solana Explorer links for accounts + tx
   - [ ] Record at least one Explorer URL for vault/config and, if settle ran, the tx signature
@@ -491,35 +471,36 @@ Needs Day **61** Exit (done) and a Day **63** settle. Skip until the settle sign
   - [ ] One command documented (e.g. `ANCHOR_PROVIDER_URL=https://api.devnet.solana.com …`); skip-with-fail if key/SOL missing so CI-default stays localnet
   - [ ] *Exit:* That command passes against live Devnet; tx signatures or account pubkeys from the run are in the test output or `notes/devnet.md`
 
-### Phase 18: Decentralized / uncensorable swap UI (4 sessions) — calendar rank 8, after Day 79
+### Phase 18: Mirrors / CID (parked)
 
-Self-submit and a fallback RPC list are already in `ui/`. This phase is **mirrors + CID + seizure runbook**. Park it until change notes (73–75), note backup (76), and unlink (77–79) Exit.
+Self-submit and a fallback RPC list are already in `ui/`. CID and a second host are **not** this demo.
 
 - [x] **Day 69 — Static self-submit (no required backend)**
   - [x] Same swap UI as Day 66: works from `file://` or a local static server **without** `relayer/` running
   - [x] Default path is **user wallet as fee payer**; relayer URL stays optional
   - [x] *Exit:* Localnet settle can be sent with relayer down. This is hardening, not the first UI. UI self-submit with Relayer URL empty; tx `4vS2MTi6…`.
 
-- [ ] **Day 70 — Multi-RPC + no single origin**
-  - [x] Configurable RPC list (fallback if one endpoint censors or dies)
-  - [x] Document IPFS/Arweave (or equivalent) publish of the **same** static bundle; pin CID in README
-  - [ ] *Exit:* UI works against a second RPC; a content-addressed build hash/CID is recorded. **sha256 of `ui/dist` is in `ui/README.md`; CID not published.**
+- [ ] **Day 70 — Multi-RPC + CID**
+  - [x] Configurable RPC fallback list
+  - [x] `ui/dist` sha256 in `ui/README.md`
+  - [ ] Publish a CID
+  - [ ] *Exit:* Second RPC + CID recorded
 
 - [ ] **Day 71 — Relayer-optional settle**
-  - [x] SDK/UI: “submit myself” vs “ask relayer”; shutdown of relayer must not block the self-submit path
-  - [ ] Optional: two public relayer URLs, client tries in order
-  - [ ] *Exit:* Written threat note: seizing the marketing site ≠ seizing settle; users keep CID + program id. **Note is in `ui/README.md`; CID not published yet.**
+  - [x] Self-submit with relayer down
+  - [ ] Optional: two public relayer URLs
+  - [ ] *Exit:* Seizure note already in `ui/README.md`; CID still unpublished
 
 - [ ] **Day 72 — Mirrors + seizure runbook**
-  - [x] README: how to rebuild the UI, where CIDs live, how to verify the bundle hash
-  - [ ] At least two independent hosts (e.g. IPFS gateway + GitHub Pages / Pages-from-CID)
-  - [ ] *Exit:* Runbook a stranger can follow if the primary URL is gone; record it in `ui/README.md`. **Runbook is in `ui/README.md`; CID + second host not published yet.**
+  - [x] Rebuild + hash runbook in `ui/README.md`
+  - [ ] Second independent host
+  - [ ] *Exit:* Stranger can follow the runbook if the primary URL is gone
 
-**Out of scope here:** fully trustless in-browser Groth16 on a phone. Prove can stay remote; uncensorable means **anyone can host the UI and submit the tx**, not that prove is free or local.
+Prove stays remote. Anyone can host the UI and submit the tx.
 
-### Phase 19: Change notes (3 sessions) — calendar rank 5 — after Day 64
+### Phase 19: Change notes (3 sessions) — done
 
-Partial spend without burning the whole note balance. UTXO-style: nullify old note, insert change leaf for remainder. Day **48** vault-only settle already landed. Start after Devnet **61 → 63 → 64**. Do **not** wait for Days 69–72.
+Partial spend: nullify old note, insert change leaf for remainder.
 
 - [x] **Day 73 — Circuit: change output**
   - [x] Guest: after solvency, commit change note leaf (`balance - amount`) under same or new secret; journal/public shape updated as needed
@@ -534,65 +515,80 @@ Partial spend without burning the whole note balance. UTXO-style: nullify old no
 - [x] **Day 75 — Change-note E2E + docs**
   - [x] Negative: replay old note → `NullifierAlreadyUsed`; spend change note succeeds once
   - [x] Docs/glossary: note vs change note; update Architecture phase E + threat model if journal fields grew
-  - [x] *Exit:* Checklist + `--lib` / e2e green; roadmap change-notes rank done. **`--lib` uses the 144-byte happy pack.** `sdk/ npm run test:e2e` 4/4. **Next: Day 76 note backup.**
+  - [x] *Exit:* `--lib` uses the 144-byte happy pack. `sdk npm run test:e2e` 4/4.
 
-### Phase 20: Encrypted note backup (1 session) — calendar rank 6
+### Phase 20: Encrypted note backup (1 session) — done
 
-Wiped phone or lost browser profile should not mean the note is gone. Export an encrypted blob the user can store elsewhere; decrypt locally to restore `{secret, balance, address, leaf_index}` (and change-note fields from Days 73–75). Not an NFT. Not plaintext balance on-chain.
+Export an encrypted blob; decrypt locally to restore `{secret, balance, address, leaf_index}` (and change-note fields). Not plaintext on-chain.
 
-- [ ] **Day 76 — Encrypted note backup**
+- [x] **Day 76 — Encrypted note backup**
   - [x] Client export / import of an encrypted note blob (passphrase or similar); round-trip restore in tests
   - [x] Cover a change note (remainder after spend), not only a fresh deposit
-  - [ ] *Exit:* Wipe in-memory note, restore from the blob, spend once on localnet. SDK unit test is green; on-chain spend still needs localnet + Groth16. **Next: Days 77–79.**
+  - [x] *Exit:* Wipe in-memory note, restore from the blob, spend once on localnet. `sdk` `npm run test:e2e` 4/4 — happy path restores fixture note then settles (`2bDC9vCw…`).
 
-### Phase 21: Hide / unlink depositor (3 sessions) — calendar rank 7 — after Day 76
+### Phase 21: Hide / unlink depositor (3 sessions) — done
 
 Deposit still writes the user’s wallet on `DepositLeafAccount`. Settle still lists recipient token accounts. SDK Day 49 only allows a different ATA — it does not hide the deposit. Do this **after** backup so a user who rotates receive addresses can still restore notes. Not a mixer: the deposit tx remains on the ledger.
 
-- [ ] **Day 77 — Omit depositor from the leaf PDA**
+- [x] **Day 77 — Omit depositor from the leaf PDA**
   - [x] Stop storing a raw depositor pubkey on `DepositLeafAccount` (omit or replace with a non-identifying commitment). `init` uniqueness stays `["deposit_leaf", leaf]`
   - [x] Indexer / SDK still get leaf, amount, mint from the account or `DepositEvent`
-  - [ ] *Exit:* `--lib` + LiteSVM deposit; account data has no wallet pubkey; `docs/security.md` A22 updated. **`--lib` + A22 done; LiteSVM needs `anchor build` after the 72-byte layout.**
+  - [x] *Exit:* `--lib` 39 + LiteSVM `--tests` 23 (deposit 3 + init 5 + settle 15). Leaf PDA has no depositor wallet. A22 already in `docs/security.md`.
 
-- [ ] **Day 78 — Settle recipient unlink**
+- [x] **Day 78 — Settle recipient unlink**
   - [x] Default happy path: payout ATAs are **not** the depositing wallet’s ATAs (fresh receive account + relayer or self-submit as fee payer)
   - [ ] Optional: bind recipient in the journal so a relayer cannot redirect (if the journal grows, new Groth16 fixture)
-  - [ ] *Exit:* Localnet: deposit from wallet D, settle pays wallet R; leaf PDA and nullifier PDA do not contain D. **SDK already plans recipient ≠ depositor; localnet click-through still needed.**
+  - [x] *Exit:* Localnet e2e settle credits `recipientTokenB` (owner R); change-leaf + nullifier PDAs omit D. Journal-bound recipient skipped (would need a new Groth16).
 
-- [ ] **Day 79 — Unlink E2E + docs**
+- [x] **Day 79 — Unlink E2E + docs**
   - [x] Negative: observer with only the leaf PDA cannot read a depositor field
   - [x] Architecture phase E, glossary, `docs/security.md` A22: what is still linkable (deposit tx, unique amounts, token-account graph)
-  - [ ] *Exit:* Checklist + tests green. **Then** Days 69–72 if you still want UI resilience. Same-mint pool stays parked.
+  - [x] *Exit:* Matches Days 77–78. Phase E + A22: leaf PDA has no depositor; settle may pay wallet R; still linkable = deposit tx, unique amounts, token-account graph. LiteSVM + e2e already green.
+
+### Phase 22: Agentic buy loop — Days 80–81 done; **82 open**
+
+Same wallet for CLI and UI. Relayer is merchant + optional SOL fee payer, not the agent. `$PROVE` is Succinct credits in gitignored `.env`.
+
+- [x] **Day 80 — Agent CLI (localnet)**
+  - [x] HELP: `1` Buy Token B · `2` Deposit Token A · `3` Balance · `EXIT`
+  - [x] Deposit A: SPL into vault + leaf (no Groth16)
+  - [x] Buy: 402 → pick covering note → Groth16 → vault-only settle → change + admin root
+  - [x] *Exit:* Localnet buys with live Groth16. Same keypair as the UI. `cd sdk && npm run agent`
+
+- [x] **Day 81 — UI same loop**
+  - [x] Deposit / buy / balances via agent loopback (`127.0.0.1:8790`)
+  - [x] *Exit:* Same loop as Day 80 from the swap UI
+
+- [ ] **Day 82 — First Devnet agent buy**
+  - [x] Mint-matched wrap (`DNNk…`). Toy `0x03…03` is localnet only
+  - [x] `AGENT_CLUSTER=devnet` loads vault `DNNk…` / `Hfgiz…` and the wallet’s ATAs
+  - [x] Nullifier sync at boot, before buy, and every 60s (skip notes whose PDA already exists)
+  - [ ] *Exit:* One CLI or UI buy on Devnet; settle signature in `notes/devnet.md`
+
+- [ ] **Day 83 — Devnet loop until notes cannot cover**
+  - [ ] Repeat buys; grey cards match on-chain nullifiers after restart
+  - [ ] *Exit:* Two or more Devnet settle signatures in `notes/devnet.md`
 
 ---
 
 ## Tech debt (extra — not a Day)
 
-Do when they unblock toolchain/CI; do not pull them into a session Mid-Day. Do **not** promote these over the [Build priority calendar](#build-priority-calendar-do-not-reorder).
+Do when they unblock toolchain/CI. Do not pull them mid-Day.
 
 - [x] **Anchor `programs/*/` layout** — Move on-chain crate from `program/` → `programs/zk_spot_shield/` so AVM/Anchor discover `anchor-lang` under the standard path. Workspace + `Anchor.toml` members, LiteSVM `.so` path, docs/rules/CI updated. *Exit:* `cargo test -p zk_spot_shield --lib` and `anchor build --ignore-keys` succeed.
 
 ---
 
-## Writing checkpoints (3 sessions)
+## Writing checkpoints (after Day 83 + P0 + 67–68)
 
-- [ ] **Write-1 — after Day 20 — What the circuit proves**
-  - [ ] Series (≤3 parts): private vs public I/O, Merkle inclusion + solvency, nullifier / unlinkability. This session: outline all parts + **ship Part 1**
-  - [ ] Hero diagram (1): guest reads private path, commits journal only — digestible in 10s
-  - [ ] LinkedIn: 120–200 words, same diagram, no extra graphic
-  - [ ] *Exit:* `notes/articles/01-circuit/part-1.md` + `diagram.md` (or mermaid in the article) + `linkedin.md`. ChainTribe copy is optional until the blogs folder exists.
+- [ ] **Write-1 — What the circuit proves**
+  - [ ] Private vs public I/O, Merkle inclusion + solvency, nullifier
+  - [ ] *Exit:* `notes/articles/01-circuit/part-1.md`
 
-- [ ] **Write-2 — after Day 40 — Settle on Solana**
-  - [ ] Series (≤3 parts): verify Groth16, registered root, unused nullifier, vault + SPL. This session: outline + **Part 1**
-  - [ ] Hero diagram (1): those four gates in order (reuse on Day 64 README — do not redraw)
-  - [ ] Optional CU callout from Days 18/29 (numbers only; no new benchmark)
-  - [ ] LinkedIn from Part 1
-  - [ ] *Exit:* `notes/articles/02-settle/part-1.md` + one diagram + `linkedin.md`. **Next engineering Day is 41 (deposit), not relayer.**
+- [ ] **Write-2 — Settle on Solana**
+  - [ ] Verify Groth16, registered root, unused nullifier, vault + SPL
+  - [ ] *Exit:* `notes/articles/02-settle/part-1.md`
 
-- [ ] **Write-3 — after Day 65 — Public artifact (honest prove)**
-  - [ ] Series (≤3 parts): membership ≠ mixer; execute vs remote Groth16 vs “blocked on RAM”; how to read the README. This session: outline + **Part 1**
-  - [ ] Hero diagram: **reuse** README / Write-1 / Write-2 — new picture only if something is still confusing
-  - [ ] LinkedIn from Part 1 (good “here is the repo” post)
-  - [ ] *Exit:* `notes/articles/03-artifact/part-1.md` + `linkedin.md`. Still **no UI required** (UI is Day 66).
-
-**Do not add** Write-4, a Devnet essay, or an uncensorable-UI miniseries unless you drop one of the three above. One LinkedIn per shipped part is enough; do not batch-write a week of posts in a writing session.
+- [ ] **Write-3 — Public artifact**
+  - [ ] Membership ≠ mixer; execute vs remote Groth16; how to read the README
+  - [ ] *Exit:* `notes/articles/03-artifact/part-1.md`

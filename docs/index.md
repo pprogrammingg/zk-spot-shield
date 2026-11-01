@@ -32,14 +32,14 @@ The chain learns the trade amount, the token, and the one-time tag. It never lea
 | Circuit, Groth16 fixtures, forged-path reject | Done |
 | Program: config, vault, roots, nullifiers, deposit | Done |
 | Vault-only 1:1 settle (proof → vault pays the other mint) | Done |
-| Relayer fee payer + HTTP 402 stub | Done (fixture journal; quote still 100 / toy mint) |
-| TypeScript SDK + swap UI | Localnet fixture click-through (vault `1000/900`, user `777/100`) |
+| Relayer fee payer + HTTP 402 stub | Done. Default quote is fixture 100 / toy mint. `GET /402/resource?amount=&mint=` sets the price (vault mint A on Devnet). Relayer terminal prints quote vs journal (amount/mint MATCH or MISS) and the nullifier receipt — no wallet |
+| TypeScript SDK + swap UI | Localnet + Devnet toggle (`?cluster=`). Agent `GET /status` fills ATAs + notes. Buy locks the chosen card orange, then greys spent notes. Amounts are on-chain whole units. Deposit / buy POST to the agent loopback |
 | Hidden recipient | Payout ATA may differ from the depositor; deposit tx still on the ledger |
 | Change notes | 144-byte pack (spend 100 / keep 900). Second spend needs an admin root |
-| Encrypted note backup | Next (SDK round-trip green; on-chain restore spend remaining) |
-| Hide / unlink depositor | After backup. Leaf PDA has no depositor pubkey |
-| Devnet | Live (`74UW…`, settle `3V7YF2UL…`). Phantom deposit waits on a mint-matched wrap |
-| Extra RPC / IPFS | Later |
-| Agent 402 → prove → verify → settle | Later: a **bot** buys B with shielded A. Relayer is the merchant |
+| Encrypted note backup | Done (wipe → restore → localnet settle) |
+| Hide / unlink depositor | Done. Leaf PDA has no depositor pubkey. Settle can pay a different wallet. Deposit tx still on the ledger |
+| Devnet | Live (`74UW…`, settle `3V7YF2UL…`). Agent: `AGENT_CLUSTER=devnet`. First agent settle still open |
+| Extra RPC / IPFS | Parked |
+| Agent 402 → prove → verify → settle | Localnet CLI + UI (`cd sdk && npm run agent`). Devnet wrap uses mint `DNNk…`. Repeat buys until notes cannot cover the quote is next |
 
 Start with [Architecture](architecture.md) for the flow, [Solana Program](solana-program.md) for accounts and instructions, or [Tests](tests.md) for fixtures.

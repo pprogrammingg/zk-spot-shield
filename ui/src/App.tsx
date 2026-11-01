@@ -1,11 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   Connection,
   Keypair,
   PublicKey,
   Transaction,
 } from "@solana/web3.js";
-import { DEFAULT_PROGRAM_ID, DEFAULT_RPC_LIST } from "./config.ts";
+import { DEFAULT_PROGRAM_ID } from "./config.ts";
+import {
+  AGENT_STATUS_POLL_MS,
+  DEVNET_VAULT,
+  chainPollMs,
+  parseClusterParam,
+  rpcForCluster,
+  type Cluster,
+} from "./cluster.ts";
 import {
   bytesToHex,
   decodeBase64,
@@ -15,7 +23,16 @@ import {
   parseJournal,
   type JournalView,
 } from "./decode.ts";
-import { loadDemoPack } from "./demo.ts";
+import {
+  discoverAgentOrigin,
+  fetchAgentStatus,
+  parseUiBuyAmount,
+  pickSpendableNoteIndex,
+  postAgentBuy,
+  postAgentDeposit,
+  type AgentStatus,
+} from "./agentBuy.ts";
+import { loadAgentNotesPublic, loadDemoPack, type AgentNotePublic } from "./demo.ts";
 import { readDemoSession, writeDemoSession } from "./session.ts";
 import { accountUrl, localConfirmCmd, txUrl } from "./explorer.ts";
 import { keypairFromJsonText } from "./keypair.ts";
@@ -80,28 +97,82 @@ function changeNoteJson(pub: JournalView, sig: string | null): string {
   );
 }
 
+function initialCluster(): Cluster {
+  if (typeof window === "undefined") return "localnet";
+  return parseClusterParam(window.location.search) ?? "localnet";
+}
+
 export default function App() {
   const saved = readDemoSession();
-  const [rpcList, setRpcList] = useState(DEFAULT_RPC_LIST);
+  const [cluster, setCluster] = useState<Cluster>(initialCluster);
+  const bootDevnet = cluster === "devnet";
+  const [rpcList, setRpcList] = useState(
+    () => rpcForCluster(initialCluster()),
+  );
+  const [onChainOpen, setOnChainOpen] = useState(
+    () => typeof window !== "undefined" && window.location.hash === "#on-chain",
+  );
   const [programIdStr, setProgramIdStr] = useState(
-    saved?.programIdStr || DEFAULT_PROGRAM_ID,
+    bootDevnet
+      ? DEVNET_VAULT.programId
+      : saved?.programIdStr || DEFAULT_PROGRAM_ID,
   );
   const [relayerUrl, setRelayerUrl] = useState("");
-  const [vaultTokenA, setVaultTokenA] = useState(saved?.vaultTokenA ?? "");
-  const [vaultTokenB, setVaultTokenB] = useState(saved?.vaultTokenB ?? "");
-  const [userTokenA, setUserTokenA] = useState(saved?.userTokenA ?? "");
-  const [userTokenB, setUserTokenB] = useState(saved?.userTokenB ?? "");
-  const [proofB64, setProofB64] = useState(saved?.proofB64 ?? "");
-  const [journalB64, setJournalB64] = useState(saved?.journalB64 ?? "");
+  const [vaultTokenA, setVaultTokenA] = useState(
+    bootDevnet ? DEVNET_VAULT.vaultTokenA : saved?.vaultTokenA ?? "",
+  );
+  const [vaultTokenB, setVaultTokenB] = useState(
+    bootDevnet ? DEVNET_VAULT.vaultTokenB : saved?.vaultTokenB ?? "",
+  );
+  const [userTokenA, setUserTokenA] = useState(
+    bootDevnet ? "" : saved?.userTokenA ?? "",
+  );
+  const [userTokenB, setUserTokenB] = useState(
+    bootDevnet ? "" : saved?.userTokenB ?? "",
+  );
+  const [proofB64, setProofB64] = useState(
+    bootDevnet ? "" : saved?.proofB64 ?? "",
+  );
+  const [journalB64, setJournalB64] = useState(
+    bootDevnet ? "" : saved?.journalB64 ?? "",
+  );
   const [status, setStatus] = useState(
-    saved?.journalB64 ? "Restored the last loaded note (Vite reloads wipe in-memory state)." : "Idle.",
+    bootDevnet
+      ? "Devnet. Polling the agent for notes and ATAs."
+      : saved?.journalB64
+        ? "Restored the last loaded note (Vite reloads wipe in-memory state)."
+        : "Idle.",
   );
   const [chain, setChain] = useState<ChainView | null>(null);
   const [balances, setBalances] = useState<TokenBalances | null>(null);
   const [walletLabel, setWalletLabel] = useState("not connected");
   const [localKp, setLocalKp] = useState<Keypair | null>(null);
-  const [txSig, setTxSig] = useState<string | null>(saved?.txSig ?? null);
+  const [txSig, setTxSig] = useState<string | null>(
+    bootDevnet ? null : saved?.txSig ?? null,
+  );
   const [pay402, setPay402] = useState("");
+  const [agentNotes, setAgentNotes] = useState<AgentNotePublic[]>([]);
+  const [buyAmount, setBuyAmount] = useState("");
+  const [buying, setBuying] = useState(false);
+  const [lockedLeaf, setLockedLeaf] = useState<number | null>(null);
+  const [depositAmount, setDepositAmount] = useState("");
+  const [depositing, setDepositing] = useState(false);
+  const pollRef = useRef({
+    rpcList,
+    programIdStr,
+    vaultTokenA,
+    vaultTokenB,
+    userTokenA,
+    userTokenB,
+  });
+  pollRef.current = {
+    rpcList,
+    programIdStr,
+    vaultTokenA,
+    vaultTokenB,
+    userTokenA,
+    userTokenB,
+  };
 
   const journalPreview = useMemo(() => {
     if (!journalB64.trim()) return null;
@@ -142,13 +213,95 @@ export default function App() {
   ]);
 
   useEffect(() => {
-    if (!journalB64 || !vaultTokenA) return;
-    refresh().catch(() => {
-      /* validator may still be coming up */
-    });
-    // Restore chain/balances once after a Vite full reload.
+    if (cluster === "localnet") {
+      loadDemo(rpcForCluster("localnet")).catch((e) => setStatus(String(e)));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function applyStatusBundle(st: AgentStatus) {
+    setProgramIdStr(st.programId);
+    setVaultTokenA(st.vaultTokenA);
+    setVaultTokenB(st.vaultTokenB);
+    setUserTokenA(st.userTokenA);
+    setUserTokenB(st.userTokenB);
+    setAgentNotes(st.notes);
+    pollRef.current = {
+      ...pollRef.current,
+      programIdStr: st.programId,
+      vaultTokenA: st.vaultTokenA,
+      vaultTokenB: st.vaultTokenB,
+      userTokenA: st.userTokenA,
+      userTokenB: st.userTokenB,
+    };
+  }
+
+  useEffect(() => {
+    let stop = false;
+    const pullStatus = async () => {
+      if (stop || document.hidden) return;
+      try {
+        const origin = await discoverAgentOrigin();
+        if (origin) {
+          const st = await fetchAgentStatus(origin);
+          if (st && st.cluster === cluster && !stop) {
+            applyStatusBundle(st);
+          } else if (!st) {
+            const notes = await loadAgentNotesPublic();
+            if (!stop) setAgentNotes(notes);
+          }
+        } else {
+          const notes = await loadAgentNotesPublic();
+          if (!stop) setAgentNotes(notes);
+        }
+      } catch {
+        /* agent optional */
+      }
+    };
+    const pullChain = async () => {
+      if (stop || document.hidden) return;
+      const p = pollRef.current;
+      try {
+        const { url, connection } = await connectWithFallback(p.rpcList);
+        const programId = new PublicKey(p.programIdStr);
+        const config = findGlobalConfigPda(programId);
+        const vault = findVaultPda(programId);
+        const cfgAcc = await connection.getAccountInfo(config);
+        const vaultAcc = await connection.getAccountInfo(vault);
+        if (!cfgAcc || !vaultAcc || stop) return;
+        const cfg = decodeGlobalConfig(cfgAcc.data);
+        const v = decodeVaultState(vaultAcc.data);
+        setChain({
+          rpc: url,
+          pauseFlag: cfg.pauseFlag,
+          reserveA: v.reserveA.toString(),
+          reserveB: v.reserveB.toString(),
+          mintA: v.mintA.toBase58(),
+          mintB: v.mintB.toBase58(),
+          config: config.toBase58(),
+          vault: vault.toBase58(),
+          vkeyHash: bytesToHex(cfg.vkeyHash),
+        });
+        await loadTokenBalances(connection, {
+          vaultTokenA: p.vaultTokenA,
+          vaultTokenB: p.vaultTokenB,
+          userTokenA: p.userTokenA,
+          userTokenB: p.userTokenB,
+        });
+      } catch {
+        /* validator / RPC blip */
+      }
+    };
+    void pullStatus();
+    void pullChain();
+    const statusId = window.setInterval(() => void pullStatus(), AGENT_STATUS_POLL_MS);
+    const chainId = window.setInterval(() => void pullChain(), chainPollMs(cluster));
+    return () => {
+      stop = true;
+      window.clearInterval(statusId);
+      window.clearInterval(chainId);
+    };
+  }, [cluster]);
 
   async function signer(): Promise<{ connection: Connection; wallet: WalletSigner; rpc: string }> {
     const { url, connection } = await connectWithFallback(rpcList);
@@ -178,15 +331,6 @@ export default function App() {
       userTokenB: string;
     },
   ) {
-    if (
-      !atas.vaultTokenA ||
-      !atas.vaultTokenB ||
-      !atas.userTokenA ||
-      !atas.userTokenB
-    ) {
-      setBalances(null);
-      return;
-    }
     const [vaultA, vaultB, userA, userB] = await Promise.all([
       splAmount(connection, atas.vaultTokenA),
       splAmount(connection, atas.vaultTokenB),
@@ -196,10 +340,88 @@ export default function App() {
     setBalances({ vaultA, vaultB, userA, userB });
   }
 
-  async function refresh() {
+  function syncClusterInUrl(next: Cluster) {
+    if (typeof window === "undefined") return;
+    const u = new URL(window.location.href);
+    u.searchParams.set("cluster", next);
+    window.history.replaceState(null, "", u);
+  }
+
+  async function applyCluster(next: Cluster) {
+    setCluster(next);
+    const rpc = rpcForCluster(next);
+    setRpcList(rpc);
+    syncClusterInUrl(next);
+    if (next === "localnet") {
+      await loadDemo(rpc);
+      return;
+    }
+    setProofB64("");
+    setJournalB64("");
+    setTxSig(null);
+    setAgentNotes([]);
+    setProgramIdStr(DEVNET_VAULT.programId);
+    const atas = {
+      vaultTokenA: DEVNET_VAULT.vaultTokenA,
+      vaultTokenB: DEVNET_VAULT.vaultTokenB,
+      userTokenA: "",
+      userTokenB: "",
+    };
+    setVaultTokenA(atas.vaultTokenA);
+    setVaultTokenB(atas.vaultTokenB);
+    setUserTokenA("");
+    setUserTokenB("");
+    pollRef.current = {
+      rpcList: rpc,
+      programIdStr: DEVNET_VAULT.programId,
+      vaultTokenA: atas.vaultTokenA,
+      vaultTokenB: atas.vaultTokenB,
+      userTokenA: "",
+      userTokenB: "",
+    };
+    setStatus("Devnet. Polling the agent for notes and ATAs.");
+    await refresh(rpc, atas, next);
+  }
+
+  async function refresh(
+    rpcOverride?: string,
+    atasOverride?: {
+      vaultTokenA: string;
+      vaultTokenB: string;
+      userTokenA: string;
+      userTokenB: string;
+    },
+    clusterOverride?: Cluster,
+  ) {
     setStatus("Fetching on-chain state…");
-    const { url, connection } = await connectWithFallback(rpcList);
-    const programId = new PublicKey(programIdStr);
+    let atas = atasOverride ?? {
+      vaultTokenA,
+      vaultTokenB,
+      userTokenA,
+      userTokenB,
+    };
+    const want = clusterOverride ?? cluster;
+    try {
+      const origin = await discoverAgentOrigin();
+      if (origin) {
+        const st = await fetchAgentStatus(origin);
+        if (st && st.cluster === want) {
+          applyStatusBundle(st);
+          atas = {
+            vaultTokenA: st.vaultTokenA,
+            vaultTokenB: st.vaultTokenB,
+            userTokenA: st.userTokenA,
+            userTokenB: st.userTokenB,
+          };
+        }
+      }
+    } catch {
+      /* agent optional */
+    }
+    const { url, connection } = await connectWithFallback(
+      rpcOverride ?? rpcList,
+    );
+    const programId = new PublicKey(pollRef.current.programIdStr);
     const config = findGlobalConfigPda(programId);
     const vault = findVaultPda(programId);
     const cfgAcc = await connection.getAccountInfo(config);
@@ -220,12 +442,7 @@ export default function App() {
       vault: vault.toBase58(),
       vkeyHash: bytesToHex(cfg.vkeyHash),
     });
-    await loadTokenBalances(connection, {
-      vaultTokenA,
-      vaultTokenB,
-      userTokenA,
-      userTokenB,
-    });
+    await loadTokenBalances(connection, atas);
     setStatus(`RPC ${url}. Pause=${cfg.pauseFlag}.`);
   }
 
@@ -260,7 +477,7 @@ export default function App() {
     reader.readAsText(file);
   }
 
-  async function loadDemo() {
+  async function loadDemo(rpcOverride?: string) {
     setStatus("Loading localnet demo pack…");
     const pack = await loadDemoPack();
     setProgramIdStr(pack.accounts.programId);
@@ -272,7 +489,9 @@ export default function App() {
     setJournalB64(pack.journalB64);
     setTxSig(null);
     setPay402("");
-    const { url, connection } = await connectWithFallback(rpcList);
+    const { url, connection } = await connectWithFallback(
+      rpcOverride ?? rpcList,
+    );
     const programId = new PublicKey(pack.accounts.programId);
     const config = findGlobalConfigPda(programId);
     const vault = findVaultPda(programId);
@@ -295,7 +514,9 @@ export default function App() {
       vkeyHash: bytesToHex(cfg.vkeyHash),
     });
     await loadTokenBalances(connection, pack.accounts);
-    setStatus("Demo loaded. Note cards show the 1000 mint-A note.");
+    setStatus(
+      "Localnet. User A/B in On-chain data are public SPL. Note cards are the fixture pack.",
+    );
   }
 
   function settleKeys(pub: JournalView, payer: PublicKey) {
@@ -384,6 +605,65 @@ export default function App() {
     setStatus("402 unlocked with the settle journal (fixture path — no live prove).");
   }
 
+  async function agentOriginOrThrow(): Promise<string> {
+    const origin = await discoverAgentOrigin();
+    if (!origin) {
+      throw new Error("Start the agent first: cd sdk && npm run agent");
+    }
+    return origin;
+  }
+
+  async function depositTokenA(e: FormEvent) {
+    e.preventDefault();
+    const amount = parseUiBuyAmount(depositAmount);
+    setDepositing(true);
+    setStatus(`Depositing ${amount} Token A (no Groth16)…`);
+    try {
+      const origin = await agentOriginOrThrow();
+      const result = await postAgentDeposit(origin, amount);
+      setTxSig(result.sig);
+      setStatus(
+        `Deposited ${result.balance} A at idx ${result.leafIndex}. sig ${result.sig}`,
+      );
+      await refresh();
+    } finally {
+      setDepositing(false);
+    }
+  }
+
+  async function buyTokenB(e: FormEvent) {
+    e.preventDefault();
+    const amount = parseUiBuyAmount(buyAmount);
+    const picked =
+      agentNotes.length === 0
+        ? null
+        : pickSpendableNoteIndex(agentNotes, BigInt(amount));
+    if (agentNotes.length > 0 && picked === null) {
+      setStatus(`no note covers ${amount}. Deposit more A.`);
+      return;
+    }
+    setLockedLeaf(picked);
+    setBuying(true);
+    setStatus(
+      `Buying ${amount} Token B (1:1). Groth16 runs in the agent — keep this tab open.`,
+    );
+    try {
+      const origin = await agentOriginOrThrow();
+      const result = await postAgentBuy(origin, amount);
+      setTxSig(result.settleSig);
+      const change = result.changeBalance
+        ? ` Change note ${result.changeBalance} A.`
+        : " Spend-all (no change).";
+      setStatus(
+        `Settled ${result.settleSig}. Spent note ${result.spentIndex}.${change}`,
+      );
+      await refresh();
+    } finally {
+      setBuying(false);
+      setLockedLeaf(null);
+    }
+  }
+
   function downloadChange() {
     if (!journalPreview || journalPreview.changeAmount === 0n) {
       throw new Error("No change amount in the journal.");
@@ -407,30 +687,54 @@ export default function App() {
   return (
     <main className="page">
       <header>
-        <h1>ZK Spot Shield</h1>
-        <p className="lede">
-          One private note of mint A. You prove a spend; the vault pays mint B 1:1. Remainder
-          becomes a new note — not extra tokens in your mint-A account.
-        </p>
+        <div>
+          <h1>ZK Spot Shield</h1>
+          <p className="lede">
+            Private mint A notes. Type an amount to buy Token B 1:1 — same path as the agent CLI.
+          </p>
+        </div>
+        <div className="cluster" role="group" aria-label="Cluster">
+          <button
+            type="button"
+            aria-pressed={cluster === "localnet"}
+            onClick={() => applyCluster("localnet").catch((e) => setStatus(String(e)))}
+          >
+            Localnet
+          </button>
+          <button
+            type="button"
+            aria-pressed={cluster === "devnet"}
+            onClick={() => applyCluster("devnet").catch((e) => setStatus(String(e)))}
+          >
+            Devnet
+          </button>
+        </div>
       </header>
 
-      {journalPreview ? (
+      {agentNotes.length > 0 ? (
+        <section className="notes" aria-label="CLI notes">
+          {agentNotes.map((n) => (
+            <NoteCard
+              key={`${n.leafIndex}-${n.leafPrefix}`}
+              kind="spend"
+              amount={n.balance}
+              settled={n.spent}
+              locked={lockedLeaf === n.leafIndex}
+            />
+          ))}
+        </section>
+      ) : cluster === "localnet" && journalPreview ? (
         <section className="notes">
           <NoteCard
             kind="spend"
             amount={noteOldBalance(journalPreview).toString()}
-            subtitle={
-              settled
-                ? `Spent ${journalPreview.requestedSwapAmount.toString()}. This leaf is nullified; remainder is the gold card.`
-                : `Your private balance (Merkle leaf), not wallet A. Pick a spend below — this demo’s proof is fixed at ${journalPreview.requestedSwapAmount.toString()}.`
-            }
             settled={settled}
+            locked={buying && !settled}
           />
           {journalPreview.changeAmount > 0n && settled && (
             <NoteCard
               kind="change"
               amount={journalPreview.changeAmount.toString()}
-              subtitle="New Merkle leaf for the remainder. Not your public wallet A. Spend it after an admin root includes this leaf."
               settled={settled}
             >
               <div className="row">
@@ -442,54 +746,70 @@ export default function App() {
           )}
         </section>
       ) : (
-        <p className="muted">Load the localnet demo to see your note.</p>
+        <p className="muted">
+          {cluster === "devnet"
+            ? "Deposit Token A below. Notes come from the running agent."
+            : "Deposit Token A below, or load the localnet demo."}
+        </p>
       )}
 
-      {journalPreview && (
-        <section className="trade">
-          <label>
-            Spend (mint A)
+      <form
+        className="trade"
+        onSubmit={(e) => depositTokenA(e).catch((err) => setStatus(String(err)))}
+      >
+        <label>
+          Amount of Token A to deposit
+          <div className="buy-row">
             <input
-              value={journalPreview.requestedSwapAmount.toString()}
-              readOnly
-              title="This Groth16 fixture is bound to 100. A live prove would let you type another amount ≤ note balance."
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="off"
+              placeholder="e.g. 33"
+              value={depositAmount}
+              disabled={buying || depositing}
+              onChange={(e) => setDepositAmount(e.target.value)}
             />
-          </label>
-          <p className="trade-eq">→</p>
-          <label>
-            Receive (mint B, 1:1)
-            <input value={journalPreview.requestedSwapAmount.toString()} readOnly />
-          </label>
-          <label>
-            Change note after
-            <input value={journalPreview.changeAmount.toString()} readOnly />
-          </label>
-          <p className="muted help span2">
-            {settled
-              ? `${journalPreview.requestedSwapAmount.toString()} B moved vault → wallet. Vault B went down.`
-              : "Final product: you type the spend, the client proves, this note is nullified, a change note is the remainder. This demo’s proof always spends 100 / keeps 900."}
-          </p>
-        </section>
-      )}
+            <button type="submit" className="primary" disabled={buying || depositing}>
+              {depositing ? "Depositing…" : "Deposit Token A"}
+            </button>
+          </div>
+        </label>
+      </form>
+
+      <form className="trade" onSubmit={(e) => buyTokenB(e).catch((err) => setStatus(String(err)))}>
+        <label>
+          Amount of Token A to use to Buy Token B (1:1 ratio)
+          <div className="buy-row">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="off"
+              placeholder="e.g. 33"
+              value={buyAmount}
+              disabled={buying || depositing}
+              onChange={(e) => setBuyAmount(e.target.value)}
+            />
+            <button type="submit" className="primary" disabled={buying || depositing}>
+              {buying ? "Buying…" : "Buy Token B"}
+            </button>
+          </div>
+        </label>
+        {buying ? (
+          <p className="muted help">Groth16 prove is running in the agent terminal. This can take a minute.</p>
+        ) : null}
+      </form>
 
       <section className="row">
-        <button type="button" className="primary" onClick={() => loadDemo().catch((e) => setStatus(String(e)))}>
-          Load localnet demo
-        </button>
         <button
           type="button"
-          className="primary"
-          onClick={() => doSelfSubmit().catch((e) => setStatus(String(e)))}
+          disabled={cluster !== "localnet"}
+          onClick={() => loadDemo().catch((e) => setStatus(String(e)))}
         >
-          {journalPreview && !settled
-            ? `Spend ${journalPreview.requestedSwapAmount.toString()}`
-            : "Submit myself"}
+          Load localnet demo
         </button>
       </section>
-      <p className="muted">
-        Load the fee payer under <strong>Fee payer</strong> before Spend. Do not Submit again if the
-        teal card already says spent.
-      </p>
 
       <p className={err ? "err" : "status"}>{status}</p>
       {txSig && chain && (
@@ -545,7 +865,12 @@ export default function App() {
         </div>
       </details>
 
-      <details className="fold">
+      <details
+        className="fold"
+        id="on-chain"
+        open={onChainOpen}
+        onToggle={(e) => setOnChainOpen((e.target as HTMLDetailsElement).open)}
+      >
         <summary>
           On-chain data
           <button
@@ -561,11 +886,6 @@ export default function App() {
             ↻
           </button>
         </summary>
-        <p className="muted help">
-          Vault token A/B = the pool. Your wallet token A/B = this fee-payer’s public SPL accounts.
-          Settle of mint A pays mint B by transferring vault B → wallet B. The 900 remainder is the
-          gold note, not extra wallet A.
-        </p>
         {chain ? (
           <dl className="stats">
             <dt>RPC</dt>
@@ -574,10 +894,26 @@ export default function App() {
             <dd>{chain.pauseFlag ? "yes" : "no"}</dd>
             <dt>Vault A / B</dt>
             <dd>
-              {balances ? `${balances.vaultA} / ${balances.vaultB}` : `${chain.reserveA} / ${chain.reserveB}`}
+              {balances
+                ? `${balances.vaultA} / ${balances.vaultB}`
+                : `${chain.reserveA} / ${chain.reserveB}`}
             </dd>
             <dt>User Balance A / B</dt>
-            <dd>{balances ? `${balances.userA} / ${balances.userB}` : "— / —"}</dd>
+            <dd>
+              {balances
+                ? `${balances.userA} / ${balances.userB}`
+                : "— / —"}
+            </dd>
+            <dt>Notes</dt>
+            <dd>
+              {agentNotes.length === 0
+                ? "none yet — CLI Deposit Token A"
+                : agentNotes.map((n) => (
+                    <div key={`${n.leafIndex}-${n.leafPrefix}`}>
+                      idx {n.leafIndex} · {n.balance} A · {n.spent ? "spent" : "open"}
+                    </div>
+                  ))}
+            </dd>
             <dt>Vault A account</dt>
             <dd className="mono">{vaultTokenA || "—"}</dd>
             <dt>Vault B account</dt>
@@ -647,9 +983,14 @@ export default function App() {
       <details className="fold">
         <summary>Proof and journal bytes</summary>
         <p className="muted help">
-          One Groth16 proof and one journal for <strong>this spend of the 1000 note</strong>. The
-          journal lists both the 100 swap and the 900 change. Not two proofs.
+          Packed happy-path bytes (spend 100 / keep 900). Buy Token B above uses the agent, not this
+          fixture.
         </p>
+        <div className="row">
+          <button type="button" onClick={() => doSelfSubmit().catch((e) => setStatus(String(e)))}>
+            Submit fixture settle
+          </button>
+        </div>
         <label className="span2">
           Groth16 proof (base64, 356 bytes)
           <textarea rows={3} value={proofB64} onChange={(e) => setProofB64(e.target.value)} />

@@ -2,6 +2,7 @@
 
 use axum::extract::{Path, Query, State};
 use axum::http::{Method, StatusCode};
+use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
@@ -9,7 +10,8 @@ use tower_http::cors::{Any, CorsLayer};
 use uuid::Uuid;
 
 use crate::pay402::{
-    hex_decode_32, hex_encode, parse_pay_body, quote, PayLedger, PayRequest, PayResponse, PAID_BODY,
+    delivered_banner, describe_pay_attempt, hex_decode_32, hex_encode, pay_banner, quote_banner,
+    quote_for, receipt_lookup_banner, PayLedger, PayRequest, PayResponse, QuoteSlot, PAID_BODY,
 };
 use crate::queue::{JobStatus, ProveQueue};
 
@@ -17,6 +19,7 @@ use crate::queue::{JobStatus, ProveQueue};
 pub struct AppState {
     pub queue: ProveQueue,
     pub pay: PayLedger,
+    pub quote: QuoteSlot,
 }
 
 #[derive(Serialize)]
@@ -107,6 +110,8 @@ async fn get_job(
 #[derive(Deserialize)]
 struct ResourceQuery {
     nullifier: Option<String>,
+    amount: Option<u64>,
+    mint: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -116,29 +121,71 @@ struct PaidResource {
 }
 
 /// GET /402/resource — 402 quote unless `?nullifier=` is a paid receipt.
+/// Optional `?amount=` and `?mint=0x…` set the outstanding quote (vault mint A on Devnet).
 async fn paid_resource(
     State(state): State<AppState>,
     Query(q): Query<ResourceQuery>,
-) -> Result<Json<PaidResource>, (StatusCode, Json<crate::pay402::PaymentQuote>)> {
+) -> axum::response::Response {
     if let Some(raw) = q.nullifier.as_deref() {
         if let Some(nf) = hex_decode_32(raw) {
             if state.pay.is_paid(&nf).await {
-                return Ok(Json(PaidResource {
+                tracing::info!("{}", delivered_banner(&nf));
+                return Json(PaidResource {
                     data: PAID_BODY,
                     nullifier_hex: hex_encode(&nf),
-                }));
+                })
+                .into_response();
             }
+            tracing::info!("{}", receipt_lookup_banner(&nf, false));
+        } else {
+            tracing::info!("402 receipt lookup — not a 32-byte nullifier ({raw})");
         }
     }
-    Err((StatusCode::PAYMENT_REQUIRED, Json(quote())))
+
+    let (mut amount, mut mint) = state.quote.get().await;
+    if let Some(a) = q.amount {
+        if a == 0 {
+            return (StatusCode::BAD_REQUEST, "amount must be > 0").into_response();
+        }
+        amount = a;
+    }
+    if let Some(raw) = q.mint.as_deref() {
+        let Some(m) = hex_decode_32(raw) else {
+            return (StatusCode::BAD_REQUEST, "mint must be 32-byte 0x-hex").into_response();
+        };
+        mint = m;
+    }
+    if q.amount.is_some() || q.mint.is_some() {
+        state.quote.set(amount, mint).await;
+    }
+    tracing::info!("{}", quote_banner(amount, &mint));
+    (
+        StatusCode::PAYMENT_REQUIRED,
+        [("payment-required", "zk-spot-shield; unlock=nullifier")],
+        Json(quote_for(amount, mint)),
+    )
+        .into_response()
 }
 
 async fn pay_402(
     State(state): State<AppState>,
     Json(body): Json<PayRequest>,
 ) -> Result<Json<PayResponse>, (StatusCode, String)> {
-    let public = parse_pay_body(&body.journal_base64).map_err(|e| e.status_msg())?;
+    let (amount, mint) = state.quote.get().await;
+    let (inspect, parsed) = describe_pay_attempt(&body.journal_base64, amount, mint);
+    let public = match parsed {
+        Ok(p) => {
+            tracing::info!("{inspect}");
+            p
+        }
+        Err(e) => {
+            tracing::warn!("{inspect}");
+            tracing::warn!("402 pay rejected: {}", e.status_msg().1);
+            return Err(e.status_msg());
+        }
+    };
     state.pay.mark_paid(public.nullifier).await;
+    tracing::info!("{}", pay_banner(public.requested_swap_amount, &public.nullifier));
     Ok(Json(PayResponse {
         paid: true,
         nullifier_hex: hex_encode(&public.nullifier),
@@ -220,6 +267,7 @@ mod tests {
         app_router(AppState {
             queue,
             pay: crate::pay402::PayLedger::default(),
+            quote: crate::pay402::QuoteSlot::default(),
         })
     }
 
@@ -305,10 +353,21 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(unpaid.status(), StatusCode::PAYMENT_REQUIRED);
+        assert_eq!(
+            unpaid.headers().get("payment-required").unwrap(),
+            "zk-spot-shield; unlock=nullifier"
+        );
         let q: serde_json::Value =
             serde_json::from_slice(&unpaid.into_body().collect().await.unwrap().to_bytes())
                 .unwrap();
         assert_eq!(q["amount"], 100);
+        assert_eq!(q["http_status"], 402);
+        assert!(q["unlock"].as_str().unwrap().contains("nullifier"));
+        assert!(q["contrast"].as_str().unwrap().contains("x402"));
+        assert!(q["contrast"]
+            .as_str()
+            .unwrap()
+            .contains("without a wallet on the receipt"));
         assert!(q["pay_via"]
             .as_str()
             .unwrap()
@@ -349,5 +408,51 @@ mod tests {
         let data: serde_json::Value =
             serde_json::from_slice(&ok.into_body().collect().await.unwrap().to_bytes()).unwrap();
         assert_eq!(data["data"], "shielded-402-ok");
+    }
+
+    #[tokio::test]
+    async fn http_402_custom_amount_mint_then_pay() {
+        use base64::Engine;
+        let mut journal = std::fs::read(
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../zk-circuit/fixtures/happy/journal.bin"),
+        )
+        .unwrap();
+        journal[0..8].copy_from_slice(&100_000u64.to_le_bytes());
+        let mint = [0xab; 32];
+        journal[8..40].copy_from_slice(&mint);
+        let mint_hex = crate::pay402::hex_encode(&mint);
+        let app = test_app().await;
+
+        let unpaid = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri(format!("/402/resource?amount=100000&mint={mint_hex}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(unpaid.status(), StatusCode::PAYMENT_REQUIRED);
+        let q: serde_json::Value =
+            serde_json::from_slice(&unpaid.into_body().collect().await.unwrap().to_bytes())
+                .unwrap();
+        assert_eq!(q["amount"], 100000);
+        assert_eq!(q["mint_hex"], mint_hex);
+
+        let b64 = base64::engine::general_purpose::STANDARD.encode(&journal);
+        let pay = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/402/pay")
+                    .header("content-type", "application/json")
+                    .body(Body::from(format!(r#"{{"journal_base64":"{b64}"}}"#)))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(pay.status(), StatusCode::OK);
     }
 }
