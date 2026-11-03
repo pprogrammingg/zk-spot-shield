@@ -52,6 +52,7 @@ export {
   SETTLE_CU_PRICE_MICRO_LAMPORTS,
   SEEDS,
   buildDepositIx,
+  buildPublicSpotSwapIx,
   buildSetVkeyHashIx,
   buildSetVaultMintsIx,
   buildSettleIx,
@@ -68,8 +69,15 @@ export {
   settleAltStaticAddresses,
   settleComputeBudgetIxs,
   type DepositAccounts,
+  type PublicSpotSwapAccounts,
   type SettleAccounts,
 } from "./instructions.js";
+
+export {
+  nonShieldedPay,
+  post402PayPublic,
+  type NonShieldedPayResult,
+} from "./nonShieldedPay.js";
 
 export {
   decodeGlobalConfig,
@@ -99,11 +107,14 @@ export {
 
 export {
   journalToPayBody,
+  payPublicUrl,
   payUrl,
   quoteUrl,
+  resourcePublicUrl,
   resourceUrl,
   type PaidResource,
   type PayAck,
+  type PayPublicAck,
   type PaymentQuote,
 } from "./pay402.js";
 

@@ -282,6 +282,38 @@ export async function buildDepositIx(
     .instruction();
 }
 
+export type PublicSpotSwapAccounts = {
+  payer: PublicKey;
+  globalConfig: PublicKey;
+  vault: PublicKey;
+  vaultTokenA: PublicKey;
+  vaultTokenB: PublicKey;
+  userTokenA: PublicKey;
+  userTokenB: PublicKey;
+};
+
+/** Public 1:1 A→B. No proof / nullifier. Payer pubkey is on the receipt. */
+export async function buildPublicSpotSwapIx(
+  program: Program,
+  accounts: PublicSpotSwapAccounts,
+  amount: number | bigint,
+): Promise<TransactionInstruction> {
+  const amt = typeof amount === "bigint" ? amount : BigInt(amount);
+  return program.methods
+    .publicSpotSwap(new BN(amt.toString()))
+    .accountsPartial({
+      payer: accounts.payer,
+      globalConfig: accounts.globalConfig,
+      vault: accounts.vault,
+      vaultTokenA: accounts.vaultTokenA,
+      vaultTokenB: accounts.vaultTokenB,
+      userTokenA: accounts.userTokenA,
+      userTokenB: accounts.userTokenB,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    })
+    .instruction();
+}
+
 /** Optional: wait for signature confirmation. */
 export async function confirmSignature(
   connection: Connection,

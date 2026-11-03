@@ -58,6 +58,19 @@ export type AgentDepositOkJson = {
   rootSig: string;
 };
 
+export type AgentPublicSwapFn = (amount: bigint) => Promise<{
+  swapSig: string;
+  paid: boolean;
+  payer: string;
+}>;
+
+export type AgentPublicSwapOkJson = {
+  ok: true;
+  swapSig: string;
+  paid: boolean;
+  payer: string;
+};
+
 /** Secret-free snapshot for the swap UI. */
 export type AgentStatusNote = {
   leafIndex: number;
@@ -174,6 +187,7 @@ async function handle(
   buy: AgentBuyFn,
   deposit: AgentDepositFn | undefined,
   status: AgentStatusFn | undefined,
+  publicSwap: AgentPublicSwapFn | undefined,
   decimals: number,
 ): Promise<void> {
   const url = new URL(req.url ?? "/", "http://127.0.0.1");
@@ -274,6 +288,45 @@ async function handle(
     }
     return;
   }
+  if (req.method === "POST" && url.pathname === "/swap-public") {
+    if (!publicSwap) {
+      sendJson(res, 501, {
+        ok: false,
+        error: "public swap not enabled",
+      } satisfies AgentBuyErrJson);
+      return;
+    }
+    let amount: bigint;
+    try {
+      const raw = await readBody(req);
+      amount = parseBuyBody(raw ? JSON.parse(raw) : null, decimals);
+    } catch (e) {
+      sendJson(res, 400, {
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      } satisfies AgentBuyErrJson);
+      return;
+    }
+    try {
+      const result = await withAgentBuyGate(() => publicSwap(amount));
+      sendJson(res, 200, {
+        ok: true,
+        swapSig: result.swapSig,
+        paid: result.paid,
+        payer: result.payer,
+      } satisfies AgentPublicSwapOkJson);
+    } catch (e) {
+      if (e instanceof AgentBusyError) {
+        sendJson(res, 409, { ok: false, error: e.message } satisfies AgentBuyErrJson);
+        return;
+      }
+      sendJson(res, 500, {
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      } satisfies AgentBuyErrJson);
+    }
+    return;
+  }
   sendJson(res, 404, { ok: false, error: "not found" } satisfies AgentBuyErrJson);
 }
 
@@ -302,17 +355,20 @@ function createBuyServer(
   buy: AgentBuyFn,
   deposit: AgentDepositFn | undefined,
   status: AgentStatusFn | undefined,
+  publicSwap: AgentPublicSwapFn | undefined,
   decimals: number,
 ): Server {
   return createServer((req, res) => {
-    void handle(req, res, buy, deposit, status, decimals).catch((e: unknown) => {
-      if (!res.headersSent) {
-        sendJson(res, 500, {
-          ok: false,
-          error: e instanceof Error ? e.message : String(e),
-        });
-      }
-    });
+    void handle(req, res, buy, deposit, status, publicSwap, decimals).catch(
+      (e: unknown) => {
+        if (!res.headersSent) {
+          sendJson(res, 500, {
+            ok: false,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      },
+    );
   });
 }
 
@@ -320,6 +376,7 @@ export async function startAgentHttp(opts: {
   buy: AgentBuyFn;
   deposit?: AgentDepositFn;
   status?: AgentStatusFn;
+  publicSwap?: AgentPublicSwapFn;
   decimals?: number;
   port?: number;
   host?: string;
@@ -335,7 +392,13 @@ export async function startAgentHttp(opts: {
         : AGENT_HTTP_PORTS;
   let last: unknown;
   for (const p of ports) {
-    const server = createBuyServer(opts.buy, opts.deposit, opts.status, decimals);
+    const server = createBuyServer(
+      opts.buy,
+      opts.deposit,
+      opts.status,
+      opts.publicSwap,
+      decimals,
+    );
     try {
       const port = await listen(server, p, host);
       return { server, port, origin: `http://${host}:${port}` };

@@ -293,6 +293,112 @@
       "args": []
     },
     {
+      "name": "public_spot_swap",
+      "docs": [
+        "Public 1:1 A→B: payer transfers mint A in; vault pays mint B. No proof / nullifier."
+      ],
+      "discriminator": [
+        1,
+        55,
+        40,
+        100,
+        59,
+        231,
+        223,
+        200
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "docs": [
+            "Pays SOL fees and authorizes the mint-A transfer. Visible on the receipt."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "global_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  112,
+                  111,
+                  116,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_token_a",
+          "writable": true
+        },
+        {
+          "name": "vault_token_b",
+          "writable": true
+        },
+        {
+          "name": "user_token_a",
+          "docs": [
+            "Payer's mint-A ATA (debited)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "user_token_b",
+          "docs": [
+            "Payer's mint-B ATA (credited)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "register_clean_funds_root",
       "docs": [
         "Authority registers a `CleanFundsRoot` PDA for an approved Merkle root."
@@ -648,7 +754,8 @@
         {
           "name": "change_leaf_account",
           "docs": [
-            "Remainder `[\"deposit_leaf\", change_leaf]` PDA. `None` on spend-all (104-byte journal)."
+            "Remainder `[\"deposit_leaf\", change_leaf]` PDA. Spend-all still occupies this",
+            "slot with the program id (Anchor `Option` None). Do not omit the account."
           ],
           "writable": true,
           "optional": true
@@ -805,6 +912,19 @@
         142,
         107,
         144
+      ]
+    },
+    {
+      "name": "PublicSpotSwapEvent",
+      "discriminator": [
+        20,
+        232,
+        249,
+        157,
+        81,
+        80,
+        100,
+        244
       ]
     }
   ],
@@ -1069,6 +1189,30 @@
           {
             "name": "pause_flag",
             "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PublicSpotSwapEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "payer",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "mint_in",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint_out",
+            "type": "pubkey"
           }
         ]
       }

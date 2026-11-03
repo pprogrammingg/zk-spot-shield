@@ -1,9 +1,15 @@
-/** Parse one HELP line: 1 Buy Token B · 2 Deposit Token A · 3 Balance · EXIT. */
+/** Parse one HELP line: 1 Buy · 2 Deposit · 3 Balance · 4 Non-Shielded · EXIT. */
 
 import { spawn } from "node:child_process";
 import { parseTokenAmount } from "./tokenAmount.js";
 
-export type AgentCommand = "buy" | "deposit" | "balance" | "exit" | "help";
+export type AgentCommand =
+  | "buy"
+  | "deposit"
+  | "balance"
+  | "public"
+  | "exit"
+  | "help";
 
 export const DEFAULT_UI_URL = "http://127.0.0.1:5173";
 
@@ -87,6 +93,15 @@ export function parseAgentCommand(line: string): AgentCommand | null {
   ) {
     return "balance";
   }
+  if (
+    t === "4" ||
+    t === "public" ||
+    t === "nonshielded" ||
+    t === "non-shielded" ||
+    t === "swap"
+  ) {
+    return "public";
+  }
   if (t === "exit" || t === "quit" || t === "q") return "exit";
   return null;
 }
@@ -108,7 +123,8 @@ export function parseYesNo(line: string): boolean {
   return t === "y" || t === "yes";
 }
 
-export const AGENT_HELP = `1  Buy Token B
+export const AGENT_HELP = `1  Buy Token B (shielded)
 2  Deposit Token A
 3  Balance
+4  Non-Shielded Swap A→B
 EXIT`;

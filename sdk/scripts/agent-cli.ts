@@ -31,6 +31,7 @@ import {
   type AgentCtx,
 } from "../src/agentLocalnet.js";
 import { startAgentHttp, withAgentBuyGate } from "../src/agentHttp.js";
+import { nonShieldedPay } from "../src/nonShieldedPay.js";
 import {
   defaultStatePath,
   formatNotesTable,
@@ -170,6 +171,37 @@ async function cmdBuy(rl: readline.Interface, ctx: AgentCtx): Promise<void> {
   }
 }
 
+async function cmdPublic(rl: readline.Interface, ctx: AgentCtx): Promise<void> {
+  let amount: bigint;
+  try {
+    const got = await readAmount(
+      rl,
+      "amount of mint A to swap publicly for Token B (1:1)",
+      amtDec(),
+    );
+    if (got === "back") return;
+    amount = got;
+  } catch (e) {
+    console.error(e instanceof Error ? e.message : e);
+    return;
+  }
+  const ok = await confirm(
+    rl,
+    `non-shielded swap ${fmtAmt(amount)} A→B (wallet on the receipt)?`,
+  );
+  if (ok !== "yes") {
+    if (ok === "no") console.log("cancelled");
+    return;
+  }
+  const result = await withAgentBuyGate(() =>
+    nonShieldedPay(ctx, amount, (line) => console.log(line)),
+  );
+  console.log(`swap ${result.swapSig}`);
+  console.log(
+    `402 PAID  unlock=wallet  payer ${result.pay.payer}  paid=${result.pay.paid}`,
+  );
+}
+
 async function main(): Promise<void> {
   if (process.argv.includes("--help") || process.argv.includes("-h")) {
     console.log(AGENT_HELP);
@@ -206,11 +238,22 @@ async function main(): Promise<void> {
   );
 
   const http = await startAgentHttp({
-    decimals: 0,
+    // Must match CLI `amtDec()` / GET /status `decimals` — UI sends human amounts.
+    decimals: amtDec(),
     buy: (amount) => buyMintB(ctx, amount, (line) => console.log(`[ui] ${line}`)),
     deposit: (amount) => {
       console.log(`[ui] deposit ${fmtAmt(amount)} (no Groth16)`);
       return depositMintA(ctx, amount);
+    },
+    publicSwap: async (amount) => {
+      const result = await nonShieldedPay(ctx, amount, (line) =>
+        console.log(`[ui] ${line}`),
+      );
+      return {
+        swapSig: result.swapSig,
+        paid: result.pay.paid,
+        payer: result.pay.payer,
+      };
     },
     status: () => {
       const state = loadAgentState(ctx.statePath);
@@ -229,7 +272,7 @@ async function main(): Promise<void> {
       };
     },
   });
-  console.log(`agent http ${http.origin}  (UI deposit A / buy B)`);
+  console.log(`agent http ${http.origin}  (UI deposit / buy / Swap Non-Shielded)`);
   console.log(
     `chain sync: nullifiers at boot, before buy, and every ${NULLIFIER_SYNC_TTL_MS / 1000}s (not on UI poll)`,
   );
@@ -259,6 +302,7 @@ async function main(): Promise<void> {
         else if (cmd === "balance") await cmdBalance(rl, ctx);
         else if (cmd === "deposit") await cmdDeposit(rl, ctx);
         else if (cmd === "buy") await cmdBuy(rl, ctx);
+        else if (cmd === "public") await cmdPublic(rl, ctx);
       } catch (e) {
         console.error(e instanceof Error ? e.message : e);
       }

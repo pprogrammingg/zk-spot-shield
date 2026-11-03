@@ -44,6 +44,22 @@ export function payUrl(base: string): string {
   return `${base.replace(/\/$/, "")}/402/pay`;
 }
 
+/** Public unlock: Solana transfer/swap signature + payer pubkey (not a nullifier). */
+export function payPublicUrl(base: string): string {
+  return `${base.replace(/\/$/, "")}/402/pay-public`;
+}
+
+export type PayPublicAck = {
+  paid: boolean;
+  signature: string;
+  payer: string;
+  amount: number;
+};
+
+export function resourcePublicUrl(base: string, signature: string): string {
+  return `${quoteUrl(base)}?signature=${encodeURIComponent(signature)}`;
+}
+
 export function resourceUrl(base: string, nullifierHex: string): string {
   const nf = nullifierHex.startsWith("0x") ? nullifierHex : `0x${nullifierHex}`;
   return `${quoteUrl(base)}?nullifier=${encodeURIComponent(nf)}`;

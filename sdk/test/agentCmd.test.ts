@@ -12,10 +12,12 @@ import {
 } from "../src/agentCmd.js";
 
 describe("agent HELP parser", () => {
-  it("maps 1/2/3/EXIT", () => {
+  it("maps 1/2/3/4/EXIT", () => {
     expect(parseAgentCommand("1")).toBe("buy");
     expect(parseAgentCommand("2")).toBe("deposit");
     expect(parseAgentCommand("3")).toBe("balance");
+    expect(parseAgentCommand("4")).toBe("public");
+    expect(parseAgentCommand("non-shielded")).toBe("public");
     expect(parseAgentCommand("blance")).toBe("balance");
     expect(parseAgentCommand("balances")).toBe("balance");
     expect(parseAgentCommand("baalancce")).toBe("balance");
@@ -48,7 +50,13 @@ describe("agent HELP parser", () => {
 
   it("HELP is options and titles only", () => {
     expect(AGENT_HELP).toBe(
-      ["1  Buy Token B", "2  Deposit Token A", "3  Balance", "EXIT"].join("\n"),
+      [
+        "1  Buy Token B (shielded)",
+        "2  Deposit Token A",
+        "3  Balance",
+        "4  Non-Shielded Swap A→B",
+        "EXIT",
+      ].join("\n"),
     );
     expect(AGENT_HELP).not.toMatch(/\$PROVE|merchant|Groth16|wallet/i);
     expect(uiUrl()).toBe(DEFAULT_UI_URL);
