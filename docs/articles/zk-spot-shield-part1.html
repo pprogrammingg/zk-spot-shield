@@ -6,6 +6,29 @@
   <!-- YouTube embeds need a Referer (Error 153 if missing / same-origin). -->
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <title>Private Agentic Payments on Solana — Part 1</title>
+  <meta name="description" content="Part 1: how an AI agent hits HTTP 402, spends a private note with a zero-knowledge proof, settles on Solana, and gets change — without dumping the note roster on-chain." />
+  <meta name="author" content="pprogrammingg" />
+  <link rel="canonical" href="https://pprogrammingg.github.io/zk-spot-shield/articles/zk-spot-shield-part1.html" />
+
+  <!-- Open Graph / LinkedIn share card -->
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="ZK Spot Shield" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:title" content="Private Agentic Payments on Solana (x402, MPP, and friends) — Part 1" />
+  <meta property="og:description" content="Part 1: how an AI agent hits HTTP 402, spends a private note with a zero-knowledge proof, settles on Solana, and gets change — without dumping the note roster on-chain." />
+  <meta property="og:url" content="https://pprogrammingg.github.io/zk-spot-shield/articles/zk-spot-shield-part1.html" />
+  <meta property="og:image" content="https://pprogrammingg.github.io/zk-spot-shield/articles/assets/priv_note_spend_thumbnail.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1672" />
+  <meta property="og:image:height" content="941" />
+  <meta property="og:image:alt" content="Spend a private note and receive change — zk-spot-shield Part 1" />
+  <meta property="article:author" content="pprogrammingg" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Private Agentic Payments on Solana — Part 1" />
+  <meta name="twitter:description" content="HTTP 402 → private note → ZK proof → Solana settle → change. Part 1 of zk-spot-shield." />
+  <meta name="twitter:image" content="https://pprogrammingg.github.io/zk-spot-shield/articles/assets/priv_note_spend_thumbnail.png" />
+  <meta name="twitter:image:alt" content="Spend a private note and receive change — zk-spot-shield Part 1" />
   <style>
     :root {
       --bg: #f7f6f2;
@@ -361,7 +384,7 @@ flowchart TD
       >
         <button type="button" aria-label="Play spend private note video">
           <img
-            src="assets/prive_note_spend_thumbnail.png"
+            src="assets/priv_note_spend_thumbnail.png"
             alt="Spend private note and get change video thumbnail"
             width="1672"
             height="941"
@@ -454,7 +477,7 @@ merkle_path   # 20 siblings + left/right flags</pre>
           <li><strong>B. Ask a trusted server</strong> — “is this note real?” — cheap for the chain, but you have to trust that server (and it becomes a privacy hotspot).</li>
           <li><strong>C. Commit to one short fingerprint of the whole set</strong> — then prove membership against that fingerprint. Smaller on-chain, no full dump.</li>
         </ul>
-        <p>We chose <strong>C</strong>: a technique called <strong>Merkle inclusion</strong>. Very roughly: notes are hashed into a tree; the tip of that tree is one short <strong>root</strong>. To spend, you prove your note sits under a registered root with a short path of sibling hashes — not by dumping every note on-chain. Match → real membership; no match → fail closed. Storage, next free slot, races, and indexers are in <a href="zk-spot-shield-part3.html#merkle-inclusion">Part 3</a>.</p>
+        <p>We chose <strong>C</strong>: a technique called <strong>Merkle inclusion</strong>. Very roughly: notes are hashed into a tree; the tip of that tree is one short <strong>root</strong>. To spend, you prove your note sits under a registered root with a short path of sibling hashes — not by dumping every note on-chain. If it matches the root, it is real membership: this note is a valid entity in the app. Otherwise, it is a fake note (to effectively fetch Merkle state, find the next free slot, and prevent races, we will have a deeper dive in the upcoming Part 3 article).</p>
       </li>
       <li><strong>Prevent double-spend</strong> — here a technique called a <strong>nullifier</strong> is used. Roughly: each spend must leave a unique “already used” stamp on-chain. The guest builds that stamp with Poseidon:
         <pre>nullifier = Poseidon(secret, leaf, asset_id_mint)</pre>
@@ -478,7 +501,7 @@ change_leaf</pre>
       <li>Vault pays Token B to recipient ATA</li>
       <li>If change &gt; 0, record change leaf</li>
     </ol>
-    <p>Someone pays <strong>SOL</strong> fees (not gasless). Fail closed on errors.</p>
+    <p><strong>Note:</strong> settle still needs a Solana fee payer for the transaction. The agent can self-submit (its wallet pays SOL), or hand the signed settle to a <strong>relayer</strong> that sponsors the fee. The relayer is optional fee sponsorship — not the note owner, and not what unlocks the 402 (that comes next).</p>
 
     <h3>4. Change note</h3>
     <p>If the note you spent was bigger than the quote, the leftover is not thrown away. The circuit binds a new remainder — journal fields <code>change_amount</code> and <code>change_leaf</code> — and that becomes another <strong>private note</strong> (same secret family, new leaf for the leftover balance). The UI shows it as an extra card under Note Balances. If you spent the whole note (<code>change_amount = 0</code>), there is no change card.</p>
@@ -493,7 +516,7 @@ change_leaf</pre>
     <h2 id="later">What this part leaves for later</h2>
     <ul>
       <li><strong>Part 2:</strong> Technical Deep Dive — Solana/Anchor architecture; a brief note on libraries used for ZK</li>
-      <li><strong>Part 3:</strong> <a href="zk-spot-shield-part3.html">Further Improvements and Resiliency</a> — more privacy in sending and receiving, note backups, faster Merkle tree fetch with an indexer</li>
+      <li><strong>Part 3 (upcoming):</strong> Further Improvements and Resiliency — more privacy in sending and receiving, note backups, faster Merkle tree fetch with an indexer</li>
     </ul>
 
   </article>
