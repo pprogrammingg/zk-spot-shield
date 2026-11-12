@@ -10,8 +10,10 @@ use tower_http::cors::{Any, CorsLayer};
 use uuid::Uuid;
 
 use crate::pay402::{
-    delivered_banner, describe_pay_attempt, hex_decode_32, hex_encode, pay_banner, quote_banner,
-    quote_for, receipt_lookup_banner, PayLedger, PayRequest, PayResponse, QuoteSlot, PAID_BODY,
+    accept_public_pay, delivered_banner, delivered_public_banner, describe_pay_attempt,
+    hex_decode_32, hex_encode, pay_banner, pay_public_banner, quote_banner, quote_for,
+    receipt_lookup_banner, PayLedger, PayPublicRequest, PayPublicResponse, PayRequest, PayResponse,
+    PublicPayLedger, QuoteSlot, PAID_BODY, PAID_PUBLIC_BODY,
 };
 use crate::queue::{JobStatus, ProveQueue};
 
@@ -19,6 +21,7 @@ use crate::queue::{JobStatus, ProveQueue};
 pub struct AppState {
     pub queue: ProveQueue,
     pub pay: PayLedger,
+    pub pay_public: PublicPayLedger,
     pub quote: QuoteSlot,
 }
 
@@ -56,6 +59,7 @@ pub fn app_router(state: AppState) -> Router {
         .route("/jobs/{id}", get(get_job))
         .route("/402/resource", get(paid_resource))
         .route("/402/pay", post(pay_402))
+        .route("/402/pay-public", post(pay_402_public))
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)
@@ -110,6 +114,7 @@ async fn get_job(
 #[derive(Deserialize)]
 struct ResourceQuery {
     nullifier: Option<String>,
+    signature: Option<String>,
     amount: Option<u64>,
     mint: Option<String>,
 }
@@ -120,12 +125,34 @@ struct PaidResource {
     nullifier_hex: String,
 }
 
-/// GET /402/resource — 402 quote unless `?nullifier=` is a paid receipt.
+#[derive(Serialize)]
+struct PaidPublicResource {
+    data: &'static str,
+    signature: String,
+    unlock: &'static str,
+}
+
+/// GET /402/resource — 402 quote unless `?nullifier=` or `?signature=` is paid.
 /// Optional `?amount=` and `?mint=0x…` set the outstanding quote (vault mint A on Devnet).
 async fn paid_resource(
     State(state): State<AppState>,
     Query(q): Query<ResourceQuery>,
 ) -> axum::response::Response {
+    if let Some(raw) = q.signature.as_deref() {
+        let sig = raw.trim();
+        if !sig.is_empty() && state.pay_public.is_paid(sig).await {
+            tracing::info!("{}", delivered_public_banner(sig));
+            return Json(PaidPublicResource {
+                data: PAID_PUBLIC_BODY,
+                signature: sig.to_string(),
+                unlock: "wallet",
+            })
+            .into_response();
+        }
+        if !sig.is_empty() {
+            tracing::info!("402 public receipt lookup — not paid yet ({sig})");
+        }
+    }
     if let Some(raw) = q.nullifier.as_deref() {
         if let Some(nf) = hex_decode_32(raw) {
             if state.pay.is_paid(&nf).await {
@@ -190,6 +217,27 @@ async fn pay_402(
         paid: true,
         nullifier_hex: hex_encode(&public.nullifier),
         amount: public.requested_swap_amount,
+    }))
+}
+
+async fn pay_402_public(
+    State(state): State<AppState>,
+    Json(body): Json<PayPublicRequest>,
+) -> Result<Json<PayPublicResponse>, (StatusCode, String)> {
+    let (amount, _mint) = state.quote.get().await;
+    if let Err(e) = accept_public_pay(&body, amount) {
+        tracing::warn!("402 pay-public rejected: {}", e.status_msg().1);
+        return Err(e.status_msg());
+    }
+    let signature = body.signature.trim().to_string();
+    let payer = body.payer.trim().to_string();
+    state.pay_public.mark_paid(signature.clone()).await;
+    tracing::info!("{}", pay_public_banner(body.amount, &signature, &payer));
+    Ok(Json(PayPublicResponse {
+        paid: true,
+        signature,
+        payer,
+        amount: body.amount,
     }))
 }
 
@@ -267,6 +315,7 @@ mod tests {
         app_router(AppState {
             queue,
             pay: crate::pay402::PayLedger::default(),
+            pay_public: crate::pay402::PublicPayLedger::default(),
             quote: crate::pay402::QuoteSlot::default(),
         })
     }
@@ -454,5 +503,56 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(pay.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn http_402_pay_public_then_receipt() {
+        let app = test_app().await;
+        let unpaid = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/402/resource?amount=66")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(unpaid.status(), StatusCode::PAYMENT_REQUIRED);
+
+        let pay = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/402/pay-public")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        r#"{"signature":"PubSig111","payer":"PubPayer111","amount":66}"#,
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(pay.status(), StatusCode::OK);
+        let body: serde_json::Value =
+            serde_json::from_slice(&pay.into_body().collect().await.unwrap().to_bytes()).unwrap();
+        assert_eq!(body["paid"], true);
+        assert_eq!(body["signature"], "PubSig111");
+
+        let ok = app
+            .oneshot(
+                Request::builder()
+                    .uri("/402/resource?signature=PubSig111")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(ok.status(), StatusCode::OK);
+        let data: serde_json::Value =
+            serde_json::from_slice(&ok.into_body().collect().await.unwrap().to_bytes()).unwrap();
+        assert_eq!(data["data"], "public-402-ok");
+        assert_eq!(data["unlock"], "wallet");
     }
 }

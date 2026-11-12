@@ -72,11 +72,12 @@ mod tests {
             ("set_vkey_hash", "authority"),
             ("register_clean_funds_root", "authority"),
             ("deposit_shielded", "depositor"),
+            ("public_spot_swap", "payer"),
             ("settle_shielded_spot", "payer"),
             ("pause", "authority"),
             ("unpause", "authority"),
         ];
-        assert_eq!(ixs.len(), 9);
+        assert_eq!(ixs.len(), 10);
         assert!(ixs.iter().all(|(n, s)| !n.is_empty() && !s.is_empty()));
         assert_eq!(
             ixs.iter()

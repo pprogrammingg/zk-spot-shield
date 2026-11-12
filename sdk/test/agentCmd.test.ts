@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  ADMIN_HELP,
   AGENT_HELP,
   BACK_HINT,
   DEFAULT_UI_URL,
   balanceUiUrl,
   isBackToMenu,
+  parseAdminCommand,
   parseAgentCommand,
   parseAmount,
   parseYesNo,
@@ -12,11 +14,13 @@ import {
 } from "../src/agentCmd.js";
 
 describe("agent HELP parser", () => {
-  it("maps 1/2/3/4/EXIT", () => {
+  it("maps 1/2/3/4/5/EXIT", () => {
     expect(parseAgentCommand("1")).toBe("buy");
     expect(parseAgentCommand("2")).toBe("deposit");
     expect(parseAgentCommand("3")).toBe("balance");
     expect(parseAgentCommand("4")).toBe("public");
+    expect(parseAgentCommand("5")).toBe("admin");
+    expect(parseAgentCommand("admin")).toBe("admin");
     expect(parseAgentCommand("non-shielded")).toBe("public");
     expect(parseAgentCommand("blance")).toBe("balance");
     expect(parseAgentCommand("balances")).toBe("balance");
@@ -25,6 +29,17 @@ describe("agent HELP parser", () => {
     expect(parseAgentCommand("help")).toBe("help");
     expect(parseAgentCommand("nope")).toBeNull();
     expect(parseAgentCommand("b")).toBeNull();
+  });
+
+  it("maps admin submenu 1/2", () => {
+    expect(parseAdminCommand("1")).toBe("deposit-b");
+    expect(parseAdminCommand("deposit-b")).toBe("deposit-b");
+    expect(parseAdminCommand("2")).toBe("mint-a");
+    expect(parseAdminCommand("mint")).toBe("mint-a");
+    expect(parseAdminCommand("help")).toBe("help");
+    expect(parseAdminCommand("nope")).toBeNull();
+    expect(ADMIN_HELP).toMatch(/Deposit B/);
+    expect(ADMIN_HELP).toMatch(/Mint A/);
   });
 
   it("B / back leaves a submenu", () => {
@@ -55,6 +70,7 @@ describe("agent HELP parser", () => {
         "2  Deposit Token A",
         "3  Balance",
         "4  Non-Shielded Swap A→B",
+        "5  Admin",
         "EXIT",
       ].join("\n"),
     );

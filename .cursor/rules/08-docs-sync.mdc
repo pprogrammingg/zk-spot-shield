@@ -24,6 +24,7 @@ Day numbers belong in `roadmap.md`, not in code comments, `docs/`, or `notes/`.
 | SDK / UI submit path | `docs/architecture.md` phase A, `docs/index.md` status, `ui/README.md` |
 | Compute units / ix byte size | `notes/budgets.md`, root README measured-cost table |
 | Roadmap rank / “next Day” | `roadmap.md` calendar **and** `docs/index.md` status row (no Day numbers in `docs/`) |
+| `docs/articles/*.md` (Write pack) | matching `docs/articles/*.html` — keep copy in sync; MD uses `IMAGE:` / `VIDEO:` path placeholders |
 
 ## How to decide
 

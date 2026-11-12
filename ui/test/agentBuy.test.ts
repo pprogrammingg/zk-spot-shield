@@ -6,6 +6,9 @@ import {
   fetchAgentStatus,
   postAgentBuy,
   postAgentDeposit,
+  postAgentDepositB,
+  postAgentMintA,
+  postAgentPublicSwap,
 } from "../src/agentBuy.ts";
 
 describe("UI agent buy", () => {
@@ -20,8 +23,9 @@ describe("UI agent buy", () => {
     expect(pickSpendableNoteIndex(notes, 150n)).toBeNull();
   });
 
-  it("parseUiBuyAmount wants a positive integer", () => {
+  it("parseUiBuyAmount validates human amounts for the cluster decimals", () => {
     expect(parseUiBuyAmount("50")).toBe("50");
+    expect(parseUiBuyAmount("1.5", 6)).toBe("1.5");
     expect(() => parseUiBuyAmount("0")).toThrow();
     expect(() => parseUiBuyAmount("1.5")).toThrow();
     expect(() => parseUiBuyAmount("")).toThrow();
@@ -85,6 +89,50 @@ describe("UI agent buy", () => {
     );
     expect(result.leafIndex).toBe(2);
     expect(result.balance).toBe("111");
+  });
+
+  it("postAgentPublicSwap returns wallet unlock fields", async () => {
+    const result = await postAgentPublicSwap("http://127.0.0.1:8790", "66", async () =>
+      new Response(
+        JSON.stringify({
+          ok: true,
+          swapSig: "PubSig",
+          paid: true,
+          payer: "Payer111",
+        }),
+        { status: 200 },
+      ),
+    );
+    expect(result.swapSig).toBe("PubSig");
+    expect(result.payer).toBe("Payer111");
+    expect(result.paid).toBe(true);
+  });
+
+  it("postAgentDepositB and postAgentMintA map admin fields", async () => {
+    const dep = await postAgentDepositB("http://127.0.0.1:8790", "500", async () =>
+      new Response(
+        JSON.stringify({
+          ok: true,
+          sig: "DepB",
+          amount: "500000000",
+          reserveB: "600000000",
+        }),
+        { status: 200 },
+      ),
+    );
+    expect(dep.reserveB).toBe("600000000");
+    const mint = await postAgentMintA("http://127.0.0.1:8790", "50", async () =>
+      new Response(
+        JSON.stringify({
+          ok: true,
+          sig: "MintA",
+          amount: "50000000",
+          userTokenA: "AtaA",
+        }),
+        { status: 200 },
+      ),
+    );
+    expect(mint.userTokenA).toBe("AtaA");
   });
 
   it("fetchAgentStatus reads notes and ATAs", async () => {

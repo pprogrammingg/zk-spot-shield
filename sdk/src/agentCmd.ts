@@ -1,4 +1,4 @@
-/** Parse one HELP line: 1 Buy · 2 Deposit · 3 Balance · 4 Non-Shielded · EXIT. */
+/** Parse one HELP line: 1 Buy · 2 Deposit · 3 Balance · 4 Non-Shielded · 5 Admin · EXIT. */
 
 import { spawn } from "node:child_process";
 import { parseTokenAmount } from "./tokenAmount.js";
@@ -8,8 +8,11 @@ export type AgentCommand =
   | "deposit"
   | "balance"
   | "public"
+  | "admin"
   | "exit"
   | "help";
+
+export type AdminCommand = "deposit-b" | "mint-a" | "back" | "help";
 
 export const DEFAULT_UI_URL = "http://127.0.0.1:5173";
 
@@ -102,7 +105,16 @@ export function parseAgentCommand(line: string): AgentCommand | null {
   ) {
     return "public";
   }
+  if (t === "5" || t === "admin") return "admin";
   if (t === "exit" || t === "quit" || t === "q") return "exit";
+  return null;
+}
+
+export function parseAdminCommand(line: string): AdminCommand | null {
+  const t = line.trim().toLowerCase();
+  if (t === "" || t === "help" || t === "h" || t === "?") return "help";
+  if (t === "1" || t === "deposit-b" || t === "depositb") return "deposit-b";
+  if (t === "2" || t === "mint-a" || t === "minta" || t === "mint") return "mint-a";
   return null;
 }
 
@@ -127,4 +139,10 @@ export const AGENT_HELP = `1  Buy Token B (shielded)
 2  Deposit Token A
 3  Balance
 4  Non-Shielded Swap A→B
+5  Admin
 EXIT`;
+
+export const ADMIN_HELP = `Admin (mint authority wallet):
+1  Deposit B to vault (mint + deposit)
+2  Mint A to user wallet
+B  back`;

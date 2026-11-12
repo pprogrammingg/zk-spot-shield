@@ -6,7 +6,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import {
+  createAssociatedTokenAccountInstruction,
+  getAssociatedTokenAddressSync,
+  mintTo,
+} from "@solana/spl-token";
 import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import { randomBytes } from "node:crypto";
 import {
@@ -287,6 +291,126 @@ export async function depositMintA(
   const root = await tree.root();
   const rootSig = await registerRoot(program, wallet.publicKey, root);
   return { sig, note, rootSig };
+}
+
+async function ensureUserAta(
+  connection: ReturnType<typeof createLocalhostProvider>["connection"],
+  owner: PublicKey,
+  mint: PublicKey,
+  payer: PublicKey,
+  send: (tx: Transaction) => Promise<string>,
+): Promise<PublicKey> {
+  const ata = getAssociatedTokenAddressSync(mint, owner, false);
+  if (!(await connection.getAccountInfo(ata))) {
+    await send(
+      new Transaction().add(
+        createAssociatedTokenAccountInstruction(payer, ata, owner, mint),
+      ),
+    );
+  }
+  return ata;
+}
+
+/** Admin: mint Token A into the wallet ATA (no vault deposit). Wallet must be mint authority. */
+export async function mintAToUser(
+  ctx: AgentCtx,
+  amount: bigint,
+): Promise<{ sig: string; amount: string; userTokenA: string }> {
+  if (amount <= 0n) throw new Error("amount must be positive");
+  const provider = createLocalhostProvider({
+    setGlobal: false,
+    url: ctx.rpcUrl,
+  });
+  const wallet = loadKeypairWallet();
+  const mintA = new PublicKey(ctx.bundle.mintA);
+  const send = (tx: Transaction) => provider.sendAndConfirm(tx);
+  const userAta = await ensureUserAta(
+    provider.connection,
+    wallet.publicKey,
+    mintA,
+    wallet.publicKey,
+    send,
+  );
+  const payerKp = (
+    wallet as typeof wallet & { payer: import("@solana/web3.js").Keypair }
+  ).payer;
+  const sig = await mintTo(
+    provider.connection,
+    payerKp,
+    mintA,
+    userAta,
+    wallet.publicKey,
+    amount,
+  );
+  await confirmSignature(provider.connection, sig);
+  return {
+    sig,
+    amount: amount.toString(),
+    userTokenA: userAta.toBase58(),
+  };
+}
+
+/**
+ * Admin: mint Token B + `deposit_shielded` into the vault (liquidity for settle).
+ * Does not add a spendable agent note (buy only spends A).
+ */
+export async function depositMintB(
+  ctx: AgentCtx,
+  amount: bigint,
+): Promise<{ sig: string; amount: string; reserveB: string }> {
+  if (amount <= 0n) throw new Error("amount must be positive");
+  const provider = createLocalhostProvider({
+    setGlobal: false,
+    url: ctx.rpcUrl,
+  });
+  const program = createProgram(provider);
+  const wallet = loadKeypairWallet();
+  const mintB = new PublicKey(ctx.bundle.mintB);
+  const send = (tx: Transaction) => provider.sendAndConfirm(tx);
+  const userAta = await ensureUserAta(
+    provider.connection,
+    wallet.publicKey,
+    mintB,
+    wallet.publicKey,
+    send,
+  );
+  const payerKp = (
+    wallet as typeof wallet & { payer: import("@solana/web3.js").Keypair }
+  ).payer;
+  await mintTo(
+    provider.connection,
+    payerKp,
+    mintB,
+    userAta,
+    wallet.publicKey,
+    amount,
+  );
+
+  const secret = randomBytes(32);
+  const userAddress = Uint8Array.from(wallet.publicKey.toBytes());
+  const leaf = await computeLeaf(secret, userAddress, amount);
+  const [vault] = await findVaultPda(program.programId);
+  const [depositLeaf] = await findDepositLeafPda(program.programId, leaf);
+  const ix = await buildDepositIx(
+    program,
+    {
+      depositor: wallet.publicKey,
+      vault,
+      depositLeaf,
+      vaultToken: new PublicKey(ctx.bundle.vaultTokenB),
+      userToken: userAta,
+    },
+    leaf,
+    amount,
+  );
+  const sig = await provider.sendAndConfirm(new Transaction().add(ix));
+  await confirmSignature(provider.connection, sig);
+  const reserves = await getVaultReserves(provider.connection, vault);
+  return {
+    sig,
+    amount: amount.toString(),
+    reserveB: reserves.reserveB.toString(),
+  };
 }
 
 export type BuyResult =

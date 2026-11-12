@@ -80,8 +80,9 @@ function isAgentStatus(v: unknown): v is AgentStatus {
   );
 }
 
-export function parseUiBuyAmount(raw: string): string {
-  parseTokenAmount(raw, 0);
+/** Human amount string for the agent. `decimals` matches the agent cluster (0 localnet, 6 Devnet). */
+export function parseUiBuyAmount(raw: string, decimals = 0): string {
+  parseTokenAmount(raw, decimals);
   return raw.trim();
 }
 
@@ -165,6 +166,81 @@ export async function postAgentDeposit(
     body: JSON.stringify({ amount }),
   });
   const body = (await res.json()) as AgentDepositOk | AgentBuyErr;
+  if (!body || body.ok !== true) {
+    const err = body && "error" in body ? body.error : `agent HTTP ${res.status}`;
+    throw new Error(err);
+  }
+  return body;
+}
+
+export type AgentPublicSwapOk = {
+  ok: true;
+  swapSig: string;
+  paid: boolean;
+  payer: string;
+};
+
+export async function postAgentPublicSwap(
+  origin: string,
+  amount: string,
+  fetchFn: typeof fetch = fetch,
+): Promise<AgentPublicSwapOk> {
+  const res = await fetchFn(`${origin.replace(/\/$/, "")}/swap-public`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ amount }),
+  });
+  const body = (await res.json()) as AgentPublicSwapOk | AgentBuyErr;
+  if (!body || body.ok !== true) {
+    const err = body && "error" in body ? body.error : `agent HTTP ${res.status}`;
+    throw new Error(err);
+  }
+  return body;
+}
+
+export type AgentDepositBOk = {
+  ok: true;
+  sig: string;
+  amount: string;
+  reserveB: string;
+};
+
+export type AgentMintAOk = {
+  ok: true;
+  sig: string;
+  amount: string;
+  userTokenA: string;
+};
+
+export async function postAgentDepositB(
+  origin: string,
+  amount: string,
+  fetchFn: typeof fetch = fetch,
+): Promise<AgentDepositBOk> {
+  const res = await fetchFn(`${origin.replace(/\/$/, "")}/admin/deposit-b`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ amount }),
+  });
+  const body = (await res.json()) as AgentDepositBOk | AgentBuyErr;
+  if (!body || body.ok !== true) {
+    const err = body && "error" in body ? body.error : `agent HTTP ${res.status}`;
+    throw new Error(err);
+  }
+  return body;
+}
+
+export async function postAgentMintA(
+  origin: string,
+  amount: string,
+  fetchFn: typeof fetch = fetch,
+): Promise<AgentMintAOk> {
+  const res = await fetchFn(`${origin.replace(/\/$/, "")}/admin/mint-a`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ amount }),
+  });
+  const body = (await res.json()) as AgentMintAOk | AgentBuyErr;
   if (!body || body.ok !== true) {
     const err = body && "error" in body ? body.error : `agent HTTP ${res.status}`;
     throw new Error(err);

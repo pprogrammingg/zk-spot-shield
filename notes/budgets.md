@@ -71,7 +71,24 @@ cargo test -p zk_spot_shield --test test_settle_scaffold settle_cu_profile --loc
 
 ## Latency (2026-10-20, this laptop)
 
-Pipeline: load fixture proof → relayer sign / HTTP 402 accept → LiteSVM confirm. Network Groth16 was **not** re-run; wall time is still [`proving.md`](./proving.md). This is **not** yet a live Agent → prove → verify → settle run; that comparison vs a public USDC/x402 pay is roadmap milestone **P4**.
+Pipeline: load fixture proof → relayer sign / HTTP 402 accept → LiteSVM confirm. Network Groth16 was **not** re-run; wall time is still [`proving.md`](./proving.md).
+
+### Same-quote compare (P0 — done)
+
+Same amount / vault mint A (`DNNk…`, 6 decimals). Shielded = nullifier receipt. Public = wallet on the receipt (`public_spot_swap` + `POST /402/pay-public`). Devnet agent CLI, 2026-11-02.
+
+| Path | Quote | Wall | On-chain CU | Fee | Chain / 402 sees |
+| --- | --- | --- | --- | --- | --- |
+| **Shielded** | **11** A→B | **48.2 s** (402 **748 ms** + witness **30 ms** + Groth16 **46.4 s** + settle **970 ms**) | **294,688** | **5000** lamports + ~**0.39** `$PROVE` | amount, mint, nullifier `0x00e618d6…`, root; unlock=nullifier |
+| **Public** | **11** A→B | **980 ms** (402 quote **3 ms** + `public_spot_swap` **977 ms**) | **18,078** | **5000** lamports (SOL only; no `$PROVE`) | payer `9sLGg…`, amount 11, mint; unlock=wallet |
+
+**Ratio (same quote):** wall ~**49×** (48.2 s / 0.98 s); CU ~**16×** (294,688 / 18,078). Groth16 dominates shielded wall; on-chain settle times are similar (~1 s).
+
+| Sig | Explorer |
+| --- | --- |
+| Public `27LEe6SBTrkt2WX7RiRXaHwUWBLbnESSdNgLjsTjNbzYrsN3eHEmimaBThwxiLNRAzV7bT4UhEV3A9snSr3sk9qt` (slot `518059464`) | https://explorer.solana.com/tx/27LEe6SBTrkt2WX7RiRXaHwUWBLbnESSdNgLjsTjNbzYrsN3eHEmimaBThwxiLNRAzV7bT4UhEV3A9snSr3sk9qt?cluster=devnet |
+| Shielded settle `N2DjaypMXxtaKciQGPmfjovXHGT4zoqTM3ZSueQ6XLyi8WZvVicszDCkZTU57oSAk1hxEN11gCnW1kecLRPESkY` (slot `518085707`) | https://explorer.solana.com/tx/N2DjaypMXxtaKciQGPmfjovXHGT4zoqTM3ZSueQ6XLyi8WZvVicszDCkZTU57oSAk1hxEN11gCnW1kecLRPESkY?cluster=devnet |
+| Succinct prove `0xc43d412d…` | https://explorer.succinct.xyz/request/0xc43d412d0f9bde874ae4d34067fa1bb952fe9e40e72c71edf473c43061560bdf |
 
 | Stage | Wall |
 | --- | --- |

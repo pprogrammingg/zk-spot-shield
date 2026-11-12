@@ -35,6 +35,24 @@ impl PayLedger {
     }
 }
 
+/// Public unlock ledger — keyed by Solana signature (base58), not a nullifier.
+#[derive(Clone, Default)]
+pub struct PublicPayLedger {
+    inner: Arc<Mutex<HashSet<String>>>,
+}
+
+impl PublicPayLedger {
+    pub async fn is_paid(&self, signature: &str) -> bool {
+        self.inner.lock().await.contains(signature)
+    }
+
+    pub async fn mark_paid(&self, signature: String) {
+        self.inner.lock().await.insert(signature);
+    }
+}
+
+pub const PAID_PUBLIC_BODY: &str = "public-402-ok";
+
 /// Outstanding 402 price. GET updates it; POST must match.
 #[derive(Clone)]
 pub struct QuoteSlot {
@@ -170,11 +188,34 @@ pub fn listen_banner(addr: &str) -> String {
     format!(
         "\n—— 402 MERCHANT —————————————————————————\n  \
          listen    {addr}\n  \
-         GET  /402/resource  → HTTP 402 quote (nullifier, not a wallet)\n  \
-         POST /402/pay       → journal in; match quote; unlock on nullifier\n  \
+         GET  /402/resource  → HTTP 402 quote\n  \
+         POST /402/pay       → unlock=nullifier (settle journal)\n  \
+         POST /402/pay-public → unlock=wallet (swap signature + payer)\n  \
          punch     {PUNCHLINE}\n  \
-         fee payer signs the Solana tx — not the customer\n  \
-         customer  private note, identified only by the nullifier\n\
+         shielded  fee payer signs; customer is the note (nullifier)\n  \
+         public    payer pubkey is on the receipt\n\
+         ————————————————————————————————————————"
+    )
+}
+
+pub fn pay_public_banner(amount: u64, signature: &str, payer: &str) -> String {
+    format!(
+        "\n—— 402 PAID (public) ————————————————————\n  \
+         unlock    wallet\n  \
+         amount    {amount}\n  \
+         payer     {payer}\n  \
+         signature {signature}\n  \
+         contrast  same quote as nullifier path — payer is visible\n  \
+         resource  GET /402/resource?signature={signature}\n\
+         ————————————————————————————————————————"
+    )
+}
+
+pub fn delivered_public_banner(signature: &str) -> String {
+    format!(
+        "\n—— 402 RESOURCE DELIVERED (public) ——————\n  \
+         paid with signature {signature}\n  \
+         body      {PAID_PUBLIC_BODY}\n\
          ————————————————————————————————————————"
     )
 }
@@ -299,12 +340,32 @@ pub struct PayResponse {
     pub amount: u64,
 }
 
+#[derive(Deserialize)]
+pub struct PayPublicRequest {
+    /// Solana tx signature (base58) that paid the quote publicly.
+    pub signature: String,
+    /// Payer pubkey (base58) — visible on the receipt.
+    pub payer: String,
+    /// Must match the outstanding quote amount.
+    pub amount: u64,
+}
+
+#[derive(Serialize)]
+pub struct PayPublicResponse {
+    pub paid: bool,
+    pub signature: String,
+    pub payer: String,
+    pub amount: u64,
+}
+
 #[derive(Debug)]
 pub enum PayError {
     Decode(String),
     Journal,
     Amount,
     Mint,
+    PublicSig,
+    PublicPayer,
 }
 
 impl PayError {
@@ -317,10 +378,35 @@ impl PayError {
             ),
             PayError::Amount | PayError::Mint => (
                 axum::http::StatusCode::PAYMENT_REQUIRED,
-                "journal does not match quote".into(),
+                "payment does not match quote".into(),
+            ),
+            PayError::PublicSig => (
+                axum::http::StatusCode::BAD_REQUEST,
+                "signature required".into(),
+            ),
+            PayError::PublicPayer => (
+                axum::http::StatusCode::BAD_REQUEST,
+                "payer pubkey required".into(),
             ),
         }
     }
+}
+
+/// Demo accept: amount matches quote; signature + payer non-empty (no RPC verify).
+pub fn accept_public_pay(
+    req: &PayPublicRequest,
+    quote_amount: u64,
+) -> Result<(), PayError> {
+    if req.signature.trim().is_empty() {
+        return Err(PayError::PublicSig);
+    }
+    if req.payer.trim().is_empty() {
+        return Err(PayError::PublicPayer);
+    }
+    if req.amount != quote_amount {
+        return Err(PayError::Amount);
+    }
+    Ok(())
 }
 
 pub fn hex_encode(bytes: &[u8]) -> String {
@@ -443,6 +529,29 @@ mod tests {
         assert_eq!(public.asset_id_mint, mint);
         assert!(accept_journal_quote(&j, 100, mint).is_err());
         assert!(accept_journal_quote(&j, 100_000, QUOTE_MINT).is_err());
+    }
+
+    #[test]
+    fn public_pay_accepts_matching_amount() {
+        let ok = PayPublicRequest {
+            signature: "Sig111".into(),
+            payer: "Payer111".into(),
+            amount: QUOTE_AMOUNT,
+        };
+        assert!(accept_public_pay(&ok, QUOTE_AMOUNT).is_ok());
+        assert!(matches!(
+            accept_public_pay(&ok, 99),
+            Err(PayError::Amount)
+        ));
+        let empty = PayPublicRequest {
+            signature: "".into(),
+            payer: "Payer111".into(),
+            amount: QUOTE_AMOUNT,
+        };
+        assert!(matches!(
+            accept_public_pay(&empty, QUOTE_AMOUNT),
+            Err(PayError::PublicSig)
+        ));
     }
 
     #[test]

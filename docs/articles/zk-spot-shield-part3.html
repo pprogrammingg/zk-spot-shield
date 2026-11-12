@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>Private Agentic Payments on Solana — Part 3</title>
+  <style>
+    :root {
+      --bg: #f7f6f2;
+      --ink: #1a1a1a;
+      --muted: #5c5c5c;
+      --card: #ffffff;
+      --line: #e2e0d8;
+      --accent: #174b43;
+      --code-bg: #1e2430;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.55;
+      font-size: 1.05rem;
+    }
+    .wrap {
+      max-width: 44rem;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+    h1 {
+      font-size: clamp(1.75rem, 4vw, 2.35rem);
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.5rem;
+    }
+    h2 {
+      font-size: 1.45rem;
+      margin: 2.25rem 0 0.75rem;
+      letter-spacing: -0.015em;
+    }
+    h3 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; }
+    .lede { color: var(--muted); font-style: italic; margin-bottom: 1rem; }
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 1.5rem; }
+    a { color: var(--accent); }
+    hr { border: none; border-top: 1px solid var(--line); margin: 1.75rem 0; }
+    ul, ol { padding-left: 1.35rem; }
+    li { margin: 0.35rem 0; }
+    code, pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.88rem;
+    }
+    pre {
+      background: var(--code-bg);
+      color: #e8eef7;
+      padding: 1rem 1.1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    .toc {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin: 1.25rem 0 1.75rem;
+    }
+    .toc ol { margin: 0.4rem 0 0; }
+  </style>
+</head>
+<body>
+  <article class="wrap">
+    <h1>Further Improvements and Resiliency</h1>
+    <p class="lede">Part 3 of 3. Repo: <a href="https://github.com/pprogrammingg/zk-spot-shield">zk-spot-shield</a>. Continues from <a href="zk-spot-shield-part1.html">Part 1</a>.</p>
+    <p class="meta">Merkle tree storage, next leaf slot, indexer vs self-rebuild — plus more privacy and note backups (stubs for later).</p>
+
+    <nav class="toc" aria-label="Table of contents">
+      <strong>Table of contents</strong>
+      <ol>
+        <li><a href="#merkle-inclusion">Merkle Inclusion</a></li>
+        <li><a href="#shared-tree">Shared tree, next slot, and races</a></li>
+        <li><a href="#fetching">Seeing Merkle state without crawling everything</a></li>
+        <li><a href="#later">Still to expand</a></li>
+      </ol>
+    </nav>
+
+    <hr />
+
+    <h2 id="merkle-inclusion">Merkle Inclusion</h2>
+    <p>In <a href="zk-spot-shield-part1.html">Part 1</a> we chose option <strong>C</strong>: commit to one short fingerprint of the whole note set, then prove membership against that fingerprint. That technique is <strong>Merkle inclusion</strong>.</p>
+    <p>Why it fits: one registered <strong>root</strong> stands in for the whole tree; a spend only needs a short proof path, not the club list.</p>
+    <p>Roughly how: every note is a leaf hash. Pair leaves, hash each pair, keep going until one tip remains — the root. To spend, the guest recomputes your <code>leaf</code>, walks a short branch of sibling hashes, and checks the tip equals <code>expected_root</code>. Match → note is in the registered set. No match → fake or wrong tree; the proof fails closed.</p>
+
+    <h2 id="shared-tree">Shared tree, next slot, and races</h2>
+    <p>One more practical wrinkle: your <strong>private note</strong> (secret, balance) lives on the <strong>client</strong>. The <strong>membership tree</strong> is shared. User A’s deposits filled some leaf slots; user B’s filled others. When user C deposits, they need the next free slot — and when anyone spends, they need the current sibling path under a root the chain already approved. The client cannot invent that path from its own note alone.</p>
+    <p>So what is stored where? On Solana we keep the approved tip(s) as <code>CleanFundsRoot</code> accounts (and per-deposit leaf PDAs). The full append-order leaf list — the thing you rebuild the tree from — is not “the whole club roster dumped into one giant on-chain table.” In this demo the agent keeps that list locally. In a multi-user world you usually rebuild it from deposit history (on-chain leaf PDAs / txs, plus an optional append-only log).</p>
+    <p>What if B and C both fetch “next free slot = 5” and both try to write there? That collision is about the <strong>ordered tree index</strong>, not about overwriting each other’s on-chain leaf. Deposit leaf PDAs are keyed by the leaf hash itself (<code>["deposit_leaf", leaf]</code>), so two different notes do not fight for one PDA. But a Merkle tree needs one agreed append order: only one leaf can sit at index 5. If two writers race, you need a single sequencer for “next index” (one indexer / coordinator, or an on-chain counter that advances per deposit). The loser re-fetches and appends at the new tip; you never register a root built from two conflicting histories. This demo sidesteps the race with one local agent tree.</p>
+
+    <h2 id="fetching">Seeing Merkle state without crawling everything</h2>
+    <p>How do clients see the current Merkle state without crawling everything every time? Common patterns: (1) ask an <strong>indexer</strong> that watches deposits and answers “path for leaf <em>i</em>” / “next free index” quickly; (2) rebuild locally from the deposit log when you distrust the cache; (3) keep a short cache of path + registered root while proving. Indexers are convenience and speed — the guest still checks the path against the root, and settle still requires that root to be registered.</p>
+
+    <hr />
+
+    <h2 id="later">Still to expand</h2>
+    <ul>
+      <li>More privacy in sending and receiving</li>
+      <li>Note backups</li>
+      <li>Faster Merkle tree fetch with a production indexer</li>
+    </ul>
+
+  </article>
+</body>
+</html>

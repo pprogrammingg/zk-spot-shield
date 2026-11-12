@@ -73,6 +73,7 @@ Each instruction declares **only the accounts that call needs**. Solana only pas
 | Admin | `register_clean_funds_root` | Protocol admin allow-lists a Merkle root PDA |
 | Admin | `pause` / `unpause` | Protocol admin toggles `pause_flag` |
 | Deposit | `deposit_shielded` | CPI: user ATA → vault ATA; `init` leaf PDA; bump reserves |
+| Public | `public_spot_swap` | Payer transfers mint A in; vault pays mint B 1:1; no proof / nullifier (wallet on the receipt) |
 | Spend | `settle_shielded_spot` | Verify proof + journal; check root; vault-only payout of the other mint; create nullifier |
 
 SDK and UI call these same instructions. Default settle uses the committed happy-path fixtures.

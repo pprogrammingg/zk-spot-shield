@@ -21,7 +21,7 @@ User fee (basis points / flat)
 
 The journal still binds **amount**, **mint**, **nullifier**, and **merkle_root**. Changing the fee payer does not change those fields.
 
-HTTP 402 is the merchant demo. Punchline: machines settle a 402 invoice without a wallet on the receipt — the fee payer signs the Solana tx; the customer is the private note (nullifier). `GET /402/resource` prints **402 PAYMENT REQUIRED**. `POST /402/pay` prints **402 JOURNAL RECEIVED** (quote vs journal amount/mint/nullifier MATCH or MISS) then **402 PAID**. Quote JSON includes `http_status`, `unlock`, and `contrast` vs x402 / Stripe MPP. Header `payment-required: zk-spot-shield; unlock=nullifier`.
+HTTP 402 is the merchant demo. Punchline: machines settle a 402 invoice without a wallet on the receipt — the fee payer signs the Solana tx; the customer is the private note (nullifier). `GET /402/resource` prints **402 PAYMENT REQUIRED**. `POST /402/pay` unlocks on a **nullifier** (journal MATCH/MISS). `POST /402/pay-public` unlocks on a **wallet** (swap signature + payer) for the same quote. Quote JSON includes `http_status`, `unlock`, and `contrast` vs x402 / Stripe MPP.
 
 ## Fee stub
 

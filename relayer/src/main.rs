@@ -44,6 +44,7 @@ async fn main() {
     let app = app_router(AppState {
         queue,
         pay: zk_spot_shield_relayer::PayLedger::default(),
+        pay_public: zk_spot_shield_relayer::pay402::PublicPayLedger::default(),
         quote: QuoteSlot::from_env(),
     });
     let bind = std::env::var("RELAYER_BIND").unwrap_or_else(|_| "127.0.0.1:8787".into());

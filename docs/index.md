@@ -33,13 +33,13 @@ The chain learns the trade amount, the token, and the one-time tag. It never lea
 | Program: config, vault, roots, nullifiers, deposit | Done |
 | Vault-only 1:1 settle (proof → vault pays the other mint) | Done |
 | Relayer fee payer + HTTP 402 stub | Done. Default quote is fixture 100 / toy mint. `GET /402/resource?amount=&mint=` sets the price (vault mint A on Devnet). Relayer terminal prints quote vs journal (amount/mint MATCH or MISS) and the nullifier receipt — no wallet |
-| TypeScript SDK + swap UI | Localnet + Devnet toggle (`?cluster=`). Agent `GET /status` fills ATAs + notes. Buy locks the chosen card orange, then greys spent notes. Amounts are on-chain whole units. Deposit / buy POST to the agent loopback |
+| TypeScript SDK + swap UI | Localnet + Devnet toggle (`?cluster=`). Agent fills ATAs + notes. Human amounts (Devnet 6 decimals). Day 67 Devnet click-through: `notes/devnet.md` |
 | Hidden recipient | Payout ATA may differ from the depositor; deposit tx still on the ledger |
 | Change notes | 144-byte pack (spend 100 / keep 900). Second spend needs an admin root |
 | Encrypted note backup | Done (wipe → restore → localnet settle) |
 | Hide / unlink depositor | Done. Leaf PDA has no depositor pubkey. Settle can pay a different wallet. Deposit tx still on the ledger |
-| Devnet | Live (`74UW…`). SDK settle `3V7YF2UL…`. Eleven agent settles in `notes/devnet.md` |
+| Devnet | Live (`74UW…`). UI checklist + E2E Vitest (faucet/mint helpers, done-markers) in `notes/devnet.md` |
 | Extra RPC / IPFS | Parked |
-| Agent 402 → prove → verify → settle | Localnet + Devnet (`cd sdk && npm run agent`). Notes exhausted. Next is a public USDC / x402 pay of the same quote |
+| Agent 402 → prove → verify → settle | Localnet + Devnet (`cd sdk && npm run agent`). Non-shielded path live. Same-quote 11 A→B in `notes/budgets.md`: public ~1 s / 18k CU vs shielded ~48 s / 295k CU |
 
 Start with [Architecture](architecture.md) for the flow, [Solana Program](solana-program.md) for accounts and instructions, or [Tests](tests.md) for fixtures.

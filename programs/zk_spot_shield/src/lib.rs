@@ -60,6 +60,11 @@ pub mod zk_spot_shield {
         instructions::deposit_shielded::handle_deposit_shielded(ctx, leaf, amount)
     }
 
+    /// Public 1:1 A→B: payer transfers mint A in; vault pays mint B. No proof / nullifier.
+    pub fn public_spot_swap(ctx: Context<PublicSpotSwap>, amount: u64) -> Result<()> {
+        instructions::public_spot_swap::handle_public_spot_swap(ctx, amount)
+    }
+
     /// Settle: verify + root + vault reserves + SPL + nullifier (respects pause).
     pub fn settle_shielded_spot(
         ctx: Context<SettleShieldedSpot>,

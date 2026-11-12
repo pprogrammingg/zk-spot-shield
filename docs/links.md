@@ -24,3 +24,4 @@
 - [Docs site](https://pprogrammingg.github.io/zk-spot-shield/)
 - [Source on GitHub](https://github.com/pprogrammingg/zk-spot-shield)
 - [Threat model](security.md)
+- [Article Part 1 (HTML)](articles/zk-spot-shield-part1.html)

@@ -6,9 +6,7 @@ Each engineering Day is 1.5 hours (3 × 25 min). Mark `[x]` only when that item 
 
 ## Now
 
-**P0** — Same quote paid publicly (Devnet USDC / x402). Both rows in [`notes/budgets.md`](notes/budgets.md).
-
-Agent Devnet loop is recorded (eleven `SettleShieldedSpot` sigs in [`notes/devnet.md`](notes/devnet.md)). All notes spent. Do not Groth16 a note whose nullifier PDA already exists.
+**Write pack** — each of Write-1/2/3 is a Medium/LinkedIn piece: **article + short click-through video**. Days **67–68** Devnet UI checklist + automated E2E are done (Day 67 script feeds the settle/public vids).
 
 ---
 
@@ -18,9 +16,9 @@ Do in this order. Do not pull a parked item mid-session.
 
 | # | Day | What |
 | --- | --- | --- |
-| 1 | **P0** | Public USDC / x402 pay of the same quote (open) |
-| 2 | **67–68** | Devnet UI checklist + automated on-chain tests |
-| 3 | **Write-1** | Circuit article (engineering pause) |
+| 1 | **Write-1** | Circuit article + prove-path video |
+| 2 | **Write-2** | Settle article + UI/agent settle video |
+| 3 | **Write-3** | Public artifact + public-vs-shielded (or README) video |
 
 ---
 
@@ -46,10 +44,11 @@ The **agent** holds notes and loops 402 → Groth16 → settle → `POST /402/pa
 | **P1** 402 unlocks on a settle journal (fixture) | Done (Day 50) |
 | **P2** swap UI | Done (Days 66, 81) |
 | **P4** Devnet agent loop | Done (Days 82–83). Eleven settle sigs; no note covers a further buy |
-| **P0** public USDC compare | Now |
+| **Day 84** Non-shielded A→B | Done — Devnet `27LEe6SB…` (11 A→B, unlock=wallet) |
+| **P0** public vs shielded compare | Done — quote 11: ~49× wall, ~16× CU (public faster/cheaper) |
 | **P3** Stripe MPP | Parked |
 
-Dates: Stripe Sessions CFP **3 Nov**; Agentic Payments Hackathon **13–15 Nov**.
+Dates: Stripe Sessions CFP **submitted 2 Nov** (decisions 16 Nov); Agentic Payments Hackathon **13–15 Nov**.
 
 ---
 
@@ -384,7 +383,7 @@ Aligned with Architecture phase E. Relayer is merchant + optional fee payer.
 
 ### Phase 14: Devnet Launch — done
 
-Program + SDK on Devnet. Skip Day 62 send. UI is Days 66 / 81. On-chain Devnet tests remain Days 67–68 (after Day 83).
+Program + SDK on Devnet. Skip Day 62 send. UI is Days 66 / 81. Days 67–68 Devnet walkthrough + live tests done.
 
 Recorded cluster: `https://api.devnet.solana.com`. Tables: [`notes/devnet.md`](notes/devnet.md).
 
@@ -427,7 +426,7 @@ Recorded cluster: `https://api.devnet.solana.com`. Tables: [`notes/devnet.md`](n
 
 ## Month 3+ buffer: Public artifact, UI, change notes, backup, unlink, agent (Sessions 65–83)
 
-Days **65–83** done. **Now is P0.** Toy pack stays localnet. No AMM.
+Days **65–84** + **P0** + **67–68** done. Toy pack stays localnet. No AMM.
 
 ### Phase 15: Public shield artifact (1 session) — done
 
@@ -452,22 +451,24 @@ Ship a swap screen. Relayer optional.
   - [x] Optional UI copy: “shielded settle” vs clear note that deposit still shows depositor on-chain until a later privacy Day
   - [x] *Exit:* Localnet click-through: vault B `1000 → 900`, recipient B `0 → 100`, tx `4vS2MTi6…`. Fixture only (spend 100 read-only; no Deposit button). This is P2 — not P4.
 
-### Phase 17: Devnet UI walkthrough + tests (2 sessions) — after P0
+### Phase 17: Devnet UI walkthrough + tests (2 sessions)
 
-Do not start instead of P0.
+P0 compare is in `notes/budgets.md`.
 
-- [ ] **Day 67 — Manual Devnet walkthrough**
-  - [ ] Point the Day 66 UI at Devnet (program id + RPC from Days 58–61); fund a wallet if needed
-  - [ ] Human checklist in `notes/devnet.md`: connect wallet → read on-chain vault/root in the UI → submit (or dry-run + one live settle if a proof is available) → open Solana Explorer links for accounts + tx
-  - [ ] Record at least one Explorer URL for vault/config and, if settle ran, the tx signature
-  - [ ] *Exit:* A person who is not the session agent can follow the checklist and **see** the product (UI + live accounts). Screenshots optional; the written checklist + Explorer URLs are required.
+- [x] **Day 67 — Manual Devnet walkthrough**
+  - [x] Point the Day 66 UI at Devnet (program id + RPC; `?cluster=devnet` / agent **3**)
+  - [x] Human checklist in `notes/devnet.md`: start processes → On-chain panel → Explorer vault/config → optional wallet + public/deposit/shielded submit
+  - [x] Explorer URLs for program, config, vault, ATAs + sample public/shielded txs
+  - [x] *Exit:* Checklist + Explorer URLs in `notes/devnet.md` (Day 67 section)
 
-- [ ] **Day 68 — Automated on-chain Devnet tests**
-  - [ ] Integration tests (TS and/or Rust) with **cluster = Devnet** — `solana-test-validator` / LiteSVM do **not** count
-  - [ ] Tests must **interact on-chain**: fetch `GlobalConfig` + `VaultState` (and ATAs) from Devnet; assert layout / reserves / vkey
-  - [ ] At least one **write** that lands on Devnet (protocol-admin no-op such as pause→unpause, or a real `settle_shielded_spot` if a Groth16 fixture exists)
-  - [ ] One command documented (e.g. `ANCHOR_PROVIDER_URL=https://api.devnet.solana.com …`); skip-with-fail if key/SOL missing so CI-default stays localnet
-  - [ ] *Exit:* That command passes against live Devnet; tx signatures or account pubkeys from the run are in the test output or `notes/devnet.md`
+- [x] **Day 68 — Automated on-chain Devnet tests**
+  - [x] TS Vitest against live Devnet (`sdk/test/devnet/onchain.devnet.test.ts`) — not LiteSVM
+  - [x] Factored helpers (`sdk/test/devnet/helpers.ts`): faucet SOL, mint A/B, deposit, done-markers
+  - [x] Positive: `reads`, `pause`, `deposit_a`/`deposit_b`, `public_swap`
+  - [x] Negative: `neg_zero_swap`, `neg_underflow`, `neg_paused_swap` (shielded settle stays manual / Groth16)
+  - [x] Passed cases ignored via `sdk/.devnet-e2e-done.json`; catalog + commands in `notes/devnet.md`
+  - [x] Command: `npm run test:devnet` (`DEVNET_FORCE=1` / `DEVNET_CASES=` to re-run or subset); CI skips when unset
+  - [x] *Exit:* Live E2E green; sample pause/unpause + case table recorded in `notes/devnet.md`
 
 ### Phase 18: Mirrors / CID (parked)
 
@@ -567,6 +568,12 @@ Same wallet for CLI and UI. Relayer is merchant + optional SOL fee payer, not th
   - [x] Repeat buys until no unspent note covers a quote; all 11 notes spent
   - [x] *Exit:* Eleven Devnet settle signatures in `notes/devnet.md`
 
+- [x] **Day 84 — Non-shielded Swap A→B**
+  - [x] Program `public_spot_swap`: payer transfers mint A in; vault pays mint B (1:1); respects pause
+  - [x] Agent HELP `4` + HTTP `POST /swap-public`; UI row **Swap Non-Shielded**
+  - [x] Relayer `POST /402/pay-public` + `GET /402/resource?signature=` (`unlock=wallet`)
+  - [x] *Exit:* Devnet public swap `27LEe6SB…` (11 A→B, unlock=wallet); shielded buy still works (`0xbe631e5f…` prove + settle earlier same session)
+
 ---
 
 ## Tech debt (extra — not a Day)
@@ -579,14 +586,21 @@ Do when they unblock toolchain/CI. Do not pull them mid-Day.
 
 ## Writing checkpoints (after Day 83 + P0 + 67–68)
 
+Each Write is **one Medium/LinkedIn piece**: markdown article + a short click-through video (UI and/or terminal) that the post can embed or link. Day 67 checklist is the Devnet UI script; reuse it where the topic is on-chain settle / public path.
+
+Video: ≤ ~2–3 min, silent captions OK; store path or URL in the article frontmatter / a one-line `video:` note (do not commit large binaries — link YouTube/Loom/unlisted or keep local under gitignored `notes/articles/_video/`).
+
 - [ ] **Write-1 — What the circuit proves**
   - [ ] Private vs public I/O, Merkle inclusion + solvency, nullifier
-  - [ ] *Exit:* `notes/articles/01-circuit/part-1.md`
+  - [ ] Short video: prove path (agent Groth16 / host log) or diagram walk — not a full settle unless short
+  - [ ] *Exit:* `docs/articles/zk-spot-shield-part1.md` (+ HTML preview) + video link in that file (`docs/articles/assets/` for PNGs)
 
 - [ ] **Write-2 — Settle on Solana**
   - [ ] Verify Groth16, registered root, unused nullifier, vault + SPL
-  - [ ] *Exit:* `notes/articles/02-settle/part-1.md`
+  - [ ] Short video: Devnet or localnet UI/agent settle click-through (Day 67 script)
+  - [ ] *Exit:* `docs/articles/zk-spot-shield-part2.md` + video link in that file
 
 - [ ] **Write-3 — Public artifact**
   - [ ] Membership ≠ mixer; execute vs remote Groth16; how to read the README
-  - [ ] *Exit:* `notes/articles/03-artifact/part-1.md`
+  - [ ] Short video: public vs shielded contrast (e.g. Swap Non-Shielded vs Buy) or README tour
+  - [ ] *Exit:* `docs/articles/zk-spot-shield-part3.md` + video link in that file; ready to paste Medium + LinkedIn

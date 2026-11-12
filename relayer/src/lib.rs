@@ -10,7 +10,9 @@ pub mod submit;
 pub mod tx_build;
 
 pub use fees::{compute_relayer_fee, FeeConfig};
-pub use pay402::{quote, quote_for, PayLedger, QuoteSlot, QUOTE_AMOUNT, QUOTE_MINT};
+pub use pay402::{
+    quote, quote_for, PayLedger, PublicPayLedger, QuoteSlot, QUOTE_AMOUNT, QUOTE_MINT,
+};
 pub use queue::{run_worker, JobStatus, ProveJob, ProveQueue};
 pub use routes::{app_router, AppState};
 pub use rpc_retry::{backoff_delay, with_exponential_backoff, BackoffConfig};

@@ -8,7 +8,7 @@
 | Program integration | `anchor build` + LiteSVM | Deposit and vault-only settle against a `.so` | Yes |
 | SDK / UI | `cd sdk && npm test` / `cd ui && npm test` | Journal decode, settle encoding, RPC fallback, agent HELP/store/witness | Local |
 | Host tests | `cargo test -p zk-circuit-host --lib` | Fixture matches inputs; forged path rejected | Local only |
-| Devnet | `DEVNET_ONCHAIN=1` in `sdk/` | Live cluster reads | Opt-in; skip in CI |
+| Devnet E2E | `npm run test:devnet` in `sdk/` (`DEVNET_ONCHAIN=1`) | Reads, deposit, public swap, neg paths; done-markers skip re-runs | Opt-in; skip in CI |
 
 Default tests never call a live prover or cluster. The one real proof was recorded once and is reused as a fixture. Canonical dump: [`zk-circuit/fixtures/happy.json`](https://github.com/pprogrammingg/zk-spot-shield/blob/main/zk-circuit/fixtures/happy.json). Host builds the same pack via `happy_path_inputs()`.
 

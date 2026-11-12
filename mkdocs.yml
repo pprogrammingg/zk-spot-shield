@@ -16,6 +16,8 @@ nav:
   - Tests: tests.md
   - Glossary: glossary.md
   - Links: links.md
+  - Articles:
+      - Part 1 — Private agentic payments: articles/zk-spot-shield-part1.html
 
 theme:
   name: material

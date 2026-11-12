@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * Localnet agent REPL. HELP: 1 Buy Token B · 2 Deposit Token A · 3 Balance · EXIT
+ * Agent REPL. HELP: 1 Buy · 2 Deposit A · 3 Balance · 4 Public · 5 Admin · EXIT
  *
  *   cd sdk && npm run agent
  */
@@ -8,12 +8,14 @@
 import * as readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import {
+  ADMIN_HELP,
   AGENT_HELP,
   BACK_HINT,
   balanceUiUrl,
   discoverUiOrigin,
   isBackToMenu,
   openBrowser,
+  parseAdminCommand,
   parseAgentCommand,
   parseAmount,
   parseYesNo,
@@ -25,7 +27,9 @@ import {
   agentRpcUrl,
   buyMintB,
   depositMintA,
+  depositMintB,
   loadAgentBundle,
+  mintAToUser,
   syncSpentFromChain,
   NULLIFIER_SYNC_TTL_MS,
   type AgentCtx,
@@ -171,6 +175,80 @@ async function cmdBuy(rl: readline.Interface, ctx: AgentCtx): Promise<void> {
   }
 }
 
+async function cmdAdminDepositB(
+  rl: readline.Interface,
+  ctx: AgentCtx,
+): Promise<void> {
+  let amount: bigint;
+  try {
+    const got = await readAmount(
+      rl,
+      "amount of mint B to mint + deposit into vault",
+      amtDec(),
+    );
+    if (got === "back") return;
+    amount = got;
+  } catch (e) {
+    console.error(e instanceof Error ? e.message : e);
+    return;
+  }
+  const ok = await confirm(
+    rl,
+    `mint + deposit ${fmtAmt(amount)} B into the vault?`,
+  );
+  if (ok !== "yes") {
+    if (ok === "no") console.log("cancelled");
+    return;
+  }
+  console.log("==> admin deposit B (mint + vault)");
+  const out = await depositMintB(ctx, amount);
+  console.log(
+    `sig ${out.sig}  amount ${fmtAmt(out.amount)}  reserve_b ${fmtAmt(out.reserveB)}`,
+  );
+}
+
+async function cmdAdminMintA(
+  rl: readline.Interface,
+  ctx: AgentCtx,
+): Promise<void> {
+  let amount: bigint;
+  try {
+    const got = await readAmount(rl, "amount of mint A to mint to wallet", amtDec());
+    if (got === "back") return;
+    amount = got;
+  } catch (e) {
+    console.error(e instanceof Error ? e.message : e);
+    return;
+  }
+  const ok = await confirm(rl, `mint ${fmtAmt(amount)} A to user ATA?`);
+  if (ok !== "yes") {
+    if (ok === "no") console.log("cancelled");
+    return;
+  }
+  console.log("==> admin mint A (wallet ATA)");
+  const out = await mintAToUser(ctx, amount);
+  console.log(`sig ${out.sig}  amount ${fmtAmt(out.amount)}  ata ${out.userTokenA}`);
+}
+
+async function cmdAdmin(rl: readline.Interface, ctx: AgentCtx): Promise<void> {
+  console.log(ADMIN_HELP);
+  for (;;) {
+    const line = await rl.question("admin> ");
+    if (isBackToMenu(line)) return;
+    const cmd = parseAdminCommand(line);
+    if (cmd === null) {
+      console.log(ADMIN_HELP);
+      continue;
+    }
+    if (cmd === "help") {
+      console.log(ADMIN_HELP);
+      continue;
+    }
+    if (cmd === "deposit-b") await cmdAdminDepositB(rl, ctx);
+    else if (cmd === "mint-a") await cmdAdminMintA(rl, ctx);
+  }
+}
+
 async function cmdPublic(rl: readline.Interface, ctx: AgentCtx): Promise<void> {
   let amount: bigint;
   try {
@@ -245,6 +323,14 @@ async function main(): Promise<void> {
       console.log(`[ui] deposit ${fmtAmt(amount)} (no Groth16)`);
       return depositMintA(ctx, amount);
     },
+    depositB: async (amount) => {
+      console.log(`[ui] admin deposit B ${fmtAmt(amount)}`);
+      return depositMintB(ctx, amount);
+    },
+    mintA: async (amount) => {
+      console.log(`[ui] admin mint A ${fmtAmt(amount)}`);
+      return mintAToUser(ctx, amount);
+    },
     publicSwap: async (amount) => {
       const result = await nonShieldedPay(ctx, amount, (line) =>
         console.log(`[ui] ${line}`),
@@ -272,7 +358,9 @@ async function main(): Promise<void> {
       };
     },
   });
-  console.log(`agent http ${http.origin}  (UI deposit / buy / Swap Non-Shielded)`);
+  console.log(
+    `agent http ${http.origin}  (UI deposit / buy / public / Admin)`,
+  );
   console.log(
     `chain sync: nullifiers at boot, before buy, and every ${NULLIFIER_SYNC_TTL_MS / 1000}s (not on UI poll)`,
   );
@@ -303,6 +391,7 @@ async function main(): Promise<void> {
         else if (cmd === "deposit") await cmdDeposit(rl, ctx);
         else if (cmd === "buy") await cmdBuy(rl, ctx);
         else if (cmd === "public") await cmdPublic(rl, ctx);
+        else if (cmd === "admin") await cmdAdmin(rl, ctx);
       } catch (e) {
         console.error(e instanceof Error ? e.message : e);
       }

@@ -125,6 +125,7 @@ export {
 } from "./noteBackup.js";
 
 export {
+  ADMIN_HELP,
   AGENT_HELP,
   BACK_HINT,
   DEFAULT_UI_URL,
@@ -133,10 +134,12 @@ export {
   discoverUiOrigin,
   openBrowser,
   isBackToMenu,
+  parseAdminCommand,
   parseAgentCommand,
   parseAmount,
   parseYesNo,
   uiUrl,
+  type AdminCommand,
   type AgentCommand,
 } from "./agentCmd.js";
 
@@ -158,8 +161,12 @@ export {
   type AgentBuyErrJson,
   type AgentBuyFn,
   type AgentBuyOkJson,
+  type AgentDepositBFn,
+  type AgentDepositBOkJson,
   type AgentDepositFn,
   type AgentDepositOkJson,
+  type AgentMintAFn,
+  type AgentMintAOkJson,
   type AgentStatusFn,
   type AgentStatusJson,
   type AgentStatusNote,

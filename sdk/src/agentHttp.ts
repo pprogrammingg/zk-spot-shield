@@ -71,6 +71,28 @@ export type AgentPublicSwapOkJson = {
   payer: string;
 };
 
+export type AgentDepositBFn = (
+  amount: bigint,
+) => Promise<{ sig: string; amount: string; reserveB: string }>;
+
+export type AgentDepositBOkJson = {
+  ok: true;
+  sig: string;
+  amount: string;
+  reserveB: string;
+};
+
+export type AgentMintAFn = (
+  amount: bigint,
+) => Promise<{ sig: string; amount: string; userTokenA: string }>;
+
+export type AgentMintAOkJson = {
+  ok: true;
+  sig: string;
+  amount: string;
+  userTokenA: string;
+};
+
 /** Secret-free snapshot for the swap UI. */
 export type AgentStatusNote = {
   leafIndex: number;
@@ -188,6 +210,8 @@ async function handle(
   deposit: AgentDepositFn | undefined,
   status: AgentStatusFn | undefined,
   publicSwap: AgentPublicSwapFn | undefined,
+  depositB: AgentDepositBFn | undefined,
+  mintA: AgentMintAFn | undefined,
   decimals: number,
 ): Promise<void> {
   const url = new URL(req.url ?? "/", "http://127.0.0.1");
@@ -327,6 +351,84 @@ async function handle(
     }
     return;
   }
+  if (req.method === "POST" && url.pathname === "/admin/deposit-b") {
+    if (!depositB) {
+      sendJson(res, 501, {
+        ok: false,
+        error: "admin deposit B not enabled",
+      } satisfies AgentBuyErrJson);
+      return;
+    }
+    let amount: bigint;
+    try {
+      const raw = await readBody(req);
+      amount = parseBuyBody(raw ? JSON.parse(raw) : null, decimals);
+    } catch (e) {
+      sendJson(res, 400, {
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      } satisfies AgentBuyErrJson);
+      return;
+    }
+    try {
+      const result = await withAgentBuyGate(() => depositB(amount));
+      sendJson(res, 200, {
+        ok: true,
+        sig: result.sig,
+        amount: result.amount,
+        reserveB: result.reserveB,
+      } satisfies AgentDepositBOkJson);
+    } catch (e) {
+      if (e instanceof AgentBusyError) {
+        sendJson(res, 409, { ok: false, error: e.message } satisfies AgentBuyErrJson);
+        return;
+      }
+      sendJson(res, 500, {
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      } satisfies AgentBuyErrJson);
+    }
+    return;
+  }
+  if (req.method === "POST" && url.pathname === "/admin/mint-a") {
+    if (!mintA) {
+      sendJson(res, 501, {
+        ok: false,
+        error: "admin mint A not enabled",
+      } satisfies AgentBuyErrJson);
+      return;
+    }
+    let amount: bigint;
+    try {
+      const raw = await readBody(req);
+      amount = parseBuyBody(raw ? JSON.parse(raw) : null, decimals);
+    } catch (e) {
+      sendJson(res, 400, {
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      } satisfies AgentBuyErrJson);
+      return;
+    }
+    try {
+      const result = await withAgentBuyGate(() => mintA(amount));
+      sendJson(res, 200, {
+        ok: true,
+        sig: result.sig,
+        amount: result.amount,
+        userTokenA: result.userTokenA,
+      } satisfies AgentMintAOkJson);
+    } catch (e) {
+      if (e instanceof AgentBusyError) {
+        sendJson(res, 409, { ok: false, error: e.message } satisfies AgentBuyErrJson);
+        return;
+      }
+      sendJson(res, 500, {
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      } satisfies AgentBuyErrJson);
+    }
+    return;
+  }
   sendJson(res, 404, { ok: false, error: "not found" } satisfies AgentBuyErrJson);
 }
 
@@ -356,19 +458,29 @@ function createBuyServer(
   deposit: AgentDepositFn | undefined,
   status: AgentStatusFn | undefined,
   publicSwap: AgentPublicSwapFn | undefined,
+  depositB: AgentDepositBFn | undefined,
+  mintA: AgentMintAFn | undefined,
   decimals: number,
 ): Server {
   return createServer((req, res) => {
-    void handle(req, res, buy, deposit, status, publicSwap, decimals).catch(
-      (e: unknown) => {
-        if (!res.headersSent) {
-          sendJson(res, 500, {
-            ok: false,
-            error: e instanceof Error ? e.message : String(e),
-          });
-        }
-      },
-    );
+    void handle(
+      req,
+      res,
+      buy,
+      deposit,
+      status,
+      publicSwap,
+      depositB,
+      mintA,
+      decimals,
+    ).catch((e: unknown) => {
+      if (!res.headersSent) {
+        sendJson(res, 500, {
+          ok: false,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+    });
   });
 }
 
@@ -377,6 +489,8 @@ export async function startAgentHttp(opts: {
   deposit?: AgentDepositFn;
   status?: AgentStatusFn;
   publicSwap?: AgentPublicSwapFn;
+  depositB?: AgentDepositBFn;
+  mintA?: AgentMintAFn;
   decimals?: number;
   port?: number;
   host?: string;
@@ -397,6 +511,8 @@ export async function startAgentHttp(opts: {
       opts.deposit,
       opts.status,
       opts.publicSwap,
+      opts.depositB,
+      opts.mintA,
       decimals,
     );
     try {

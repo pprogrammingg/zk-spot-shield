@@ -30,8 +30,17 @@ import {
   pickSpendableNoteIndex,
   postAgentBuy,
   postAgentDeposit,
+  postAgentDepositB,
+  postAgentMintA,
+  postAgentPublicSwap,
   type AgentStatus,
 } from "./agentBuy.ts";
+import {
+  decimalsForCluster,
+  formatUiAmount,
+  formatUiPair,
+  parseTokenAmount,
+} from "./amount.ts";
 import { loadAgentNotesPublic, loadDemoPack, type AgentNotePublic } from "./demo.ts";
 import { readDemoSession, writeDemoSession } from "./session.ts";
 import { accountUrl, localConfirmCmd, txUrl } from "./explorer.ts";
@@ -152,11 +161,20 @@ export default function App() {
   );
   const [pay402, setPay402] = useState("");
   const [agentNotes, setAgentNotes] = useState<AgentNotePublic[]>([]);
+  /** Prefer agent `/status` so UI scale matches HTTP parse (human tokens → raw). */
+  const [agentDecimals, setAgentDecimals] = useState<number | null>(null);
   const [buyAmount, setBuyAmount] = useState("");
   const [buying, setBuying] = useState(false);
   const [lockedLeaf, setLockedLeaf] = useState<number | null>(null);
   const [depositAmount, setDepositAmount] = useState("");
   const [depositing, setDepositing] = useState(false);
+  const [publicAmount, setPublicAmount] = useState("");
+  const [publicSwapping, setPublicSwapping] = useState(false);
+  const [adminDepositBAmount, setAdminDepositBAmount] = useState("");
+  const [adminMintAAmount, setAdminMintAAmount] = useState("");
+  const [adminBusy, setAdminBusy] = useState(false);
+  const [adminStatus, setAdminStatus] = useState("");
+  const [adminErr, setAdminErr] = useState(false);
   const pollRef = useRef({
     rpcList,
     programIdStr,
@@ -226,6 +244,7 @@ export default function App() {
     setUserTokenA(st.userTokenA);
     setUserTokenB(st.userTokenB);
     setAgentNotes(st.notes);
+    if (typeof st.decimals === "number") setAgentDecimals(st.decimals);
     pollRef.current = {
       ...pollRef.current,
       programIdStr: st.programId,
@@ -360,6 +379,7 @@ export default function App() {
     setJournalB64("");
     setTxSig(null);
     setAgentNotes([]);
+    setAgentDecimals(null);
     setProgramIdStr(DEVNET_VAULT.programId);
     const atas = {
       vaultTokenA: DEVNET_VAULT.vaultTokenA,
@@ -613,9 +633,14 @@ export default function App() {
     return origin;
   }
 
+  function tokenDecimals(): number {
+    return agentDecimals ?? decimalsForCluster(cluster);
+  }
+
   async function depositTokenA(e: FormEvent) {
     e.preventDefault();
-    const amount = parseUiBuyAmount(depositAmount);
+    const dec = tokenDecimals();
+    const amount = parseUiBuyAmount(depositAmount, dec);
     setDepositing(true);
     setStatus(`Depositing ${amount} Token A (no Groth16)…`);
     try {
@@ -623,7 +648,7 @@ export default function App() {
       const result = await postAgentDeposit(origin, amount);
       setTxSig(result.sig);
       setStatus(
-        `Deposited ${result.balance} A at idx ${result.leafIndex}. sig ${result.sig}`,
+        `Deposited ${formatUiAmount(result.balance, dec)} A at idx ${result.leafIndex}. sig ${result.sig}`,
       );
       await refresh();
     } finally {
@@ -631,13 +656,95 @@ export default function App() {
     }
   }
 
+  async function adminDepositB(e: FormEvent) {
+    e.preventDefault();
+    const dec = tokenDecimals();
+    let amount: string;
+    try {
+      amount = parseUiBuyAmount(adminDepositBAmount, dec);
+    } catch (err) {
+      setAdminErr(true);
+      setAdminStatus(err instanceof Error ? err.message : String(err));
+      return;
+    }
+    setAdminBusy(true);
+    setAdminErr(false);
+    setAdminStatus(`Minting + depositing ${amount} Token B into vault…`);
+    try {
+      const origin = await agentOriginOrThrow();
+      const result = await postAgentDepositB(origin, amount);
+      setTxSig(result.sig);
+      setAdminStatus(
+        `Vault B += ${formatUiAmount(result.amount, dec)}. reserve_b ${formatUiAmount(result.reserveB, dec)}. sig ${result.sig}`,
+      );
+      await refresh();
+    } catch (err) {
+      setAdminErr(true);
+      setAdminStatus(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAdminBusy(false);
+    }
+  }
+
+  async function adminMintA(e: FormEvent) {
+    e.preventDefault();
+    const dec = tokenDecimals();
+    let amount: string;
+    try {
+      amount = parseUiBuyAmount(adminMintAAmount, dec);
+    } catch (err) {
+      setAdminErr(true);
+      setAdminStatus(err instanceof Error ? err.message : String(err));
+      return;
+    }
+    setAdminBusy(true);
+    setAdminErr(false);
+    setAdminStatus(`Minting ${amount} Token A to user wallet…`);
+    try {
+      const origin = await agentOriginOrThrow();
+      const result = await postAgentMintA(origin, amount);
+      setTxSig(result.sig);
+      setAdminStatus(
+        `Minted ${formatUiAmount(result.amount, dec)} A to ${result.userTokenA}. sig ${result.sig}`,
+      );
+      await refresh();
+    } catch (err) {
+      setAdminErr(true);
+      setAdminStatus(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAdminBusy(false);
+    }
+  }
+
+  async function swapNonShielded(e: FormEvent) {
+    e.preventDefault();
+    const amount = parseUiBuyAmount(publicAmount, tokenDecimals());
+    setPublicSwapping(true);
+    setStatus(
+      `Non-shielded swap ${amount} A→B (wallet on the receipt; no Groth16)…`,
+    );
+    try {
+      const origin = await agentOriginOrThrow();
+      const result = await postAgentPublicSwap(origin, amount);
+      setTxSig(result.swapSig);
+      setStatus(
+        `Public swap ${result.swapSig}. Payer ${result.payer}. 402 paid=${result.paid} (unlock=wallet)`,
+      );
+      await refresh();
+    } finally {
+      setPublicSwapping(false);
+    }
+  }
+
   async function buyTokenB(e: FormEvent) {
     e.preventDefault();
-    const amount = parseUiBuyAmount(buyAmount);
+    const dec = tokenDecimals();
+    const amount = parseUiBuyAmount(buyAmount, dec);
+    const quoteRaw = parseTokenAmount(amount, dec);
     const picked =
       agentNotes.length === 0
         ? null
-        : pickSpendableNoteIndex(agentNotes, BigInt(amount));
+        : pickSpendableNoteIndex(agentNotes, quoteRaw);
     if (agentNotes.length > 0 && picked === null) {
       setStatus(`no note covers ${amount}. Deposit more A.`);
       return;
@@ -652,7 +759,7 @@ export default function App() {
       const result = await postAgentBuy(origin, amount);
       setTxSig(result.settleSig);
       const change = result.changeBalance
-        ? ` Change note ${result.changeBalance} A.`
+        ? ` Change note ${formatUiAmount(result.changeBalance, dec)} A.`
         : " Spend-all (no change).";
       setStatus(
         `Settled ${result.settleSig}. Spent note ${result.spentIndex}.${change}`,
@@ -683,6 +790,8 @@ export default function App() {
   const cfgHref = chain ? accountUrl(chain.config, chain.rpc) : null;
   const vaultHref = chain ? accountUrl(chain.vault, chain.rpc) : null;
   const sigHref = txSig && chain ? txUrl(txSig, chain.rpc) : null;
+  const amtDecimals = tokenDecimals();
+  const fmtAmt = (raw: string) => formatUiAmount(raw, amtDecimals);
 
   return (
     <main className="page">
@@ -690,7 +799,7 @@ export default function App() {
         <div>
           <h1>ZK Spot Shield</h1>
           <p className="lede">
-            Private mint A notes. Type an amount to buy Token B 1:1 — same path as the agent CLI.
+            Note Balances
           </p>
         </div>
         <div className="cluster" role="group" aria-label="Cluster">
@@ -717,7 +826,7 @@ export default function App() {
             <NoteCard
               key={`${n.leafIndex}-${n.leafPrefix}`}
               kind="spend"
-              amount={n.balance}
+              amount={fmtAmt(n.balance)}
               settled={n.spent}
               locked={lockedLeaf === n.leafIndex}
             />
@@ -727,14 +836,14 @@ export default function App() {
         <section className="notes">
           <NoteCard
             kind="spend"
-            amount={noteOldBalance(journalPreview).toString()}
+            amount={fmtAmt(noteOldBalance(journalPreview).toString())}
             settled={settled}
             locked={buying && !settled}
           />
           {journalPreview.changeAmount > 0n && settled && (
             <NoteCard
               kind="change"
-              amount={journalPreview.changeAmount.toString()}
+              amount={fmtAmt(journalPreview.changeAmount.toString())}
               settled={settled}
             >
               <div className="row">
@@ -762,19 +871,54 @@ export default function App() {
           <div className="buy-row">
             <input
               type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
+              inputMode="decimal"
               autoComplete="off"
               placeholder="e.g. 33"
               value={depositAmount}
-              disabled={buying || depositing}
+              disabled={buying || depositing || publicSwapping || adminBusy}
               onChange={(e) => setDepositAmount(e.target.value)}
             />
-            <button type="submit" className="primary" disabled={buying || depositing}>
+            <button
+              type="submit"
+              className="primary"
+              disabled={buying || depositing || publicSwapping || adminBusy}
+            >
               {depositing ? "Depositing…" : "Deposit Token A"}
             </button>
           </div>
         </label>
+      </form>
+
+      <form
+        className="trade"
+        onSubmit={(e) => swapNonShielded(e).catch((err) => setStatus(String(err)))}
+      >
+        <label>
+          Amount of Token A to swap publicly for Token B (1:1)
+          <div className="buy-row">
+            <input
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder="e.g. 1"
+              value={publicAmount}
+              disabled={buying || depositing || publicSwapping || adminBusy}
+              onChange={(e) => setPublicAmount(e.target.value)}
+            />
+            <button
+              type="submit"
+              className="primary"
+              disabled={buying || depositing || publicSwapping || adminBusy}
+            >
+              {publicSwapping ? "Swapping…" : "Swap Non-Shielded"}
+            </button>
+          </div>
+        </label>
+        {publicSwapping ? (
+          <p className="muted help">
+            Public path: wallet pays A, vault pays B. No note / Groth16. Relayer unlock=wallet.
+          </p>
+        ) : null}
       </form>
 
       <form className="trade" onSubmit={(e) => buyTokenB(e).catch((err) => setStatus(String(err)))}>
@@ -783,15 +927,18 @@ export default function App() {
           <div className="buy-row">
             <input
               type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
+              inputMode="decimal"
               autoComplete="off"
               placeholder="e.g. 33"
               value={buyAmount}
-              disabled={buying || depositing}
+              disabled={buying || depositing || publicSwapping || adminBusy}
               onChange={(e) => setBuyAmount(e.target.value)}
             />
-            <button type="submit" className="primary" disabled={buying || depositing}>
+            <button
+              type="submit"
+              className="primary"
+              disabled={buying || depositing || publicSwapping || adminBusy}
+            >
               {buying ? "Buying…" : "Buy Token B"}
             </button>
           </div>
@@ -810,6 +957,75 @@ export default function App() {
           Load localnet demo
         </button>
       </section>
+
+      <details className="fold">
+        <summary>Admin</summary>
+        <p className="muted help">
+          Mint-authority wallet via the running agent. Deposit B tops up vault liquidity; Mint A
+          fills the user ATA (then use Deposit Token A above).
+        </p>
+        <form
+          className="trade"
+          onSubmit={(e) => adminDepositB(e).catch((err) => {
+            setAdminErr(true);
+            setAdminStatus(String(err));
+          })}
+        >
+          <label>
+            Amount of Token B to mint + deposit into vault
+            <div className="buy-row">
+              <input
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="e.g. 500"
+                value={adminDepositBAmount}
+                disabled={buying || depositing || publicSwapping || adminBusy}
+                onChange={(e) => setAdminDepositBAmount(e.target.value)}
+              />
+              <button
+                type="submit"
+                className="primary"
+                disabled={buying || depositing || publicSwapping || adminBusy}
+              >
+                {adminBusy ? "Working…" : "Deposit B to vault"}
+              </button>
+            </div>
+          </label>
+        </form>
+        <form
+          className="trade"
+          onSubmit={(e) => adminMintA(e).catch((err) => {
+            setAdminErr(true);
+            setAdminStatus(String(err));
+          })}
+        >
+          <label>
+            Amount of Token A to mint into user wallet
+            <div className="buy-row">
+              <input
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="e.g. 50"
+                value={adminMintAAmount}
+                disabled={buying || depositing || publicSwapping || adminBusy}
+                onChange={(e) => setAdminMintAAmount(e.target.value)}
+              />
+              <button
+                type="submit"
+                className="primary"
+                disabled={buying || depositing || publicSwapping || adminBusy}
+              >
+                {adminBusy ? "Working…" : "Mint A to user"}
+              </button>
+            </div>
+          </label>
+        </form>
+        {adminStatus ? (
+          <p className={adminErr ? "err" : "status"}>{adminStatus}</p>
+        ) : null}
+      </details>
 
       <p className={err ? "err" : "status"}>{status}</p>
       {txSig && chain && (
@@ -895,13 +1111,13 @@ export default function App() {
             <dt>Vault A / B</dt>
             <dd>
               {balances
-                ? `${balances.vaultA} / ${balances.vaultB}`
-                : `${chain.reserveA} / ${chain.reserveB}`}
+                ? formatUiPair(balances.vaultA, balances.vaultB, amtDecimals)
+                : formatUiPair(chain.reserveA, chain.reserveB, amtDecimals)}
             </dd>
             <dt>User Balance A / B</dt>
             <dd>
               {balances
-                ? `${balances.userA} / ${balances.userB}`
+                ? formatUiPair(balances.userA, balances.userB, amtDecimals)
                 : "— / —"}
             </dd>
             <dt>Notes</dt>
@@ -910,7 +1126,8 @@ export default function App() {
                 ? "none yet — CLI Deposit Token A"
                 : agentNotes.map((n) => (
                     <div key={`${n.leafIndex}-${n.leafPrefix}`}>
-                      idx {n.leafIndex} · {n.balance} A · {n.spent ? "spent" : "open"}
+                      idx {n.leafIndex} · {fmtAmt(n.balance)} A ·{" "}
+                      {n.spent ? "spent" : "open"}
                     </div>
                   ))}
             </dd>

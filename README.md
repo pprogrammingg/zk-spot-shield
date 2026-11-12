@@ -120,11 +120,20 @@ cd ../relayer && cargo run -p zk-spot-shield-relayer
 cd ../ui && npm install && npm run dev
 ```
 
+**Agent CLI** (from `sdk/`, after `npm install`; start the relayer in another terminal for 402):
+
+```bash
+cd sdk
+AGENT_CLUSTER=devnet \
+ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
+npm run agent
+```
+
 Wallet is the default fee payer; relayer is optional. Localnet click-through: [`ui/README.md`](./ui/README.md) (`npm run demo:localnet`, then Load localnet demo). Do not run `sdk` `test:e2e` on that validator first — it spends the happy nullifier.
 
 ## Devnet
 
-Operator record: [`notes/devnet.md`](./notes/devnet.md). Live-cluster tests: `DEVNET_ONCHAIN=1` from `sdk/`.
+Operator record: [`notes/devnet.md`](./notes/devnet.md). Live-cluster tests: `DEVNET_ONCHAIN=1` (optional `DEVNET_WRITE=1` pause→unpause) from `sdk/`.
 
 ## Docs site
 

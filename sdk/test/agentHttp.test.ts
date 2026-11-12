@@ -142,6 +142,52 @@ describe("agent HTTP loopback", () => {
     }
   });
 
+  it("POST /admin/deposit-b and /admin/mint-a", async () => {
+    const { server, origin } = await startAgentHttp({
+      port: 0,
+      buy: async () => ok,
+      depositB: async (amount) => ({
+        sig: "DepBSig",
+        amount: amount.toString(),
+        reserveB: (amount + 1n).toString(),
+      }),
+      mintA: async (amount) => ({
+        sig: "MintASig",
+        amount: amount.toString(),
+        userTokenA: "UserA111",
+      }),
+    });
+    try {
+      const dep = await fetch(`${origin}/admin/deposit-b`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ amount: "500" }),
+      });
+      expect(dep.status).toBe(200);
+      expect(await dep.json()).toEqual({
+        ok: true,
+        sig: "DepBSig",
+        amount: "500",
+        reserveB: "501",
+      });
+
+      const mint = await fetch(`${origin}/admin/mint-a`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ amount: "50" }),
+      });
+      expect(mint.status).toBe(200);
+      expect(await mint.json()).toEqual({
+        ok: true,
+        sig: "MintASig",
+        amount: "50",
+        userTokenA: "UserA111",
+      });
+    } finally {
+      await new Promise<void>((r) => server.close(() => r()));
+    }
+  });
+
   it("underfunded is 422; overlapping buy is 409", async () => {
     let release!: () => void;
     const held = new Promise<Awaited<ReturnType<AgentBuyFn>>>((resolve) => {

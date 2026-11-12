@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- YouTube embeds need a Referer (Error 153 if missing / same-origin). -->
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>Private Agentic Payments on Solana — Part 1</title>
+  <style>
+    :root {
+      --bg: #f7f6f2;
+      --ink: #1a1a1a;
+      --muted: #5c5c5c;
+      --card: #ffffff;
+      --line: #e2e0d8;
+      --accent: #174b43;
+      --code-bg: #1e2430;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.55;
+      font-size: 1.05rem;
+    }
+    .wrap {
+      max-width: 44rem;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+    h1 {
+      font-size: clamp(1.75rem, 4vw, 2.35rem);
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.5rem;
+    }
+    h2 {
+      font-size: 1.45rem;
+      margin: 2.25rem 0 0.75rem;
+      letter-spacing: -0.015em;
+    }
+    h3 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; }
+    .lede { color: var(--muted); font-style: italic; margin-bottom: 1rem; }
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 1.5rem; }
+    a { color: var(--accent); }
+    hr { border: none; border-top: 1px solid var(--line); margin: 1.75rem 0; }
+    ul, ol { padding-left: 1.35rem; }
+    li { margin: 0.35rem 0; }
+    code, pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.88rem;
+    }
+    pre {
+      background: var(--code-bg);
+      color: #e8eef7;
+      padding: 1rem 1.1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    .toc {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin: 1.25rem 0 1.75rem;
+    }
+    .toc ol { margin: 0.4rem 0 0; }
+    .diagram {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0.75rem;
+      margin: 1.25rem 0 1.5rem;
+    }
+    .diagram-toolbar {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      font-family: system-ui, sans-serif;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .diagram-toolbar button {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 6px;
+      padding: 0.25rem 0.55rem;
+      cursor: pointer;
+      font: inherit;
+    }
+    .diagram-toolbar button:hover { background: #f0efe8; }
+    .diagram-viewport {
+      overflow: hidden;
+      max-height: 70vh;
+      min-height: 320px;
+      border-radius: 8px;
+      background: #fffef6;
+      cursor: grab;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .diagram-viewport:active { cursor: grabbing; }
+    /* Mermaid lives in <pre> — strip code-block chrome or it shows as black boxes */
+    .diagram-viewport pre.mermaid {
+      display: block;
+      width: max-content;
+      max-width: none;
+      margin: 0;
+      padding: 0.75rem;
+      background: transparent !important;
+      color: inherit;
+      border: none;
+      border-radius: 0;
+      overflow: visible;
+      font-size: inherit;
+      transform-origin: center center;
+      will-change: transform;
+    }
+    .diagram-viewport .mermaid svg {
+      display: block;
+      margin: 0 auto;
+      background: transparent !important;
+      max-width: none;
+    }
+    .diagram-viewport .mermaid svg > style + rect,
+    .diagram-viewport .mermaid svg > rect:first-of-type {
+      fill: transparent !important;
+      stroke: none !important;
+    }
+    .article-figure {
+      margin: 1.25rem 0 1.5rem;
+      text-align: center;
+    }
+    .article-figure img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+    }
+    .article-figure figcaption {
+      font-family: system-ui, sans-serif;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 0.55rem;
+      line-height: 1.4;
+    }
+    .shot-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      min-height: 12rem;
+      padding: 1.5rem 1rem;
+      border: 1.5px dashed #c4bfb0;
+      border-radius: 12px;
+      background: #faf8f2;
+      color: var(--muted);
+      font-family: system-ui, sans-serif;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+    .shot-placeholder strong {
+      color: var(--ink);
+      font-size: 1rem;
+    }
+    .shot-placeholder code {
+      font-size: 0.8rem;
+      color: var(--accent);
+    }
+    .article-video {
+      margin: 1.25rem 0 1.5rem;
+    }
+    .article-video figcaption {
+      font-family: system-ui, sans-serif;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 0.55rem;
+      line-height: 1.4;
+      text-align: center;
+    }
+    .yt-player {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #111;
+    }
+    .yt-player button {
+      display: block;
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      border: none;
+      cursor: pointer;
+      background: #111;
+      position: relative;
+    }
+    .yt-player button img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .yt-player button::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      margin: auto;
+      width: 4.25rem;
+      height: 3rem;
+      border-radius: 0.75rem;
+      background: rgba(0, 0, 0, 0.65)
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fff'%3E%3Cpath d='M8 5v14l11-7z'/%3E%3C/svg%3E")
+        center / 1.35rem no-repeat;
+      pointer-events: none;
+    }
+    .yt-player iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+    .hint {
+      font-family: system-ui, sans-serif;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+  <article class="wrap">
+    <h1>Private Agentic Payments on Solana (x402, MPP, and friends)</h1>
+    <p class="lede">Part 1 of 3. Repo: <a href="https://github.com/pprogrammingg/zk-spot-shield">zk-spot-shield</a>.</p>
+    <p class="meta">
+      Videos inline below (deposit · spend + change)
+    </p>
+
+    <nav class="toc" aria-label="Table of contents">
+      <strong>Table of contents</strong>
+      <ol>
+        <li><a href="#background">Background</a></li>
+        <li><a href="#deposit">Depositing real tokens and creating private notes</a></li>
+        <li><a href="#buy">Buy flow: from 402 to proof, verify, and settle</a></li>
+        <li><a href="#later">What this part leaves for later</a></li>
+      </ol>
+    </nav>
+
+    <hr />
+
+    <h2 id="background">Background</h2>
+    <p>Popular social apps and other web apps increasingly deploy AI agents that — besides image, text, programming, and the rest — can pay and transfer value.</p>
+    <p>Protocols such as <a href="https://docs.cdp.coinbase.com/x402/welcome"><strong>x402</strong></a> (#Coinbase), <a href="https://docs.stripe.com/payments/machine/mpp"><strong>MPP</strong></a> (#Stripe), and Google’s agent-payments line (<a href="https://ap2-protocol.org/"><strong>AP2</strong></a> — name may shift; same idea) have been revived so that AI agents working through browsing and other processes can discover a <strong>Payment Required</strong> response with HTTP <strong>402</strong>, then act to fulfill the payment.</p>
+    <p>In this part of the trio, we cover how <a href="https://github.com/pprogrammingg/zk-spot-shield"><strong>zk-spot-shield</strong></a> can demonstrate <strong>agentic payments</strong> that:</p>
+    <ul>
+      <li>Can hit and parse a 402 protocol request and response</li>
+      <li>Spend a <strong>private note</strong> backed by real tokens such as USDC (privacy via zero-knowledge proofs)</li>
+      <li>Can fulfill the payment on a blockchain (in this demo we use <strong>Solana</strong>)</li>
+      <li>Prevent the obvious failures: <strong>fake notes</strong> and <strong>double-spend</strong></li>
+      <li>Finally give the user <strong>change</strong>, usable as another private note</li>
+    </ul>
+
+    <hr />
+
+    <h2 id="deposit">Depositing real tokens and creating private notes</h2>
+    <figure class="article-video">
+      <div
+        class="yt-player"
+        data-youtube-id="gko6EglCxWU"
+        data-title="Deposit flow"
+      >
+        <button type="button" aria-label="Play deposit flow video">
+          <img
+            src="assets/deposit_thumbnail.png"
+            alt="Deposit flow video thumbnail"
+            width="1672"
+            height="941"
+          />
+        </button>
+      </div>
+      <figcaption>
+        Deposit flow —
+        <a href="https://www.youtube.com/watch?v=gko6EglCxWU">YouTube</a>
+      </figcaption>
+    </figure>
+
+    <div class="diagram" data-diagram="deposit">
+      <div class="diagram-toolbar">
+        Deposit flow
+        <button type="button" data-zoom="-">−</button>
+        <button type="button" data-zoom="+">+</button>
+        <button type="button" data-zoom="reset">Reset</button>
+        <span>drag to pan · buttons to zoom</span>
+      </div>
+      <div class="diagram-viewport">
+        <pre class="mermaid">
+flowchart TD
+    A["AI Agent wallet<br/>Token A"] --> B["Deposit transaction<br/>(Public on Solana)"]
+    B --> C["zk-spot-shield vault<br/>Vault custody"]
+    C --> D["Create private note<br/>Secret + Balance<br/>leaf = Poseidon(...)"]
+
+    E(["Note: only deposit links<br/>wallet to app"])
+    B ~~~ E
+
+    style A fill:#26364a,color:#fff,stroke:#333333,stroke-width:1.25px
+    style B fill:#7c4d18,color:#fff,stroke:#333333,stroke-width:1.25px
+    style C fill:#174b43,color:#fff,stroke:#333333,stroke-width:1.25px
+    style D fill:#34306b,color:#fff,stroke:#333333,stroke-width:1.25px
+    style E fill:#f4f1e8,color:#292929,stroke:#94a3b8,stroke-width:1.25px,stroke-dasharray:5 5
+    linkStyle default stroke:#333333,stroke-width:1.75px,color:#333333
+        </pre>
+      </div>
+    </div>
+
+    <p>We kick off the application by asking the AI agent to deposit some <strong>Token A</strong> from its wallet (we have pre-minted some Token A into that wallet so the agent can deposit into the app).</p>
+    <p>Once tokens are sent and deposited into the app vault, a <strong>note</strong> is generated on disk / browser-side state (the client’s machine) — that is, we save secret, balance, mint, and leaf + a Poseidon hash of the said ingredients (see the illustration below):</p>
+    <pre>leaf = Poseidon(secret, user_address, balance)</pre>
+    <figure class="article-figure">
+      <img
+        src="assets/private_spendable_note.png"
+        alt="Private note: secret, user address, balance, and leaf equals Poseidon of those fields, stored on disk or agent state"
+        width="1024"
+        height="1536"
+      />
+      <figcaption>A shielded note and its ingredients and how <code>leaf</code> is calculated from those values</figcaption>
+    </figure>
+    <p>That leaf identifies the note <strong>without</strong> revealing the private details. (In upcoming <strong>Part 3</strong> we discuss note backup if disk/cache is cleaned.)</p>
+    <p>Congrats — notes are now available to be spent! We can check the UI by typing <strong>balance</strong> in the AI agent menue; this way the UI page will open and we 
+      see all notes and balances.</p>
+    <figure class="article-figure">
+      <img
+        src="assets/ui_note_balanaces.png"
+        alt="ZK Spot Shield UI Note Balances: private mint A note cards on Devnet"
+        width="2008"
+        height="884"
+      />
+      <figcaption>UI Note Balances after deposit.</figcaption>
+    </figure>
+    <p><strong>Note:</strong> Upon first-time depositing, the user wallet is on the blockchain — it says this user deposited this much token into the zk-spot-shield app… and <strong>this is the only time</strong> the agent can be linked that way on-chain.</p>
+    <p>In contrast, future spending of notes will hide association to the agent wallet. Explorers on chain will only see some transaction that includes some amounts, with no clear idea who sent it.</p>
+    <p>A good question would be: what about the <strong>recipient address</strong> of the Token B? Is that revealed on-chain when tokens are sent? This is a valid question, and we cover some strategies to obscure that in <strong>Part 3</strong>.</p>
+
+    <hr />
+
+    <h2 id="buy">Buy flow: from 402 to proof, verify, and settle</h2>
+    <figure class="article-video">
+      <div
+        class="yt-player"
+        data-youtube-id="bszybmN6Cxo"
+        data-title="Spend private note and get change"
+      >
+        <button type="button" aria-label="Play spend private note video">
+          <img
+            src="assets/prive_note_spend_thumbnail.png"
+            alt="Spend private note and get change video thumbnail"
+            width="1672"
+            height="941"
+          />
+        </button>
+      </div>
+      <figcaption>
+        Spend private note + change —
+        <a href="https://www.youtube.com/watch?v=bszybmN6Cxo">YouTube</a>
+      </figcaption>
+    </figure>
+
+    <div class="diagram" data-diagram="buy">
+      <div class="diagram-toolbar">
+        Buy / settle flow
+        <button type="button" data-zoom="-">−</button>
+        <button type="button" data-zoom="+">+</button>
+        <button type="button" data-zoom="reset">Reset</button>
+        <span>drag to pan · buttons to zoom</span>
+      </div>
+      <div class="diagram-viewport">
+        <pre class="mermaid">
+flowchart TD
+    subgraph Col1 [Flow 1]
+        A0["Agent requests to buy<br/>Token B by spending A"] --> A["402 Payment Required<br/>with requirements<br/>(amount + mint)"]
+        A --> B["Pick covering note"]
+        B --> C["Witness / private inputs"]
+        C --> D["Succinct network Groth16<br/>(~$PROVE)"]
+        D --> E["Proof + journal"]
+    end
+
+    E --> F
+
+    subgraph Col2 [Flow 2]
+        F["Solana settle<br/>(verify, root, nullifier)"] --> G["Vault pays Token B"]
+        G --> H["Change note (optional)"]
+        H --> I["POST /402/pay<br/>unlock=nullifier"]
+    end
+
+    style Col1 fill:#fffef6,stroke:#efe9d4,color:#5c5c5c
+    style Col2 fill:#fffef6,stroke:#efe9d4,color:#5c5c5c
+    style A0 fill:#26364a,color:#fff,stroke:#333333,stroke-width:1.25px
+    style A fill:#7c4d18,color:#fff,stroke:#333333,stroke-width:1.25px
+    style D fill:#34306b,color:#fff,stroke:#333333,stroke-width:1.25px
+    style F fill:#174b43,color:#fff,stroke:#333333,stroke-width:1.25px
+    style I fill:#26364a,color:#fff,stroke:#333333,stroke-width:1.25px
+    linkStyle default stroke:#333333,stroke-width:1.75px,color:#333333
+        </pre>
+      </div>
+    </div>
+
+    <h2 id="what-is-402">What is 402?</h2>
+    <p>Think of HTTP <strong>402</strong> as a polite “pay first” gate. The agent tries to buy something (or do anything that costs money). The seller does not hand over the goods yet — it answers with <strong>402 Payment Required</strong> and a small quote: how much, and which token (<strong>amount</strong> + <strong>mint</strong>). The agent reads that quote, then pays by spending a <strong>private note</strong> instead of blasting a normal, fully public wallet transfer.</p>
+
+    <h3>1. Pick a note</h3>
+    <p>When the agent chooses to pay, we pick the <strong>smallest unspent note whose balance covers the quote</strong>. If none exists, we error out: not enough balance — deposit more Token A.</p>
+
+    <h3>2. Prove</h3>
+    <p>This is the <strong>zero-knowledge</strong> part of the flow — where the proof is built. A ZK circuit’s job is to produce a proof that someone else can verify <strong>without</strong> seeing the private inputs.</p>
+    <figure class="article-figure">
+      <img
+        src="assets/pub_priv_zk.png"
+        alt="Private off-chain witness versus public journal on chain: amount, mint, nullifier, Merkle root, change amount and leaf"
+        width="1376"
+        height="768"
+      />
+      <figcaption>Private witness (off-chain) vs public journal / chain fields — including change amount + change leaf when the spend is partial.</figcaption>
+    </figure>
+    <p><strong>Private inputs</strong> (the witness — never put on-chain as plaintext):</p>
+    <pre>secret
+user_address
+balance
+requested_swap_amount
+asset_id_mint
+expected_root
+merkle_path   # 20 siblings + left/right flags</pre>
+    <p>Two roles show up in ZK tooling:</p>
+    <ul>
+      <li><strong>Guest</strong> — the small program that runs <em>inside</em> the zkVM. It checks the private rules (enough balance, real Merkle path, and so on) and commits the public journal. Think of it as the exam taker working in a sealed room.</li>
+      <li><strong>Host</strong> — the normal app on your machine (or a proving network) that feeds the guest its inputs and asks for a proof. Think of it as the proctor who packs the sealed room and later asks for the certificate.</li>
+    </ul>
+    <p>Inside the guest, roughly:</p>
+    <ul>
+      <li><strong>Solvency / conservation</strong> — balance covers the spend; change + spend = old balance.</li>
+      <li>
+        <p><strong>This note is not fake!</strong> Someone could invent a note on their laptop and try to spend it. So we need a way to show this note really belongs to the set the app already committed to — not a random fake.</p>
+        <p>A few ways people solve that:</p>
+        <ul>
+          <li><strong>A. Publish every note on-chain</strong> — simple to check, but expensive, and it leaks the whole roster.</li>
+          <li><strong>B. Ask a trusted server</strong> — “is this note real?” — cheap for the chain, but you have to trust that server (and it becomes a privacy hotspot).</li>
+          <li><strong>C. Commit to one short fingerprint of the whole set</strong> — then prove membership against that fingerprint. Smaller on-chain, no full dump.</li>
+        </ul>
+        <p>We chose <strong>C</strong>: a technique called <strong>Merkle inclusion</strong>. Very roughly: notes are hashed into a tree; the tip of that tree is one short <strong>root</strong>. To spend, you prove your note sits under a registered root with a short path of sibling hashes — not by dumping every note on-chain. Match → real membership; no match → fail closed. Storage, next free slot, races, and indexers are in <a href="zk-spot-shield-part3.html#merkle-inclusion">Part 3</a>.</p>
+      </li>
+      <li><strong>Prevent double-spend</strong> — here a technique called a <strong>nullifier</strong> is used. Roughly: each spend must leave a unique “already used” stamp on-chain. The guest builds that stamp with Poseidon:
+        <pre>nullifier = Poseidon(secret, leaf, asset_id_mint)</pre>
+        Same note → same stamp every time; a different note → a different stamp.</li>
+    </ul>
+    <p><strong>Public journal:</strong></p>
+    <pre>requested_swap_amount
+asset_id_mint
+nullifier
+merkle_root
+change_amount
+change_leaf</pre>
+    <h3>Now that we have the host and guest circuit, where is it run since it is super computation heavy?</h3>
+    <p>Does the agent run the heavy prove on its own machine? Usually <strong>no</strong> — ZK proving is computationally heavy, and client machines often run out of memory (OOM). This demo path uses our ZK circuit <strong>ELF</strong> uploaded to the <a href="https://docs.succinct.xyz/">Succinct</a> compute network. In our Devnet runs that cost about <strong>~$0.39 in $PROVE</strong> and took on the order of <strong>~40–50 seconds</strong> for proof generation to finish.</p>
+
+    <h3>3. Verify and settle on Solana</h3>
+    <ol>
+      <li>Verify the proof on-chain (the Solana program verifies the Groth16 proof against the program verifying key)</li>
+      <li>Journal Merkle root is a registered clean-funds root</li>
+      <li>Nullifier unused → create nullifier PDA</li>
+      <li>Vault pays Token B to recipient ATA</li>
+      <li>If change &gt; 0, record change leaf</li>
+    </ol>
+    <p>Someone pays <strong>SOL</strong> fees (not gasless). Fail closed on errors.</p>
+
+    <h3>4. Change note</h3>
+    <p>If the note you spent was bigger than the quote, the leftover is not thrown away. The circuit binds a new remainder — journal fields <code>change_amount</code> and <code>change_leaf</code> — and that becomes another <strong>private note</strong> (same secret family, new leaf for the leftover balance). The UI shows it as an extra card under Note Balances. If you spent the whole note (<code>change_amount = 0</code>), there is no change card.</p>
+
+    <h3>5. Unlock 402</h3>
+    <p>Settle alone does not open the seller’s resource. After the on-chain tx lands, the agent posts the journal to the relayer:</p>
+    <pre>POST /402/pay</pre>
+    <p>For the shielded path, the unlock key is the <strong>nullifier</strong>, not the payer wallet — so the receipt is not “this pubkey paid.” The merchant checks that nullifier (and the rest of the payment ack), then unlocks whatever the original 402 was guarding.</p>
+
+    <hr />
+
+    <h2 id="later">What this part leaves for later</h2>
+    <ul>
+      <li><strong>Part 2:</strong> Technical Deep Dive — Solana/Anchor architecture; a brief note on libraries used for ZK</li>
+      <li><strong>Part 3:</strong> <a href="zk-spot-shield-part3.html">Further Improvements and Resiliency</a> — more privacy in sending and receiving, note backups, faster Merkle tree fetch with an indexer</li>
+    </ul>
+
+  </article>
+
+  <script>
+    // Click thumbnail → in-page YouTube. Error 153 = missing Referer (file:// or
+    // Referrer-Policy: same-origin/no-referrer). Use www.youtube.com + meta referrer;
+    // file:// cannot send an HTTP origin, so fall back to the watch page.
+    document.querySelectorAll(".yt-player[data-youtube-id]").forEach((el) => {
+      const btn = el.querySelector("button");
+      if (!btn) return;
+      btn.addEventListener("click", () => {
+        const id = el.getAttribute("data-youtube-id");
+        const title = el.getAttribute("data-title") || "YouTube video";
+        if (!id) return;
+        const watch = "https://www.youtube.com/watch?v=" + encodeURIComponent(id);
+        if (location.protocol === "file:") {
+          window.open(watch, "_blank", "noopener");
+          return;
+        }
+        const iframe = document.createElement("iframe");
+        iframe.src =
+          "https://www.youtube.com/embed/" +
+          encodeURIComponent(id) +
+          "?autoplay=1&rel=0";
+        iframe.title = title;
+        iframe.setAttribute(
+          "allow",
+          "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share",
+        );
+        iframe.allowFullscreen = true;
+        iframe.referrerPolicy = "strict-origin-when-cross-origin";
+        el.replaceChildren(iframe);
+      });
+    });
+  </script>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: "base",
+      securityLevel: "loose",
+      themeVariables: {
+        background: "#fffef6",
+        lineColor: "#111111",
+        arrowheadColor: "#111111",
+        primaryBorderColor: "#111111",
+        secondaryBorderColor: "#111111",
+        tertiaryBorderColor: "#111111",
+        edgeLabelBackground: "#fffef6",
+      },
+      flowchart: { curve: "basis", htmlLabels: true },
+    });
+
+    await mermaid.run({ querySelector: ".mermaid" });
+
+    // Edge contrast without over-thick strokes (node borders stay as style=…).
+    document.querySelectorAll(".mermaid svg").forEach((svg) => {
+      const ink = "#333333";
+      svg.querySelectorAll(".edgePath path, .flowchart-link, g.edgePaths path").forEach((p) => {
+        p.setAttribute("stroke", ink);
+        p.setAttribute("stroke-width", "1.75");
+        p.style.stroke = ink;
+        p.style.strokeWidth = "1.75px";
+        p.style.opacity = "1";
+      });
+      svg.querySelectorAll("defs marker#arrowhead path, defs marker[id*='flowchart'] path").forEach((p) => {
+        p.setAttribute("fill", ink);
+        p.setAttribute("stroke", ink);
+        p.style.fill = ink;
+        p.style.stroke = ink;
+      });
+    });
+
+    const INITIAL_ZOOM = 1.5; // same load zoom for every Mermaid canvas
+    const controllers = [];
+
+    const contentSize = (target) => {
+      const svg = target.querySelector("svg");
+      if (svg) {
+        try {
+          const box = svg.getBBox();
+          if (box && box.width > 0 && box.height > 0) {
+            return { tw: box.width + 24, th: box.height + 24 };
+          }
+        } catch (_) {
+          /* getBBox can throw if SVG not in layout yet */
+        }
+        return {
+          tw: Math.max(svg.clientWidth || svg.scrollWidth, 1),
+          th: Math.max(svg.clientHeight || svg.scrollHeight, 1),
+        };
+      }
+      return {
+        tw: Math.max(target.scrollWidth, 1),
+        th: Math.max(target.scrollHeight, 1),
+      };
+    };
+
+    const fitScaleFor = (viewport, target) => {
+      target.style.transform = "translate(0px, 0px) scale(1)";
+      const { tw, th } = contentSize(target);
+      const vw = Math.max(viewport.clientWidth - 16, 1);
+      const vh = Math.max(viewport.clientHeight - 16, 1);
+      return Math.min(vw / tw, vh / th);
+    };
+
+    const sharedLoadScale = () => {
+      const fits = controllers.map((c) => fitScaleFor(c.viewport, c.target));
+      const zoomed = fits.map((fit) => Math.min(3.5, Math.max(0.55, fit * INITIAL_ZOOM)));
+      return Math.min(...zoomed);
+    };
+
+    const applySharedFit = () => {
+      const scale = sharedLoadScale();
+      controllers.forEach((c) => {
+        c.scale = scale;
+        c.panX = 0;
+        c.panY = 0;
+        c.apply();
+      });
+    };
+
+    document.querySelectorAll(".diagram").forEach((diagram) => {
+      const viewport = diagram.querySelector(".diagram-viewport");
+      const target = diagram.querySelector(".mermaid");
+      const state = {
+        viewport,
+        target,
+        scale: 1,
+        panX: 0,
+        panY: 0,
+        dragging: false,
+        lastX: 0,
+        lastY: 0,
+        apply() {
+          target.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.scale})`;
+        },
+      };
+      controllers.push(state);
+
+      diagram.querySelectorAll("[data-zoom]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const op = btn.getAttribute("data-zoom");
+          if (op === "+") state.scale = Math.min(3.5, state.scale + 0.15);
+          else if (op === "-") state.scale = Math.max(0.5, state.scale - 0.15);
+          else {
+            applySharedFit();
+            return;
+          }
+          state.apply();
+        });
+      });
+
+      viewport.addEventListener("pointerdown", (e) => {
+        state.dragging = true;
+        state.lastX = e.clientX;
+        state.lastY = e.clientY;
+        viewport.setPointerCapture(e.pointerId);
+      });
+      viewport.addEventListener("pointermove", (e) => {
+        if (!state.dragging) return;
+        state.panX += e.clientX - state.lastX;
+        state.panY += e.clientY - state.lastY;
+        state.lastX = e.clientX;
+        state.lastY = e.clientY;
+        state.apply();
+      });
+      viewport.addEventListener("pointerup", () => {
+        state.dragging = false;
+      });
+    });
+
+    // Two frames so both SVGs have layout before shared scale/center.
+    requestAnimationFrame(() => requestAnimationFrame(applySharedFit));
+  </script>
+</body>
+</html>
