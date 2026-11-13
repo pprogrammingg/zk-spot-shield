@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- YouTube embeds need a Referer (Error 153 if missing / same-origin). -->
   <meta name="referrer" content="strict-origin-when-cross-origin" />
-  <title>Private Agentic Payments on Solana — Part 1</title>
+  <title>Private Agentic Payments on Solana (x402, MPP, AP2) — Part 1</title>
   <meta name="description" content="Part 1: how an AI agent hits HTTP 402, spends a private note with a zero-knowledge proof, settles on Solana, and gets change — without dumping the note roster on-chain." />
   <meta name="author" content="pprogrammingg" />
   <link rel="canonical" href="https://pprogrammingg.github.io/zk-spot-shield/articles/zk-spot-shield-part1.html" />
@@ -14,7 +14,7 @@
   <meta property="og:type" content="article" />
   <meta property="og:site_name" content="ZK Spot Shield" />
   <meta property="og:locale" content="en_US" />
-  <meta property="og:title" content="Private Agentic Payments on Solana (x402, MPP, and friends) — Part 1" />
+  <meta property="og:title" content="Private Agentic Payments on Solana (x402, MPP, AP2) — Part 1" />
   <meta property="og:description" content="Part 1: how an AI agent hits HTTP 402, spends a private note with a zero-knowledge proof, settles on Solana, and gets change — without dumping the note roster on-chain." />
   <meta property="og:url" content="https://pprogrammingg.github.io/zk-spot-shield/articles/zk-spot-shield-part1.html" />
   <meta property="og:image" content="https://pprogrammingg.github.io/zk-spot-shield/articles/assets/priv_note_spend_LI_post.jpg" />
@@ -263,11 +263,8 @@
 </head>
 <body>
   <article class="wrap">
-    <h1>Private Agentic Payments on Solana (x402, MPP, and friends)</h1>
+    <h1>Private Agentic Payments on Solana (x402, MPP, AP2)</h1>
     <p class="lede">Part 1 of 3. Repo: <a href="https://github.com/pprogrammingg/zk-spot-shield">zk-spot-shield</a>.</p>
-    <p class="meta">
-      Videos inline below (deposit · spend + change)
-    </p>
 
     <nav class="toc" aria-label="Table of contents">
       <strong>Table of contents</strong>
@@ -275,22 +272,22 @@
         <li><a href="#background">Background</a></li>
         <li><a href="#deposit">Depositing real tokens and creating private notes</a></li>
         <li><a href="#buy">Buy flow: from 402 to proof, verify, and settle</a></li>
-        <li><a href="#later">What this part leaves for later</a></li>
+        <li><a href="#later">Upcoming Article Parts</a></li>
       </ol>
     </nav>
 
     <hr />
 
     <h2 id="background">Background</h2>
-    <p>Popular social apps and other web apps increasingly deploy AI agents that — besides image, text, programming, and the rest — can pay and transfer value.</p>
-    <p>Protocols such as <a href="https://docs.cdp.coinbase.com/x402/welcome"><strong>x402</strong></a> (#Coinbase), <a href="https://docs.stripe.com/payments/machine/mpp"><strong>MPP</strong></a> (#Stripe), and Google’s agent-payments line (<a href="https://ap2-protocol.org/"><strong>AP2</strong></a> — name may shift; same idea) have been revived so that AI agents working through browsing and other processes can discover a <strong>Payment Required</strong> response with HTTP <strong>402</strong>, then act to fulfill the payment.</p>
-    <p>In this part of the trio, we cover how <a href="https://github.com/pprogrammingg/zk-spot-shield"><strong>zk-spot-shield</strong></a> can demonstrate <strong>agentic payments</strong> that:</p>
+    <p>AI agents in apps are beginning to pay and transfer value, not only generate text or code.</p>
+    <p>Protocols such as <a href="https://docs.cdp.coinbase.com/x402/welcome"><strong>x402</strong></a> (Coinbase), <a href="https://docs.stripe.com/payments/machine/mpp"><strong>MPP</strong></a> (Stripe), and Google’s <a href="https://ap2-protocol.org/"><strong>AP2</strong></a> let agents discover a <strong>Payment Required</strong> response with HTTP <strong>402</strong> and fulfill it.</p>
+    <p>This part shows how <a href="https://github.com/pprogrammingg/zk-spot-shield"><strong>zk-spot-shield</strong></a> does <strong>agentic payments</strong> that:</p>
     <ul>
-      <li>Can hit and parse a 402 protocol request and response</li>
+      <li>Hit and parse a 402 request/response</li>
       <li>Spend a <strong>private note</strong> backed by real tokens such as USDC (privacy via zero-knowledge proofs)</li>
-      <li>Can fulfill the payment on a blockchain (in this demo we use <strong>Solana</strong>)</li>
-      <li>Prevent the obvious failures: <strong>fake notes</strong> and <strong>double-spend</strong></li>
-      <li>Finally give the user <strong>change</strong>, usable as another private note</li>
+      <li>Settle the payment on <strong>Solana</strong></li>
+      <li>Reject <strong>fake notes</strong> and <strong>double-spend</strong></li>
+      <li>Return <strong>change</strong> as another private note</li>
     </ul>
 
     <hr />
@@ -345,8 +342,8 @@ flowchart TD
       </div>
     </div>
 
-    <p>We kick off the application by asking the AI agent to deposit some <strong>Token A</strong> from its wallet (we have pre-minted some Token A into that wallet so the agent can deposit into the app).</p>
-    <p>Once tokens are sent and deposited into the app vault, a <strong>note</strong> is generated on disk / browser-side state (the client’s machine) — that is, we save secret, balance, mint, and leaf + a Poseidon hash of the said ingredients (see the illustration below):</p>
+    <p>The agent deposits <strong>Token A</strong> from its wallet into the app vault (this demo pre-mints Token A so the deposit can run).</p>
+    <p>After deposit, a <strong>note</strong> is stored on the client (disk / agent state): secret, balance, mint, and a Poseidon leaf:</p>
     <pre>leaf = Poseidon(secret, user_address, balance)</pre>
     <figure class="article-figure">
       <img
@@ -355,11 +352,11 @@ flowchart TD
         width="1024"
         height="1536"
       />
-      <figcaption>A shielded note and its ingredients and how <code>leaf</code> is calculated from those values</figcaption>
+      <figcaption>Shielded note fields and how <code>leaf</code> is computed</figcaption>
     </figure>
-    <p>That leaf identifies the note <strong>without</strong> revealing the private details. (In upcoming <strong>Part 3</strong> we discuss note backup if disk/cache is cleaned.)</p>
-    <p>Congrats — notes are now available to be spent! We can check the UI by typing <strong>balance</strong> in the AI agent menue; this way the UI page will open and we 
-      see all notes and balances.</p>
+    <p>The leaf identifies the note <strong>without</strong> revealing the private details.</p>
+    <p><strong>But what if client-side cache/storage gets deleted?</strong> In Part 3 we demonstrate note backup and re-import to the client.</p>
+    <p>Type <strong>balance</strong> in the agent menu to open the UI and see notes and balances.</p>
     <figure class="article-figure">
       <img
         src="assets/ui_note_balanaces.png"
@@ -367,11 +364,11 @@ flowchart TD
         width="2008"
         height="884"
       />
-      <figcaption>UI Note Balances after deposit.</figcaption>
+      <figcaption>UI Note Balances after deposit</figcaption>
     </figure>
     <p><strong>Note:</strong> Upon first-time depositing, the user wallet is on the blockchain — it says this user deposited this much token into the zk-spot-shield app… and <strong>this is the only time</strong> the agent can be linked that way on-chain.</p>
     <p>In contrast, future spending of notes will hide association to the agent wallet. Explorers on chain will only see some transaction that includes some amounts, with no clear idea who sent it.</p>
-    <p>A good question would be: what about the <strong>recipient address</strong> of the Token B? Is that revealed on-chain when tokens are sent? This is a valid question, and we cover some strategies to obscure that in <strong>Part 3</strong>.</p>
+    <p>A good question would be: <strong>what about the <u>recipient address</u> of the Token B?</strong> Is that revealed on-chain when tokens are sent? This is a valid question, and we cover some strategies to obscure that in <strong>Part 3</strong>.</p>
 
     <hr />
 
@@ -437,13 +434,13 @@ flowchart TD
     </div>
 
     <h2 id="what-is-402">What is 402?</h2>
-    <p>Think of HTTP <strong>402</strong> as a polite “pay first” gate. The agent tries to buy something (or do anything that costs money). The seller does not hand over the goods yet — it answers with <strong>402 Payment Required</strong> and a small quote: how much, and which token (<strong>amount</strong> + <strong>mint</strong>). The agent reads that quote, then pays by spending a <strong>private note</strong> instead of blasting a normal, fully public wallet transfer.</p>
+    <p>HTTP <strong>402 Payment Required</strong> means the seller withholds the resource until payment. The response includes a quote: <strong>amount</strong> + <strong>mint</strong>. The agent pays that quote by spending a <strong>private note</strong>, instead of a fully public wallet transfer.</p>
 
     <h3>1. Pick a note</h3>
     <p>When the agent chooses to pay, we pick the <strong>smallest unspent note whose balance covers the quote</strong>. If none exists, we error out: not enough balance — deposit more Token A.</p>
 
     <h3>2. Prove</h3>
-    <p>This is the <strong>zero-knowledge</strong> part of the flow — where the proof is built. A ZK circuit’s job is to produce a proof that someone else can verify <strong>without</strong> seeing the private inputs.</p>
+    <p>Here the <strong>zero-knowledge</strong> proof is built: a verifier can check the claim <strong>without</strong> seeing the private inputs.</p>
     <figure class="article-figure">
       <img
         src="assets/pub_priv_zk.png"
@@ -461,10 +458,10 @@ requested_swap_amount
 asset_id_mint
 expected_root
 merkle_path   # 20 siblings + left/right flags</pre>
-    <p>Two roles show up in ZK tooling:</p>
+    <p>Two roles in the ZK stack:</p>
     <ul>
-      <li><strong>Guest</strong> — the small program that runs <em>inside</em> the zkVM. It checks the private rules (enough balance, real Merkle path, and so on) and commits the public journal. Think of it as the exam taker working in a sealed room.</li>
-      <li><strong>Host</strong> — the normal app on your machine (or a proving network) that feeds the guest its inputs and asks for a proof. Think of it as the proctor who packs the sealed room and later asks for the certificate.</li>
+      <li><strong>Guest</strong> — the program that runs <em>inside</em> the zkVM. It checks the private rules (balance, Merkle path, and so on) and commits the public journal.</li>
+      <li><strong>Host</strong> — the app on your machine (or a proving network) that feeds the guest its inputs and requests a proof.</li>
     </ul>
     <p>Inside the guest, roughly:</p>
     <ul>
@@ -490,8 +487,8 @@ nullifier
 merkle_root
 change_amount
 change_leaf</pre>
-    <h3>Now that we have the host and guest circuit, where is it run since it is super computation heavy?</h3>
-    <p>Does the agent run the heavy prove on its own machine? Usually <strong>no</strong> — ZK proving is computationally heavy, and client machines often run out of memory (OOM). This demo path uses our ZK circuit <strong>ELF</strong> uploaded to the <a href="https://docs.succinct.xyz/">Succinct</a> compute network. In our Devnet runs that cost about <strong>~$0.39 in $PROVE</strong> and took on the order of <strong>~40–50 seconds</strong> for proof generation to finish.</p>
+    <h3>Where does the heavy prove run?</h3>
+    <p>Usually <strong>not</strong> on the agent’s machine — proving is heavy and clients often run out of memory. This demo uploads the circuit <strong>ELF</strong> to the <a href="https://docs.succinct.xyz/">Succinct</a> network. On Devnet that cost about <strong>~$0.39 in $PROVE</strong> and took roughly <strong>~40–50 seconds</strong>.</p>
 
     <h3>3. Verify and settle on Solana</h3>
     <ol>
@@ -501,19 +498,19 @@ change_leaf</pre>
       <li>Vault pays Token B to recipient ATA</li>
       <li>If change &gt; 0, record change leaf</li>
     </ol>
-    <p><strong>Note:</strong> settle still needs a Solana fee payer for the transaction. The agent can self-submit (its wallet pays SOL), or hand the signed settle to a <strong>relayer</strong> that sponsors the fee. The relayer is optional fee sponsorship — not the note owner, and not what unlocks the 402 (that comes next).</p>
+    <p><strong>Note:</strong> settle needs a Solana fee payer. The agent can self-submit (wallet pays SOL) or use a <strong>relayer</strong> that sponsors the fee. The relayer is optional fee sponsorship — not the note owner, and not what unlocks the 402.</p>
 
     <h3>4. Change note</h3>
-    <p>If the note you spent was bigger than the quote, the leftover is not thrown away. The circuit binds a new remainder — journal fields <code>change_amount</code> and <code>change_leaf</code> — and that becomes another <strong>private note</strong> (same secret family, new leaf for the leftover balance). The UI shows it as an extra card under Note Balances. If you spent the whole note (<code>change_amount = 0</code>), there is no change card.</p>
+    <p>If the spent note was larger than the quote, the leftover becomes another <strong>private note</strong> via journal fields <code>change_amount</code> and <code>change_leaf</code>. The UI shows it under Note Balances. Spend-all (<code>change_amount = 0</code>) creates no change note.</p>
 
     <h3>5. Unlock 402</h3>
-    <p>Settle alone does not open the seller’s resource. After the on-chain tx lands, the agent posts the journal to the relayer:</p>
+    <p>Settle alone does not unlock the seller’s resource. After the tx lands, the agent posts the journal:</p>
     <pre>POST /402/pay</pre>
-    <p>For the shielded path, the unlock key is the <strong>nullifier</strong>, not the payer wallet — so the receipt is not “this pubkey paid.” The merchant checks that nullifier (and the rest of the payment ack), then unlocks whatever the original 402 was guarding.</p>
+    <p>For the shielded path, the unlock key is the <strong>nullifier</strong>, not the payer wallet. The merchant checks that receipt, then unlocks what the 402 was guarding.</p>
 
     <hr />
 
-    <h2 id="later">What this part leaves for later</h2>
+    <h2 id="later">Upcoming Article Parts</h2>
     <ul>
       <li><strong>Part 2:</strong> Technical Deep Dive — Solana/Anchor architecture; a brief note on libraries used for ZK</li>
       <li><strong>Part 3 (upcoming):</strong> Further Improvements and Resiliency — more privacy in sending and receiving, note backups, faster Merkle tree fetch with an indexer</li>
