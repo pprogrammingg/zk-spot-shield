@@ -78,7 +78,9 @@ sequenceDiagram
  participant Ph as Phantom
  U->>W: 1 Open web app or agent CLI
  U->>Ph: 2 Connect wallet
- Ph-->>W: 3 Pubkey ready for SDK (deposit + SOL; notes stay with the agent)
+ Ph-->>W: 3 SDK receives pubkey
+ Note over W: Wallet pays deposit and SOL fees
+ Note over W: Agent keeps the notes
 ```
 
 ---
@@ -149,7 +151,9 @@ sequenceDiagram
  Prog->>Spl: 27 Vault pays other mint to user
  Prog->>Prog: 28 Create nullifier PDA
  Prog->>Prog: 28b Insert change-leaf PDA if journal binds remainder
- Note over Prog: Fee payer pays SOL rent; no second debit of journal mint; admin still registers the new tip
+ Note over Prog: Fee payer pays SOL rent
+ Note over Prog: Journal mint is not debited again
+ Note over Prog: Admin registers the new tip
 ```
 
 ---
@@ -166,7 +170,8 @@ sequenceDiagram
  Rel-->>Net: 30 Pay prove credits from treasury
  Note over Rel: User fees refill PROVE and SOL
  Note over W: 32 Change note + encrypted backup
- Note over W: 33 Leaf PDA has no depositor; payout ATA may be wallet R
+ Note over W: 33 Leaf PDA omits the depositor
+ Note over W: Payout ATA may belong to wallet R
 ```
 
 ---

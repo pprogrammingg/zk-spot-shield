@@ -17,8 +17,9 @@ Do in this order. Do not pull a parked item mid-session.
 | # | Day | What |
 | --- | --- | --- |
 | 1 | **Write-1** | Circuit article + prove-path video |
-| 2 | **Write-2** | Settle article + UI/agent settle video |
-| 3 | **Write-3** | Public artifact + public-vs-shielded (or README) video |
+| 2 | **Day 85** | Bind a unique 402 invoice to a provable, on-chain settle |
+| 3 | **Write-2** | Settle article + UI/agent settle video |
+| 4 | **Write-3** | Public artifact + public-vs-shielded (or README) video |
 
 ---
 
@@ -574,6 +575,12 @@ Same wallet for CLI and UI. Relayer is merchant + optional SOL fee payer, not th
   - [x] Relayer `POST /402/pay-public` + `GET /402/resource?signature=` (`unlock=wallet`)
   - [x] *Exit:* Devnet public swap `27LEe6SB…` (11 A→B, unlock=wallet); shielded buy still works (`0xbe631e5f…` prove + settle earlier same session)
 
+- [ ] **Day 85 — Invoice-bound 402 payment verification**
+  - [ ] Merchant issues a unique invoice challenge bound to the quote; the guest commits it in the public journal so a proof/settle is specific to that invoice
+  - [ ] Agent submits the confirmed settle signature with its payment claim; relayer verifies transaction success, expected program, exact journal/challenge, and the corresponding on-chain nullifier account
+  - [ ] Persist invoice and nullifier fulfillment state; reject fabricated journals and replay of one settle for another invoice, while making retries idempotent
+  - [ ] *Exit:* End-to-end test proves a matching invoice-bound settle fulfills once; fake journals, wrong-invoice/historical settles, and duplicate fulfillment are rejected
+
 ---
 
 ## Tech debt (extra — not a Day)
@@ -584,7 +591,7 @@ Do when they unblock toolchain/CI. Do not pull them mid-Day.
 
 ---
 
-## Writing checkpoints (after Day 83 + P0 + 67–68)
+## Writing checkpoints (after Day 85 + P0 + 67–68)
 
 Each Write is **one Medium/LinkedIn piece**: markdown article + a short click-through video (UI and/or terminal) that the post can embed or link. Day 67 checklist is the Devnet UI script; reuse it where the topic is on-chain settle / public path.
 

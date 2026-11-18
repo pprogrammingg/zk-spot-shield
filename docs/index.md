@@ -32,7 +32,7 @@ The chain learns the trade amount, the token, and the one-time tag. It never lea
 | Circuit, Groth16 fixtures, forged-path reject | Done |
 | Program: config, vault, roots, nullifiers, deposit | Done |
 | Vault-only 1:1 settle (proof → vault pays the other mint) | Done |
-| Relayer fee payer + HTTP 402 stub | Done. Default quote is fixture 100 / toy mint. `GET /402/resource?amount=&mint=` sets the price (vault mint A on Devnet). Relayer terminal prints quote vs journal (amount/mint MATCH or MISS) and the nullifier receipt — no wallet |
+| Relayer fee payer + HTTP 402 demo | The current `/402/pay` is not authenticated payment verification: it accepts a journal matching amount/mint and records its nullifier in memory, without checking a confirmed on-chain settle. Next: bind a unique invoice challenge into the proof/journal and verify the corresponding successful settle on-chain before fulfillment |
 | TypeScript SDK + swap UI | Localnet + Devnet toggle (`?cluster=`). Agent fills ATAs + notes. Human amounts (Devnet 6 decimals). Day 67 Devnet click-through: `notes/devnet.md` |
 | Hidden recipient | Payout ATA may differ from the depositor; deposit tx still on the ledger |
 | Change notes | 144-byte pack (spend 100 / keep 900). Second spend needs an admin root |
